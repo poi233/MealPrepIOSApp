@@ -98,11 +98,7 @@ class NetworkManager: ObservableObject {
         self.session = URLSession(configuration: config)
         
         // Environment-based URL configuration
-        #if DEBUG
-        self.baseURL = "http://127.0.0.1:8000/api"
-        #else
-        self.baseURL = "https://meal-prep-app-backend.vercel.app/api"
-        #endif
+        self.baseURL = NetworkManager.getBaseURL()
         
         // Initialize Keychain with app-specific service name
         self.keychain = KeychainSwift()
@@ -383,6 +379,16 @@ class NetworkManager: ObservableObject {
     
     deinit {
         reachability?.stopNotifier()
+    }
+    
+    // MARK: - URL Configuration
+    
+    private static func getBaseURL() -> String {
+        #if DEBUG
+        return "http://127.0.0.1:8000/api"
+        #else
+        return "https://meal-prep-app-backend.vercel.app/api"
+        #endif
     }
 }
 
