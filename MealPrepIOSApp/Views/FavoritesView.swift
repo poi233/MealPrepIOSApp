@@ -138,7 +138,15 @@ struct FavoritesView: View {
                     Button("Filters") {
                         showingFilters = true
                     }
+                    .font(.body)
+                    .fontWeight(.medium)
                     .foregroundColor(favoritesStore.hasFilters ? .accentColor : .primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(favoritesStore.hasFilters ? Color.accentColor.opacity(0.1) : Color.clear)
+                    )
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -164,7 +172,15 @@ struct FavoritesView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "arrow.up.arrow.down")
+                        Image(systemName: "arrow.up.arrow.down.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                 }
             }
@@ -178,20 +194,15 @@ struct FavoritesView: View {
                     .environmentObject(favoritesStore)
             }
             .sheet(item: $selectedFavorite) { favorite in
-                FavoriteDetailView(favorite: favorite)
-                    .environmentObject(favoritesStore)
+                NavigationView {
+                    FavoriteDetailView(favorite: favorite)
+                        .environmentObject(favoritesStore)
+                }
             }
             .task {
                 if favoritesStore.favorites.isEmpty {
                     await favoritesStore.loadFavorites()
                 }
-            }
-            .alert("Error", isPresented: .constant(favoritesStore.errorMessage != nil)) {
-                Button("OK") {
-                    favoritesStore.clearError()
-                }
-            } message: {
-                Text(favoritesStore.errorMessage ?? "")
             }
         }
     }
@@ -261,123 +272,196 @@ struct FavoriteCard: View {
     let style: FavoriteCardStyle
     @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var showingEditView = false
+    @State private var isHovered = false
     
     enum FavoriteCardStyle {
         case standard, compact
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Recipe Image
-            AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray)
+        // Enhanced Favorite Card with custom Magic UI styling but without conflicting tap gestures
+        ZStack {
+            // Background with gradient and shadow
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-            }
-            .frame(height: imageHeight)
-            .clipped()
-            .cornerRadius(8)
-            .overlay(
-                // Favorite Actions
-                VStack {
-                    HStack {
-                        Spacer()
-                        Menu {
-                            Button("Edit Rating & Notes") {
-                                showingEditView = true
-                            }
-                            
-                            Button("Remove from Favorites", role: .destructive) {
-                                Task {
-                                    await favoritesStore.removeFromFavorites(recipeId: favorite.recipe.id)
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle.fill")
-                                .foregroundColor(.white)
-                                .font(.title2)
-                                .shadow(radius: 2)
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(8)
-            )
+                )
+                .shadow(
+                    color: Color.black.opacity(0.1),
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                )
             
-            // Recipe Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(favorite.recipe.name)
-                    .font(style == .compact ? .subheadline : .headline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
-                
-                if style != .compact {
-                    Text(favorite.recipe.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-                
-                // Personal Rating
-                if let rating = favorite.personalRating {
-                    HStack(spacing: 2) {
-                        ForEach(1...5, id: \.self) { star in
-                            Image(systemName: star <= rating ? "star.fill" : "star")
-                                .foregroundColor(star <= rating ? .yellow : .gray)
-                                .font(.caption)
+            VStack(alignment: .leading, spacing: 12) {
+                // Enhanced Recipe Image
+                ZStack {
+                    AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        DefaultRecipeImageView_Elegant(width: 200, height: imageHeight)
+                    }
+                    .frame(height: imageHeight)
+                    .clipped()
+                    .cornerRadius(12)
+                    
+                    // Gradient overlay
+                    LinearGradient(
+                        colors: [Color.clear, Color.black.opacity(0.3)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .cornerRadius(12)
+                    
+                    // Enhanced Favorite Actions
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Menu {
+                                Button("Edit Rating & Notes") {
+                                    showingEditView = true
+                                }
+                                
+                                Button("Remove from Favorites", role: .destructive) {
+                                    Task {
+                                        await favoritesStore.removeFromFavorites(recipeId: favorite.recipe.id)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle.fill")
+                                    .foregroundColor(.white)
+                                    .font(.title2)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.black.opacity(0.3))
+                                            .blur(radius: 4)
+                                    )
+                                    .scaleEffect(isHovered ? 1.1 : 1.0)
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+                            }
+                            .padding(.trailing, 12)
+                            .padding(.top, 12)
                         }
-                        
-                        Text("My Rating")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .padding(.leading, 4)
+                        Spacer()
                     }
                 }
-                
-                // Personal Notes
-                if let notes = favorite.personalNotes, !notes.isEmpty, style != .compact {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .italic()
+            
+                // Enhanced Recipe Info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(favorite.recipe.name)
+                        .font(style == .compact ? .headline : .title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary, .accentColor],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .lineLimit(2)
-                        .padding(.top, 2)
-                }
-                
-                // Recipe Stats
-                HStack(spacing: 12) {
-                    Label("\(favorite.recipe.totalTime) min", systemImage: "clock")
                     
                     if style != .compact {
-                        Label("\(favorite.recipe.avgRating, specifier: "%.1f")", systemImage: "star.fill")
-                            .foregroundColor(.orange)
+                        Text(favorite.recipe.description)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
                     }
                     
-                    Spacer()
+                    // Enhanced Personal Rating
+                    if let rating = favorite.personalRating {
+                        HStack(spacing: 4) {
+                            ForEach(1...5, id: \.self) { star in
+                                Image(systemName: star <= rating ? "star.fill" : "star")
+                                    .foregroundColor(star <= rating ? .yellow : .gray.opacity(0.3))
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            
+                            Text("My Rating")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 6)
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color.yellow.opacity(0.1))
+                        )
+                    }
                     
-                    Text("Added \(favorite.addedAt, style: .date)")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    // Enhanced Personal Notes
+                    if let notes = favorite.personalNotes, !notes.isEmpty, style != .compact {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .italic()
+                            .lineLimit(2)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.accentColor.opacity(0.05))
+                            )
+                    }
+                    
+                    // Enhanced Recipe Stats
+                    HStack(spacing: 16) {
+                        StatItem(
+                            icon: "clock",
+                            value: "\(favorite.recipe.totalTime)m",
+                            color: .blue
+                        )
+                        
+                        if style != .compact {
+                            StatItem(
+                                icon: "star.fill",
+                                value: String(format: "%.1f", favorite.recipe.avgRating),
+                                color: .orange
+                            )
+                        }
+                        
+                        Spacer()
+                        
+                        Text("Added \(favorite.addedAt, style: .date)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(Color.secondary.opacity(0.1))
+                            )
+                    }
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding()
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isHovered = true
+                }
+                .onEnded { _ in
+                    isHovered = false
+                }
+        )
         .sheet(isPresented: $showingEditView) {
-            EditFavoriteView(favorite: favorite)
-                .environmentObject(favoritesStore)
+            NavigationView {
+                EditFavoriteView(favorite: favorite)
+                    .environmentObject(favoritesStore)
+            }
         }
     }
     

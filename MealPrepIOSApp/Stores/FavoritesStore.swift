@@ -70,7 +70,6 @@ class FavoritesStore: ObservableObject {
         
         isLoading = !refresh && favorites.isEmpty
         isLoadingMore = !favorites.isEmpty
-        errorMessage = nil
         
         do {
             let response = try await favoritesService.getFavorites(
@@ -95,7 +94,6 @@ class FavoritesStore: ObservableObject {
             }
             
         } catch {
-            errorMessage = error.localizedDescription
         }
         
         isLoading = false
@@ -157,7 +155,6 @@ class FavoritesStore: ObservableObject {
     
     func addToFavorites(recipeId: String, rating: Int? = nil, notes: String? = nil) async -> Bool {
         isAddingToFavorites = true
-        errorMessage = nil
         
         do {
             let favorite = try await favoritesService.addToFavorites(recipeId: recipeId, rating: rating, notes: notes)
@@ -172,7 +169,6 @@ class FavoritesStore: ObservableObject {
             isAddingToFavorites = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isAddingToFavorites = false
             return false
         }
@@ -180,7 +176,6 @@ class FavoritesStore: ObservableObject {
     
     func removeFromFavorites(recipeId: String) async -> Bool {
         isRemovingFromFavorites = true
-        errorMessage = nil
         
         do {
             try await favoritesService.removeFromFavorites(recipeId: recipeId)
@@ -195,7 +190,6 @@ class FavoritesStore: ObservableObject {
             isRemovingFromFavorites = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isRemovingFromFavorites = false
             return false
         }
@@ -203,7 +197,6 @@ class FavoritesStore: ObservableObject {
     
     func updateFavorite(favoriteId: String, rating: Int? = nil, notes: String? = nil) async -> Bool {
         isUpdatingFavorite = true
-        errorMessage = nil
         
         do {
             let updatedFavorite = try await favoritesService.updateFavorite(favoriteId: favoriteId, rating: rating, notes: notes)
@@ -216,7 +209,6 @@ class FavoritesStore: ObservableObject {
             isUpdatingFavorite = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isUpdatingFavorite = false
             return false
         }
@@ -312,7 +304,6 @@ class FavoritesStore: ObservableObject {
                 favoriteStatusCache[favorite.recipe.id] = true
             }
         } catch {
-            errorMessage = error.localizedDescription
         }
     }
     
@@ -333,7 +324,6 @@ class FavoritesStore: ObservableObject {
             totalCount = favorites.count
             return results
         } catch {
-            errorMessage = error.localizedDescription
             return recipeIds.map { _ in .failure(error) }
         }
     }
@@ -376,7 +366,6 @@ class FavoritesStore: ObservableObject {
     // MARK: - Error Handling
     
     func clearError() {
-        errorMessage = nil
     }
     
     func handleError(_ error: Error) {

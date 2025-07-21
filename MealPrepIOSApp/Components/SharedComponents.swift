@@ -23,38 +23,85 @@ struct LoadingView: View {
     }
 }
 
-// MARK: - Filter Chip
+// MARK: - Enhanced Filter Chip with Magic UI styling
 struct FilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
     
+    @State private var isPressed = false
+    
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.caption)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(isSelected ? Color.accentColor : Color(.systemGray5))
+                .fontWeight(.medium)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    ZStack {
+                        if isSelected {
+                            // Selected state with gradient
+                            LinearGradient(
+                                colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        } else {
+                            // Unselected state
+                            Color(.systemBackground)
+                        }
+                    }
+                )
                 .foregroundColor(isSelected ? .white : .primary)
-                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(
+                            isSelected ? Color.clear : Color.accentColor.opacity(0.3),
+                            lineWidth: 1
+                        )
+                )
+                .cornerRadius(20)
+                .shadow(
+                    color: isSelected ? Color.accentColor.opacity(0.3) : Color.black.opacity(0.1),
+                    radius: isSelected ? 8 : 2,
+                    x: 0,
+                    y: isSelected ? 4 : 1
+                )
         }
         .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isPressed)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isPressed = true
+                }
+                .onEnded { _ in
+                    isPressed = false
+                }
+        )
     }
 }
 
-// MARK: - Search Bar
+// MARK: - Enhanced Search Bar with Magic UI styling
 struct SearchBar: View {
     @Binding var text: String
+    @FocusState private var isFocused: Bool
     @State private var isEditing = false
     
     var body: some View {
-        HStack {
-            HStack {
+        HStack(spacing: 12) {
+            HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isFocused ? .accentColor : .secondary)
+                    .animation(.easeInOut(duration: 0.2), value: isFocused)
                 
-                TextField("Search...", text: $text)
+                TextField("Search recipes, ingredients...", text: $text)
+                    .font(.body)
+                    .focused($isFocused)
                     .textFieldStyle(PlainTextFieldStyle())
                     .onTapGesture {
                         isEditing = true
@@ -62,29 +109,57 @@ struct SearchBar: View {
                 
                 if !text.isEmpty {
                     Button(action: {
-                        text = ""
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            text = ""
+                        }
                     }) {
                         Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
                             .foregroundColor(.secondary)
                     }
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(8)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemGray6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(
+                                isFocused ? Color.accentColor : Color.clear,
+                                lineWidth: 2
+                            )
+                    )
+            )
+            .shadow(
+                color: isFocused ? Color.accentColor.opacity(0.2) : Color.black.opacity(0.05),
+                radius: isFocused ? 8 : 2,
+                x: 0,
+                y: isFocused ? 4 : 1
+            )
             
             if isEditing {
                 Button("Cancel") {
-                    text = ""
-                    isEditing = false
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        text = ""
+                        isEditing = false
+                        isFocused = false
+                    }
                 }
+                .font(.body)
+                .fontWeight(.medium)
                 .foregroundColor(.accentColor)
-                .transition(.move(edge: .trailing))
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .padding(.horizontal)
-        .animation(.easeInOut(duration: 0.2), value: isEditing)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isEditing)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFocused)
+        .onChange(of: isFocused) { _, focused in
+            isEditing = focused
+        }
     }
 }
 
@@ -111,7 +186,7 @@ struct StatView: View {
     }
 }
 
-// MARK: - Empty State View
+// MARK: - Enhanced Empty State View with Magic UI styling
 struct EmptyStateView: View {
     let icon: String
     let title: String
@@ -120,28 +195,46 @@ struct EmptyStateView: View {
     let action: (() -> Void)?
     
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: icon)
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            
-            VStack(spacing: 8) {
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
+        BlurFade(delay: 0.2) {
+            VStack(spacing: 24) {
+                // Enhanced icon with gradient
+                Image(systemName: icon)
+                    .font(.system(size: 60, weight: .light))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.secondary, .secondary.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .symbolEffect(.pulse.wholeSymbol, options: .repeating)
                 
-                Text(message)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
+                VStack(spacing: 12) {
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary, .primary.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                    
+                    Text(message)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                
+                if let actionTitle = actionTitle, let action = action {
+                    ShimmerButton(actionTitle, action: action)
+                        .padding(.top, 8)
+                }
             }
-            
-            if let actionTitle = actionTitle, let action = action {
-                Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

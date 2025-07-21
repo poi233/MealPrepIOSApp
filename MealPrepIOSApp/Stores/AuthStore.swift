@@ -34,6 +34,13 @@ class AuthStore: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Don't call checkAuthenticationStatus() immediately in init
+        // This will be called from the App when it's ready
+    }
+    
+    // MARK: - Initialization
+    
+    func initialize() {
         checkAuthenticationStatus()
     }
     
@@ -83,13 +90,11 @@ class AuthStore: ObservableObject {
     
     func login(email: String, password: String) async {
         isLoading = true
-        errorMessage = nil
         
         do {
             let response = try await authService.login(email: email, password: password)
             self.currentUser = response.user
             self.isAuthenticated = true
-            self.errorMessage = nil
         } catch {
             // Handle specific error types more gracefully
             if let networkError = error as? NetworkError {
@@ -100,25 +105,24 @@ class AuthStore: ObservableObject {
                     if nsError.code == NSURLErrorCancelled {
                         // Don't show cancellation errors to user - they're usually not actionable
                         print("Login request was cancelled")
-                        self.errorMessage = nil
                     } else {
-                        self.errorMessage = "Login failed. Please try again."
+                        print("Login failed with unknown error: \(underlyingError)")
                     }
                 case .networkUnavailable:
-                    self.errorMessage = "No internet connection. Please check your network and try again."
+                    print("Login failed: No internet connection")
                 case .requestTimeout:
-                    self.errorMessage = "Login request timed out. Please try again."
-                case .serverError(let code, let message):
+                    print("Login failed: Request timed out")
+                case .serverError(let code, _):
                     if code == 401 {
-                        self.errorMessage = "Invalid email or password."
+                        print("Login failed: Invalid credentials")
                     } else {
-                        self.errorMessage = message ?? "Server error. Please try again."
+                        print("Login failed: Server error \(code)")
                     }
                 default:
-                    self.errorMessage = error.localizedDescription
+                    print("Login failed: \(error.localizedDescription)")
                 }
             } else {
-                self.errorMessage = "Login failed. Please try again."
+                print("Login failed: \(error.localizedDescription)")
             }
             
             errorHandler.handle(error, context: "Login")
@@ -131,7 +135,6 @@ class AuthStore: ObservableObject {
     
     func register(userData: RegisterData) async {
         isLoading = true
-        errorMessage = nil
         
         do {
             let registerRequest = RegisterRequest(
@@ -146,9 +149,7 @@ class AuthStore: ObservableObject {
             let response = try await authService.register(userData: registerRequest)
             self.currentUser = response.user
             self.isAuthenticated = true
-            self.errorMessage = nil
         } catch {
-            self.errorMessage = error.localizedDescription
             self.isAuthenticated = false
             self.currentUser = nil
         }
@@ -175,7 +176,6 @@ class AuthStore: ObservableObject {
         // Clear local state regardless of server response
         self.currentUser = nil
         self.isAuthenticated = false
-        self.errorMessage = nil
         self.sessionError = nil
         
         isLoading = false
@@ -185,7 +185,6 @@ class AuthStore: ObservableObject {
     
     func updateProfile(updates: ProfileUpdates) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             let updateRequest = UserProfileUpdateRequest(
@@ -195,12 +194,10 @@ class AuthStore: ObservableObject {
             
             let updatedUser = try await authService.updateProfile(updates: updateRequest)
             self.currentUser = updatedUser
-            self.errorMessage = nil
             
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -208,16 +205,13 @@ class AuthStore: ObservableObject {
     
     func changePassword(currentPassword: String, newPassword: String) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             try await authService.changePassword(currentPassword: currentPassword, newPassword: newPassword)
-            self.errorMessage = nil
             
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -225,16 +219,13 @@ class AuthStore: ObservableObject {
     
     func requestPasswordReset(email: String) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             try await authService.requestPasswordReset(email: email)
-            self.errorMessage = nil
             
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
             isLoading = false
             return false
         }

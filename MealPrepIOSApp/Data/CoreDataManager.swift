@@ -13,6 +13,8 @@ import SwiftUI
 class CoreDataManager: ObservableObject {
     static let shared = CoreDataManager()
     
+    private var isInitialized = false
+    
     // MARK: - Container
     lazy var persistentContainer: NSPersistentContainer = {
         let container = NSPersistentContainer(name: "MealPrepDataModel")
@@ -21,15 +23,32 @@ class CoreDataManager: ObservableObject {
         container.persistentStoreDescriptions.first?.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         container.persistentStoreDescriptions.first?.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
         
+        // Add error handling for store loading
+        let group = DispatchGroup()
+        var loadError: Error?
+        
+        group.enter()
         container.loadPersistentStores { _, error in
             if let error = error {
                 print("Core Data failed to load: \(error.localizedDescription)")
+                loadError = error
             }
+            group.leave()
+        }
+        
+        // Wait for store to load (with timeout)
+        _ = group.wait(timeout: .now() + 10)
+        
+        if let error = loadError {
+            fatalError("Core Data failed to load: \(error.localizedDescription)")
         }
         
         // Enable automatic merging
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        
+        // Mark as initialized
+        self.isInitialized = true
         
         return container
     }()
@@ -45,13 +64,15 @@ class CoreDataManager: ObservableObject {
     
     // MARK: - Save Context
     func save() async throws {
-        guard context.hasChanges else { return }
-        
-        do {
-            try context.save()
-        } catch {
-            print("Failed to save context: \(error)")
-            throw CoreDataError.saveError(error)
+        try await MainActor.run {
+            guard context.hasChanges else { return }
+            
+            do {
+                try context.save()
+            } catch {
+                print("Failed to save context: \(error)")
+                throw CoreDataError.saveError(error)
+            }
         }
     }
     
@@ -84,26 +105,38 @@ class CoreDataManager: ObservableObject {
     
     // MARK: - Fetch Operations
     func fetch<T: NSManagedObject>(_ type: T.Type, predicate: NSPredicate? = nil, sortDescriptors: [NSSortDescriptor] = []) async throws -> [T] {
-        let request = NSFetchRequest<T>(entityName: String(describing: type))
-        request.predicate = predicate
-        request.sortDescriptors = sortDescriptors
+        // Ensure CoreData is initialized
+        _ = persistentContainer
         
-        return try context.fetch(request)
+        return try await MainActor.run {
+            let request = NSFetchRequest<T>(entityName: String(describing: type))
+            request.predicate = predicate
+            request.sortDescriptors = sortDescriptors
+            
+            return try context.fetch(request)
+        }
     }
     
     func fetchFirst<T: NSManagedObject>(_ type: T.Type, predicate: NSPredicate? = nil) async throws -> T? {
-        let request = NSFetchRequest<T>(entityName: String(describing: type))
-        request.predicate = predicate
-        request.fetchLimit = 1
+        // Ensure CoreData is initialized
+        _ = persistentContainer
         
-        return try context.fetch(request).first
+        return try await MainActor.run {
+            let request = NSFetchRequest<T>(entityName: String(describing: type))
+            request.predicate = predicate
+            request.fetchLimit = 1
+            
+            return try context.fetch(request).first
+        }
     }
     
     func count<T: NSManagedObject>(_ type: T.Type, predicate: NSPredicate? = nil) async throws -> Int {
-        let request = NSFetchRequest<T>(entityName: String(describing: type))
-        request.predicate = predicate
-        
-        return try context.count(for: request)
+        return try await MainActor.run {
+            let request = NSFetchRequest<T>(entityName: String(describing: type))
+            request.predicate = predicate
+            
+            return try context.count(for: request)
+        }
     }
     
     // MARK: - Delete Operations

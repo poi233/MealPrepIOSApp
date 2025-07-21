@@ -111,13 +111,6 @@ struct CreateRecipeView: View {
                 }
             }
             .disabled(isCreating)
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") {
-                    errorMessage = nil
-                }
-            } message: {
-                Text(errorMessage ?? "")
-            }
         }
     }
     
@@ -130,7 +123,6 @@ struct CreateRecipeView: View {
     
     private func createRecipe() {
         isCreating = true
-        errorMessage = nil
         
         let validIngredients = ingredients.compactMap { ingredient -> Ingredient? in
             let trimmedName = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -182,7 +174,6 @@ struct CreateRecipeView: View {
                 if success {
                     dismiss()
                 } else {
-                    errorMessage = recipeStore.errorMessage ?? "Failed to create recipe"
                 }
             }
         }

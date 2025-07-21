@@ -20,8 +20,7 @@ struct RecipeDetailView: View {
     @State private var servingMultiplier: Double = 1.0
     
     var body: some View {
-        NavigationView {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Header Image
                     AsyncImage(url: URL(string: recipe.imageUrl ?? "")) { image in
@@ -29,13 +28,7 @@ struct RecipeDetailView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.gray)
-                            )
+                        DefaultRecipeImageView_Warm(width: 300, height: 250)
                     }
                     .frame(height: 250)
                     .clipped()
@@ -246,8 +239,10 @@ struct RecipeDetailView: View {
                 await checkFavoriteStatus()
             }
             .sheet(isPresented: $showingEditView) {
-                EditRecipeView(recipe: recipe)
-                    .environmentObject(recipeStore)
+                NavigationView {
+                    EditRecipeView(recipe: recipe)
+                        .environmentObject(recipeStore)
+                }
             }
             .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
                 Button("Delete", role: .destructive) {
@@ -257,12 +252,6 @@ struct RecipeDetailView: View {
             } message: {
                 Text("Are you sure you want to delete this recipe? This action cannot be undone.")
             }
-            .alert("Error", isPresented: $showingErrorAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(errorMessage)
-            }
-        }
     }
     
     private var difficultyColor: Color {
@@ -284,8 +273,6 @@ struct RecipeDetailView: View {
         servingMultiplier = max(0.5, min(4.0, newMultiplier))
     }
     
-    @State private var showingErrorAlert = false
-    @State private var errorMessage = ""
     
     private func toggleFavorite() {
         Task {
@@ -299,10 +286,6 @@ struct RecipeDetailView: View {
                     print("Heart button toggle successful. New status: \(newStatus)")
                 }
             } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    showingErrorAlert = true
-                }
                 print("Failed to toggle favorite from heart button: \(error)")
             }
         }
@@ -470,17 +453,15 @@ struct EditRecipeView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            Text("Edit Recipe - Coming Soon")
-                .navigationTitle("Edit Recipe")
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
+        Text("Edit Recipe - Coming Soon")
+            .navigationTitle("Edit Recipe")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
                     }
                 }
-        }
+            }
     }
 }
 

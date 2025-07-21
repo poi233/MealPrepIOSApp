@@ -106,7 +106,6 @@ class RecipeStore: ObservableObject {
         
         isLoading = !refresh && recipes.isEmpty
         isLoadingMore = !recipes.isEmpty
-        errorMessage = nil
         
         // If offline, load from cache
         if isOffline {
@@ -142,7 +141,6 @@ class RecipeStore: ObservableObject {
             
         } catch {
             errorHandler.handle(error, context: "Loading recipes")
-            errorMessage = error.localizedDescription
             // Fallback to cache on error
             await loadFromCache()
         }
@@ -256,7 +254,6 @@ class RecipeStore: ObservableObject {
     
     func loadRecipe(id: String) async {
         isLoading = true
-        errorMessage = nil
         
         // Try cache first
         do {
@@ -293,10 +290,8 @@ class RecipeStore: ObservableObject {
                 // Cache the recipe
                 try await cacheManager.update(recipe)
             } catch {
-                errorMessage = error.localizedDescription
-            }
+                }
         } else {
-            errorMessage = "Recipe not available offline"
         }
         
         isLoading = false
@@ -312,7 +307,6 @@ class RecipeStore: ObservableObject {
     
     func createRecipe(_ recipe: CreateRecipeRequest) async -> Bool {
         isCreatingRecipe = true
-        errorMessage = nil
         
         do {
             let newRecipe = try await recipeService.createRecipe(recipe)
@@ -324,7 +318,6 @@ class RecipeStore: ObservableObject {
             isCreatingRecipe = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isCreatingRecipe = false
             return false
         }
@@ -332,7 +325,6 @@ class RecipeStore: ObservableObject {
     
     func updateRecipe(id: String, recipe: CreateRecipeRequest) async -> Bool {
         isUpdatingRecipe = true
-        errorMessage = nil
         
         do {
             let updatedRecipe = try await recipeService.updateRecipe(id: id, recipe: recipe)
@@ -350,7 +342,6 @@ class RecipeStore: ObservableObject {
             isUpdatingRecipe = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isUpdatingRecipe = false
             return false
         }
@@ -358,7 +349,6 @@ class RecipeStore: ObservableObject {
     
     func deleteRecipe(id: String) async -> Bool {
         isDeletingRecipe = true
-        errorMessage = nil
         
         do {
             try await recipeService.deleteRecipe(id: id)
@@ -375,7 +365,6 @@ class RecipeStore: ObservableObject {
             isDeletingRecipe = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isDeletingRecipe = false
             return false
         }
@@ -464,7 +453,6 @@ class RecipeStore: ObservableObject {
     // MARK: - Error Handling
     
     func clearError() {
-        errorMessage = nil
     }
     
     func handleError(_ error: Error) {

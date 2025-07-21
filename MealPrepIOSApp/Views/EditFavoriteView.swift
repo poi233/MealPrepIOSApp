@@ -23,8 +23,7 @@ struct EditFavoriteView: View {
     }
     
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 Section("Recipe") {
                     HStack {
                         AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
@@ -32,12 +31,7 @@ struct EditFavoriteView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                         } placeholder: {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .overlay(
-                                    Image(systemName: "photo")
-                                        .foregroundColor(.gray)
-                                )
+                            DefaultRecipeImageView(width: 60, height: 60)
                         }
                         .frame(width: 60, height: 60)
                         .clipped()
@@ -136,7 +130,6 @@ struct EditFavoriteView: View {
                 }
             }
             .disabled(isUpdating)
-        }
     }
     
     private func updateFavorite() {

@@ -24,7 +24,14 @@ struct MealPrepIOSAppApp: App {
                 .environmentObject(favoritesStore)
                 .environmentObject(userProfileStore)
                 .onAppear {
-                    authStore.checkAuthenticationStatus()
+                    // Initialize stores after the app has fully loaded
+                    Task {
+                        // Small delay to ensure CoreData is fully initialized
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        await MainActor.run {
+                            authStore.initialize()
+                        }
+                    }
                 }
         }
     }

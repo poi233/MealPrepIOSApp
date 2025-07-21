@@ -51,7 +51,15 @@ struct MealPlanView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.secondary, .secondary.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                 }
                 
@@ -60,6 +68,14 @@ struct MealPlanView: View {
                         showingGenerationView = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                 }
             }
@@ -83,13 +99,6 @@ struct MealPlanView: View {
                 if mealPlanStore.mealPlans.isEmpty {
                     await mealPlanStore.loadMealPlans()
                 }
-            }
-            .alert("Error", isPresented: .constant(mealPlanStore.errorMessage != nil)) {
-                Button("OK") {
-                    mealPlanStore.clearError()
-                }
-            } message: {
-                Text(mealPlanStore.errorMessage ?? "")
             }
         }
     }
@@ -205,34 +214,71 @@ struct WeeklyMealGridView: View {
 
 struct DailyMealCard: View {
     let dailyMeal: DailyMealSlots
+    @State private var isHovered = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Day Header
-            HStack {
-                Text(dailyMeal.day)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Spacer()
-                
-                Text(dailyMeal.date, style: .date)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        BlurFade(delay: 0.1) {
+            MagicCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Enhanced Day Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(dailyMeal.day)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.primary, .accentColor],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                            
+                            Text(dailyMeal.date, style: .date)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        // Day status indicator
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.accentColor, Color.accentColor.opacity(0.6)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 12, height: 12)
+                            .scaleEffect(isHovered ? 1.2 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+                    }
+                    
+                    // Enhanced Meal Slots
+                    VStack(spacing: 12) {
+                        MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast)
+                        MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch)
+                        MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner)
+                        MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack)
+                    }
+                }
             }
-            
-            // Meal Slots
-            VStack(spacing: 8) {
-                MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast)
-                MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch)
-                MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner)
-                MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack)
+            .scaleEffect(isHovered ? 1.01 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+            .onHover { hovering in
+                isHovered = hovering
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        isHovered = true
+                    }
+                    .onEnded { _ in
+                        isHovered = false
+                    }
+            )
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -240,41 +286,113 @@ struct MealSlotView: View {
     let title: String
     let recipes: [Recipe]
     let mealType: MealType
+    @State private var isAddHovered = false
+    
+    private var mealIcon: String {
+        switch mealType {
+        case .breakfast: return "sunrise"
+        case .lunch: return "sun.max"
+        case .dinner: return "moon"
+        case .snack: return "leaf"
+        }
+    }
+    
+    private var mealColor: Color {
+        switch mealType {
+        case .breakfast: return .orange
+        case .lunch: return .yellow
+        case .dinner: return .purple
+        case .snack: return .green
+        }
+    }
     
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-                .frame(width: 80, alignment: .leading)
+        HStack(spacing: 12) {
+            // Enhanced meal type indicator
+            VStack(spacing: 4) {
+                Image(systemName: mealIcon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(mealColor)
+                    .frame(width: 24, height: 24)
+                    .background(
+                        Circle()
+                            .fill(mealColor.opacity(0.1))
+                    )
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+            }
+            .frame(width: 70)
             
             if recipes.isEmpty {
-                Text("No meal planned")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .italic()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No meal planned")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .italic()
+                    
+                    Text("Tap to add a recipe")
+                        .font(.caption2)
+                        .foregroundColor(.secondary.opacity(0.7))
+                }
                 
                 Spacer()
                 
-                Button("Add") {
+                Button(action: {
                     // TODO: Add meal functionality
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                        .scaleEffect(isAddHovered ? 1.1 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAddHovered)
                 }
-                .font(.caption)
-                .foregroundColor(.accentColor)
+                .onHover { hovering in
+                    isAddHovered = hovering
+                }
             } else {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipes) { recipe in
-                        Text(recipe.name)
-                            .font(.subheadline)
-                            .lineLimit(1)
+                        HStack(spacing: 8) {
+                            Text(recipe.name)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                            
+                            // Recipe time indicator
+                            Text("\(recipe.totalTime)m")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.secondary.opacity(0.1))
+                                )
+                        }
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(mealColor.opacity(0.05))
+                        )
                     }
                 }
                 
                 Spacer()
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
     }
 }
 

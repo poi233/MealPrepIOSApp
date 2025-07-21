@@ -70,7 +70,6 @@ class MealPlanStore: ObservableObject {
         }
         
         isLoading = !refresh && mealPlans.isEmpty
-        errorMessage = nil
         
         do {
             let response = try await mealPlanService.getMealPlans(page: currentPage, pageSize: pageSize)
@@ -91,7 +90,6 @@ class MealPlanStore: ObservableObject {
             }
             
         } catch {
-            errorMessage = error.localizedDescription
         }
         
         isLoading = false
@@ -110,12 +108,10 @@ class MealPlanStore: ObservableObject {
     
     func loadMealPlan(id: String) async {
         isLoading = true
-        errorMessage = nil
         
         do {
             currentMealPlan = try await mealPlanService.getMealPlan(id: id)
         } catch {
-            errorMessage = error.localizedDescription
         }
         
         isLoading = false
@@ -125,7 +121,6 @@ class MealPlanStore: ObservableObject {
     
     func generateMealPlan(preferences: MealPlanPreferences, description: String) async -> Bool {
         isGenerating = true
-        errorMessage = nil
         
         do {
             let newMealPlan = try await mealPlanService.generateMealPlan(preferences: preferences, description: description)
@@ -143,7 +138,6 @@ class MealPlanStore: ObservableObject {
             isGenerating = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isGenerating = false
             return false
         }
@@ -159,7 +153,6 @@ class MealPlanStore: ObservableObject {
         additionalRequirements: String? = nil
     ) async -> Bool {
         isGenerating = true
-        errorMessage = nil
         
         do {
             let newMealPlan = try await mealPlanService.generateCustomMealPlan(
@@ -183,7 +176,6 @@ class MealPlanStore: ObservableObject {
             isGenerating = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isGenerating = false
             return false
         }
@@ -193,14 +185,12 @@ class MealPlanStore: ObservableObject {
     
     func analyzeMealPlan(id: String, analysisType: AnalysisType = .full) async -> Bool {
         isAnalyzing = true
-        errorMessage = nil
         
         do {
             nutritionAnalysis = try await mealPlanService.analyzeMealPlan(id: id, analysisType: analysisType)
             isAnalyzing = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isAnalyzing = false
             return false
         }
@@ -208,7 +198,6 @@ class MealPlanStore: ObservableObject {
     
     func analyzeCurrentMealPlan() async -> Bool {
         guard let currentMealPlan = currentMealPlan else {
-            errorMessage = "No meal plan selected"
             return false
         }
         
@@ -219,19 +208,16 @@ class MealPlanStore: ObservableObject {
     
     func generateShoppingList() async -> Bool {
         guard let currentMealPlan = currentMealPlan else {
-            errorMessage = "No meal plan selected"
             return false
         }
         
         isLoadingShoppingList = true
-        errorMessage = nil
         
         do {
             shoppingList = try await mealPlanService.generateShoppingList(mealPlan: currentMealPlan)
             isLoadingShoppingList = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isLoadingShoppingList = false
             return false
         }
@@ -261,7 +247,6 @@ class MealPlanStore: ObservableObject {
                 weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
             }
         } catch {
-            errorMessage = error.localizedDescription
             weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         }
     }
@@ -320,7 +305,6 @@ class MealPlanStore: ObservableObject {
     
     func createMealPlan(_ request: CreateMealPlanRequest) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             let newMealPlan = try await mealPlanService.createMealPlan(request)
@@ -331,7 +315,6 @@ class MealPlanStore: ObservableObject {
             isLoading = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -339,7 +322,6 @@ class MealPlanStore: ObservableObject {
     
     func updateMealPlan(id: String, updates: UpdateMealPlanRequest) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             let updatedMealPlan = try await mealPlanService.updateMealPlan(id: id, updates: updates)
@@ -357,7 +339,6 @@ class MealPlanStore: ObservableObject {
             isLoading = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -365,7 +346,6 @@ class MealPlanStore: ObservableObject {
     
     func deleteMealPlan(id: String) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             try await mealPlanService.deleteMealPlan(id: id)
@@ -382,7 +362,6 @@ class MealPlanStore: ObservableObject {
             isLoading = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -390,7 +369,6 @@ class MealPlanStore: ObservableObject {
     
     func duplicateMealPlan(id: String, newWeekStartDate: Date) async -> Bool {
         isLoading = true
-        errorMessage = nil
         
         do {
             let duplicatedMealPlan = try await mealPlanService.duplicateMealPlan(id: id, newWeekStartDate: newWeekStartDate)
@@ -400,7 +378,6 @@ class MealPlanStore: ObservableObject {
             isLoading = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
@@ -414,7 +391,6 @@ class MealPlanStore: ObservableObject {
             mealPlans = allPlans
             totalCount = allPlans.count
         } catch {
-            errorMessage = error.localizedDescription
         }
     }
     
@@ -449,11 +425,9 @@ class MealPlanStore: ObservableObject {
     // MARK: - Error Handling
     
     func clearError() {
-        errorMessage = nil
     }
     
     func handleError(_ error: Error) {
-        errorMessage = error.localizedDescription
     }
 }
 

@@ -154,14 +154,30 @@ struct RecipesView: View {
                     Button("Filters") {
                         showingFilters = true
                     }
+                    .font(.body)
+                    .fontWeight(.medium)
                     .foregroundColor(recipeStore.hasFilters ? .accentColor : .primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(recipeStore.hasFilters ? Color.accentColor.opacity(0.1) : Color.clear)
+                    )
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingCreateRecipe = true
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                 }
             }
@@ -175,25 +191,22 @@ struct RecipesView: View {
                     .environmentObject(recipeStore)
             }
             .sheet(isPresented: $showingCreateRecipe) {
-                CreateRecipeView()
-                    .environmentObject(recipeStore)
+                NavigationView {
+                    CreateRecipeView()
+                        .environmentObject(recipeStore)
+                }
             }
             .sheet(item: $selectedRecipe) { recipe in
-                RecipeDetailView(recipe: recipe)
-                    .environmentObject(recipeStore)
-                    .environmentObject(favoritesStore)
+                NavigationView {
+                    RecipeDetailView(recipe: recipe)
+                        .environmentObject(recipeStore)
+                        .environmentObject(favoritesStore)
+                }
             }
             .task {
                 if recipeStore.recipes.isEmpty {
                     await recipeStore.loadRecipes()
                 }
-            }
-            .alert("Error", isPresented: .constant(recipeStore.errorMessage != nil)) {
-                Button("OK") {
-                    recipeStore.clearError()
-                }
-            } message: {
-                Text(recipeStore.errorMessage ?? "")
             }
         }
     }
@@ -265,105 +278,172 @@ struct RecipeCard: View {
     let style: RecipeCardStyle
     @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var isFavorite = false
+    @State private var isHovered = false
     
     enum RecipeCardStyle {
         case standard, compact, featured
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Recipe Image
-            AsyncImage(url: URL(string: recipe.imageUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray)
+        // Enhanced Recipe Card with custom Magic UI styling but without conflicting tap gestures
+        ZStack {
+            // Background with gradient and shadow
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-            }
-            .frame(height: imageHeight)
-            .clipped()
-            .cornerRadius(8)
-            .overlay(
-                // Favorite Button
-                VStack {
-                    HStack {
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.accentColor.opacity(0.1))
+                        .blur(radius: isHovered ? 20 : 0)
+                )
+                .shadow(
+                    color: Color.black.opacity(0.1),
+                    radius: isHovered ? 15 : 8,
+                    x: 0,
+                    y: isHovered ? 8 : 4
+                )
+            
+            // Border gradient
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    LinearGradient(
+                        colors: isHovered ? 
+                            [Color.accentColor.opacity(0.3), Color.blue.opacity(0.3)] : 
+                            [Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: isHovered ? 2 : 0
+                )
+            
+            VStack(alignment: .leading, spacing: 12) {
+                // Recipe Image with enhanced styling
+                ZStack {
+                    AsyncImage(url: URL(string: recipe.imageUrl ?? "")) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        DefaultRecipeImageView(width: 200, height: imageHeight)
+                    }
+                    .frame(height: imageHeight)
+                    .clipped()
+                    .cornerRadius(12)
+                    
+                    // Gradient overlay for better text readability
+                    LinearGradient(
+                        colors: [Color.clear, Color.black.opacity(0.3)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .cornerRadius(12)
+                    
+                    // Enhanced Favorite Button
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: toggleFavorite) {
+                                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                                    .font(.title2)
+                                    .foregroundColor(isFavorite ? .red : .white)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.black.opacity(0.3))
+                                            .blur(radius: 4)
+                                    )
+                                    .scaleEffect(isHovered ? 1.1 : 1.0)
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+                            }
+                            .padding(.trailing, 12)
+                            .padding(.top, 12)
+                        }
+                        
                         Spacer()
-                        Button(action: toggleFavorite) {
-                            Image(systemName: isFavorite ? "heart.fill" : "heart")
-                                .foregroundColor(isFavorite ? .red : .white)
-                                .font(.title2)
-                                .shadow(radius: 2)
+                        
+                        // Difficulty badge in bottom left
+                        HStack {
+                            DifficultyBadge(difficulty: recipe.difficulty)
+                                .padding(.leading, 12)
+                                .padding(.bottom, 12)
+                            Spacer()
                         }
                     }
-                    Spacer()
                 }
-                .padding(8)
-            )
-            
-            // Recipe Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(recipe.name)
-                    .font(style == .compact ? .subheadline : .headline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
                 
-                if style != .compact {
-                    Text(recipe.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                // Recipe Info with enhanced styling
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(recipe.name)
+                        .font(style == .compact ? .headline : .title3)
+                        .fontWeight(.bold)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.primary, .accentColor],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
                         .lineLimit(2)
-                }
-                
-                // Recipe Stats
-                HStack(spacing: 12) {
-                    Label("\(recipe.totalTime) min", systemImage: "clock")
                     
                     if style != .compact {
-                        Label("\(recipe.avgRating, specifier: "%.1f")", systemImage: "star.fill")
-                            .foregroundColor(.yellow)
+                        Text(recipe.description)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
                     }
                     
-                    Spacer()
+                    // Enhanced Stats row
+                    HStack(spacing: 16) {
+                        StatItem(
+                            icon: "clock",
+                            value: "\(recipe.totalTime)m",
+                            color: .blue
+                        )
+                        
+                        if style != .compact {
+                            StatItem(
+                                icon: "star.fill",
+                                value: String(format: "%.1f", recipe.avgRating),
+                                color: .yellow
+                            )
+                        }
+                        
+                        Spacer()
+                    }
                     
-                    Text(recipe.difficulty.displayName)
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(difficultyColor.opacity(0.2))
-                        .foregroundColor(difficultyColor)
-                        .cornerRadius(4)
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-                
-                // Tags
-                if !recipe.tags.isEmpty && style != .compact {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 4) {
-                            ForEach(recipe.tags.prefix(3), id: \.self) { tag in
-                                Text(tag)
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.accentColor.opacity(0.1))
-                                    .foregroundColor(.accentColor)
-                                    .cornerRadius(4)
+                    // Enhanced Tags
+                    if !recipe.tags.isEmpty && style != .compact {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(recipe.tags.prefix(3), id: \.self) { tag in
+                                    TagChip(tag: tag)
+                                }
                             }
+                            .padding(.horizontal, 2)
                         }
                     }
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding(16)
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    isHovered = true
+                }
+                .onEnded { _ in
+                    isHovered = false
+                }
+        )
         .task {
             await checkFavoriteStatus()
         }

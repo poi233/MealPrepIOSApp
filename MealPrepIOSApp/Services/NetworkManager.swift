@@ -72,7 +72,6 @@ enum NetworkError: Error, LocalizedError {
 }
 
 // MARK: - Network Manager
-@MainActor
 class NetworkManager: ObservableObject {
     static let shared = NetworkManager()
     
@@ -256,14 +255,18 @@ class NetworkManager: ObservableObject {
     func setTokens(accessToken: String, refreshToken: String) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
-        self.isAuthenticated = true
+        Task { @MainActor in
+            self.isAuthenticated = true
+        }
         storeTokens()
     }
     
     func clearTokens() {
         self.accessToken = nil
         self.refreshToken = nil
-        self.isAuthenticated = false
+        Task { @MainActor in
+            self.isAuthenticated = false
+        }
         clearStoredTokens()
     }
     
@@ -332,10 +335,13 @@ class NetworkManager: ObservableObject {
         self.refreshToken = keychain.get("MealPrepApp_refresh_token")
         
         // Only set authenticated if we have both tokens
-        self.isAuthenticated = accessToken != nil && refreshToken != nil
+        let hasTokens = accessToken != nil && refreshToken != nil
+        Task { @MainActor in
+            self.isAuthenticated = hasTokens
+        }
         
         // Debug logging
-        print("NetworkManager: Loaded tokens - Access: \(accessToken != nil), Refresh: \(refreshToken != nil), Authenticated: \(isAuthenticated)")
+        print("NetworkManager: Loaded tokens - Access: \(accessToken != nil), Refresh: \(refreshToken != nil), Authenticated: \(hasTokens)")
     }
     
     private func storeTokens() {
