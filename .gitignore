@@ -1,0 +1,219 @@
+# iOS MealPrepIOSApp - Focused .gitignore
+
+# ===============================
+# XCODE & iOS SPECIFIC
+# ===============================
+
+# Xcode user settings and state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Build products and derived data
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.app
+
+# Xcode project files (keep .xcodeproj but ignore user data)
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Compatibility with older Xcode versions
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+Carthage/Checkouts/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Xcode Injection
+iOSInjectionProject/
+
+# ===============================
+# DEVELOPMENT & TESTING
+# ===============================
+
+# Test files (keep in repo for now, but could exclude if needed)
+# test_*.swift
+
+# Temporary test data
+test_output/
+test_results/
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Debug files
+*.hmap
+*.o
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Xcode testing
+*.xctestrun
+TestResults/
+
+# Code coverage
+*.profdata
+
+# ===============================
+# SYSTEM & EDITOR FILES
+# ===============================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===============================
+# CERTIFICATES & PROVISIONING
+# ===============================
+
+# Provisioning profiles
+*.mobileprovision
+*.p12
+*.cer
+*.certSigningRequest
+
+# Keychain files
+*.keychain
+*.keychain-db
+
+# Export options
+ExportOptions.plist
+exportOptions.plist
+
+# App Store Connect API keys
+AuthKey_*.p8
+
+# ===============================
+# CONFIGURATION & ENVIRONMENT
+# ===============================
+
+# Configuration files with sensitive data
+Config.plist
+config.plist
+*-Info.plist.backup
+GoogleService-Info.plist.backup
+
+# Environment-specific files
+.env
+.env.local
+.env.development
+.env.production
+
+# ===============================
+# LOGS & TEMPORARY FILES
+# ===============================
+
+# Log files
+*.log
+logs/
+console.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.tmp/
+
+# ===============================
+# DOCUMENTATION BUILD
+# ===============================
+
+# Generated documentation
+docs/build/
+*.docset
+
+# ===============================
+# BACKUP FILES
+# ===============================
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+
+# ===============================
+# KEEP THESE FILES (ESSENTIAL)
+# ===============================
+
+# Source code files
+!*.swift
+!*.h
+!*.m
+!*.mm
+!*.cpp
+!*.c
+
+# Interface files
+!*.storyboard
+!*.xib
+
+# Project files
+!*.xcodeproj/project.pbxproj
+!*.xcworkspace/contents.xcworkspacedata
+
+# Configuration files (non-sensitive)
+!Info.plist
+!*.entitlements
+
+# Documentation
+!README.md
+!TROUBLESHOOTING.md
+!*.md
+
+# Assets
+!*.xcassets/
+!*.png
+!*.jpg
+!*.jpeg
+!*.gif
+!*.svg
+
+# Keep test files for development
+!test_*.swift

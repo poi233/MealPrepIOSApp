@@ -8,17 +8,51 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var authStore: AuthStore
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if authStore.isAuthenticated {
+                MainTabView()
+            } else {
+                LoginView()
+            }
         }
-        .padding()
+    }
+}
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            RecipesView()
+                .tabItem {
+                    Image(systemName: "book.fill")
+                    Text("Recipes")
+                }
+            
+            MealPlanView()
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Meal Plan")
+                }
+            
+            FavoritesView()
+                .tabItem {
+                    Image(systemName: "heart.fill")
+                    Text("Favorites")
+                }
+            
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("Profile")
+                }
+        }
+        .accentColor(Color(red: 77/255, green: 182/255, blue: 172/255)) // Teal color
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(AuthStore())
 }

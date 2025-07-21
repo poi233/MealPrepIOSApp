@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1A982FE12E2D9C4D00F65759 /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE02E2D9C4D00F65759 /* AnyCodable */; };
+		1A982FE42E2D9C6000F65759 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE32E2D9C6000F65759 /* KeychainSwift */; };
+		1A982FE72E2D9C6F00F65759 /* Reachability in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE62E2D9C6F00F65759 /* Reachability */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		1A982FBE2E2D9BF000F65759 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -22,6 +28,19 @@
 			remoteInfo = MealPrepIOSApp;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1A9830202E2D9EE400F65759 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1A982FB02E2D9BEE00F65759 /* MealPrepIOSApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MealPrepIOSApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A982FE12E2D9C4D00F65759 /* AnyCodable in Frameworks */,
+				1A982FE72E2D9C6F00F65759 /* Reachability in Frameworks */,
+				1A982FE42E2D9C6000F65759 /* KeychainSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +124,7 @@
 				1A982FAC2E2D9BEE00F65759 /* Sources */,
 				1A982FAD2E2D9BEE00F65759 /* Frameworks */,
 				1A982FAE2E2D9BEE00F65759 /* Resources */,
+				1A9830202E2D9EE400F65759 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -112,6 +135,9 @@
 			);
 			name = MealPrepIOSApp;
 			packageProductDependencies = (
+				1A982FE02E2D9C4D00F65759 /* AnyCodable */,
+				1A982FE32E2D9C6000F65759 /* KeychainSwift */,
+				1A982FE62E2D9C6F00F65759 /* Reachability */,
 			);
 			productName = MealPrepIOSApp;
 			productReference = 1A982FB02E2D9BEE00F65759 /* MealPrepIOSApp.app */;
@@ -195,6 +221,11 @@
 			);
 			mainGroup = 1A982FA72E2D9BEE00F65759;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */,
+				1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */,
+				1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A982FB12E2D9BEE00F65759 /* Products */;
 			projectDirPath = "";
@@ -558,6 +589,51 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Flight-School/AnyCodable.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.7;
+			};
+		};
+		1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/evgenyneu/keychain-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
+		1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ashleymills/Reachability.swift.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1A982FE02E2D9C4D00F65759 /* AnyCodable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */;
+			productName = AnyCodable;
+		};
+		1A982FE32E2D9C6000F65759 /* KeychainSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */;
+			productName = KeychainSwift;
+		};
+		1A982FE62E2D9C6F00F65759 /* Reachability */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */;
+			productName = Reachability;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1A982FA82E2D9BEE00F65759 /* Project object */;
 }
