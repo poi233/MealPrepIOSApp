@@ -13,6 +13,7 @@ struct MealPlanView: View {
     @State private var showingMealPlanList = false
     @State private var showingAnalysisView = false
     @State private var showingShoppingList = false
+    @State private var showingBatchOperations = false
     @State private var selectedViewMode: MealPlanViewMode = .weekly
     
     var body: some View {
@@ -41,13 +42,19 @@ struct MealPlanView: View {
                             showingMealPlanList = true
                         }
                         
-                        if mealPlanStore.hasCurrentMealPlan {
+                        if mealPlanStore.currentMealPlan != nil {
                             Button("Analyze Plan") {
                                 showingAnalysisView = true
                             }
                             
                             Button("Shopping List") {
                                 showingShoppingList = true
+                            }
+                            
+                            Divider()
+                            
+                            Button("Batch Operations") {
+                                showingBatchOperations = true
                             }
                         }
                     } label: {
@@ -93,6 +100,10 @@ struct MealPlanView: View {
             }
             .sheet(isPresented: $showingShoppingList) {
                 ShoppingListView()
+                    .environmentObject(mealPlanStore)
+            }
+            .sheet(isPresented: $showingBatchOperations) {
+                BatchOperationsSheet()
                     .environmentObject(mealPlanStore)
             }
             .autoRefresh {
@@ -201,8 +212,8 @@ struct WeeklyMealGridView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(mealPlanStore.weeklyGrid.dailyMeals) { dailyMeal in
-                    DailyMealCard(dailyMeal: dailyMeal)
+                ForEach(Array(mealPlanStore.weeklyGrid.dailyMeals.enumerated()), id: \.element.id) { index, dailyMeal in
+                DailyMealCard(dailyMeal: dailyMeal, dayOfWeek: index)
                 }
             }
             .padding()
@@ -212,6 +223,7 @@ struct WeeklyMealGridView: View {
 
 struct DailyMealCard: View {
     let dailyMeal: DailyMealSlots
+    let dayOfWeek: Int
     @State private var isHovered = false
     
     var body: some View {
@@ -255,10 +267,10 @@ struct DailyMealCard: View {
                     
                     // Enhanced Meal Slots
                     VStack(spacing: 12) {
-                        MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast)
-                        MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch)
-                        MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner)
-                        MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack)
+                        MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                        MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                        MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                        MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack, dayOfWeek: dayOfWeek, date: dailyMeal.date)
                     }
                 }
             }
@@ -284,7 +296,15 @@ struct MealSlotView: View {
     let title: String
     let recipes: [Recipe]
     let mealType: MealType
+    let dayOfWeek: Int
+    let date: Date
+    
+    @EnvironmentObject var mealPlanStore: MealPlanStore
     @State private var isAddHovered = false
+    @State private var showingMealSelection = false
+    @State private var showingMealActions = false
+    @State private var selectedRecipe: Recipe?
+    @State private var selectedMealPlanItem: MealPlanItem?
     
     private var mealIcon: String {
         switch mealType {
@@ -339,7 +359,7 @@ struct MealSlotView: View {
                 Spacer()
                 
                 Button(action: {
-                    // TODO: Add meal functionality
+                    showingMealSelection = true
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
@@ -353,31 +373,44 @@ struct MealSlotView: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(recipes) { recipe in
-                        HStack(spacing: 8) {
-                            Text(recipe.name)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .lineLimit(1)
-                            
-                            Spacer()
-                            
-                            // Recipe time indicator
-                            Text("\(recipe.totalTime)m")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.secondary.opacity(0.1))
-                                )
+                        Button(action: {
+                            selectedRecipe = recipe
+                            // Find the corresponding meal plan item
+                            selectedMealPlanItem = mealPlanStore.findMealPlanItem(
+                                recipeId: recipe.id,
+                                dayOfWeek: dayOfWeek,
+                                mealType: mealType
+                            )
+                            showingMealActions = true
+                        }) {
+                            HStack(spacing: 8) {
+                                Text(recipe.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                // Recipe time indicator
+                                Text("\(recipe.totalTime)m")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.secondary.opacity(0.1))
+                                    )
+                            }
+                            .padding(.vertical, 2)
+                            .padding(.horizontal, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(mealColor.opacity(0.05))
+                            )
                         }
-                        .padding(.vertical, 2)
-                        .padding(.horizontal, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(mealColor.opacity(0.05))
-                        )
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 
@@ -391,6 +424,27 @@ struct MealSlotView: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         )
+        .sheet(isPresented: $showingMealSelection) {
+            MealSelectionBottomSheet(
+                dayOfWeek: dayOfWeek,
+                mealType: mealType,
+                date: date
+            )
+            .environmentObject(mealPlanStore)
+            .environmentObject(RecipeStore())
+            .environmentObject(FavoritesStore())
+        }
+        .sheet(isPresented: $showingMealActions) {
+            if let recipe = selectedRecipe,
+               let mealPlanItem = selectedMealPlanItem {
+                MealActionSheet(
+                    mealPlanItem: mealPlanItem,
+                    recipe: recipe
+                )
+                .environmentObject(mealPlanStore)
+                .environmentObject(RecipeStore())
+            }
+        }
     }
 }
 
@@ -431,7 +485,7 @@ struct MealPlanListView: View {
     var body: some View {
         if mealPlanStore.isLoading && mealPlanStore.mealPlans.isEmpty {
             LoadingView(message: "Loading meal plans...")
-        } else if mealPlanStore.isEmpty {
+        } else if mealPlanStore.mealPlans.isEmpty && !mealPlanStore.isLoading {
             EmptyMealPlanListView()
         } else {
             ScrollView {

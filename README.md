@@ -73,6 +73,8 @@ if let idString = try? container.decode(String.self, forKey: .id) {
 - Enhanced servings field supports both whole and fractional serving sizes
 - Consistent String representation for nutrition display in UI
 - Improved parsing performance for common API response formats
+- Robust handling of nutrition field data type variations (String/Double conversion)
+- Internal property naming uses descriptive names (e.g., `carbohydrates`) while maintaining API compatibility with backend field names (e.g., "carbs")
 
 #### Error Handling
 - Descriptive error messages for debugging
@@ -164,6 +166,11 @@ MealPrepIOSApp/
 │   │   ├── LoginView.swift
 │   │   ├── RecipesView.swift
 │   │   ├── MealPlanView.swift
+│   │   ├── MealPlan/        # Meal planning components
+│   │   │   ├── ServingAdjustmentSheet.swift  # Serving size adjustment UI
+│   │   │   ├── BatchOperationsSheet.swift
+│   │   │   ├── MealActionSheet.swift
+│   │   │   └── MealSelectionBottomSheet.swift
 │   │   ├── FavoritesView.swift
 │   │   ├── FavoriteDetailView.swift
 │   │   └── EditFavoriteView.swift
@@ -195,6 +202,14 @@ MealPrepIOSApp/
 ### Meal Planning
 - Weekly meal plan generation
 - Manual recipe assignment
+- **Advanced Serving Size Adjustment**: 
+  - Interactive serving size selection with predefined options (½, 1, 1½, 2, 2½, 3 servings)
+  - Custom serving size input with decimal precision and validation
+  - Real-time nutrition calculation and preview for adjusted portions
+  - Visual feedback with animated selection states and gradient backgrounds
+  - Fine-tuning controls with stepper for precise adjustments
+  - Recipe information display with image, description, and cooking time
+  - Seamless integration with meal plan addition workflow
 - Meal plan analysis
 - Shopping list generation
 

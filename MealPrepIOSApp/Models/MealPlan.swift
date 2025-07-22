@@ -124,6 +124,16 @@ struct MealPlanItem: Codable, Identifiable {
         let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         return dayOfWeek < days.count ? days[dayOfWeek] : "Unknown"
     }
+    
+    static let sampleItem = MealPlanItem(
+        id: 1,
+        mealPlanId: "1",
+        recipe: Recipe.sampleRecipe,
+        recipeId: Recipe.sampleRecipe.id,
+        dayOfWeek: 0,
+        mealType: "breakfast",
+        addedAt: Date()
+    )
 }
 
 // MARK: - Daily Meal Structure (UI Helper)

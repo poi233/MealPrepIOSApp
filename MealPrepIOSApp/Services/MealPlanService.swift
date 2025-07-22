@@ -63,6 +63,93 @@ class MealPlanService {
         try await networkManager.delete("/meal-plans/\(id)/", requiresAuth: true)
     }
     
+    // MARK: - Meal Plan Item Management
+    
+    /// Add a meal plan item
+    func addMealPlanItem(
+        mealPlanId: String,
+        recipeId: String,
+        dayOfWeek: Int,
+        mealType: MealType,
+        servingSize: Double = 1.0
+    ) async throws -> MealPlanItem {
+        let request = AddMealPlanItemRequest(
+            recipeId: recipeId,
+            dayOfWeek: dayOfWeek,
+            mealType: mealType,
+            servingSize: servingSize
+        )
+        
+        return try await networkManager.post(
+            "/meal-plans/\(mealPlanId)/items/",
+            body: request,
+            responseType: MealPlanItem.self,
+            requiresAuth: true
+        )
+    }
+    
+    /// Remove a meal plan item
+    func removeMealPlanItem(
+        mealPlanId: String,
+        dayOfWeek: Int,
+        mealType: MealType
+    ) async throws {
+        try await networkManager.delete(
+            "/meal-plans/\(mealPlanId)/items/\(dayOfWeek)/\(mealType.rawValue)/",
+            requiresAuth: true
+        )
+    }
+    
+    /// Update a meal plan item
+    func updateMealPlanItem(
+        mealPlanId: String,
+        itemId: String,
+        servingSize: Double? = nil
+    ) async throws -> MealPlanItem {
+        let request = UpdateMealPlanItemRequest(servingSize: servingSize)
+        
+        return try await networkManager.patch(
+            "/meal-plans/\(mealPlanId)/items/\(itemId)/",
+            body: request,
+            responseType: MealPlanItem.self,
+            requiresAuth: true
+        )
+    }
+    
+    /// Get active meal plan
+    func getActiveMealPlan() async throws -> MealPlan? {
+        do {
+            return try await networkManager.get(
+                "/meal-plans/active/",
+                responseType: MealPlan.self,
+                requiresAuth: true
+            )
+        } catch {
+            // Return nil if no active meal plan found
+            return nil
+        }
+    }
+    
+    /// Activate a meal plan
+    func activateMealPlan(id: String) async throws -> MealPlan {
+        return try await networkManager.post(
+            "/meal-plans/\(id)/activate/",
+            body: EmptyActivateRequest(),
+            responseType: MealPlan.self,
+            requiresAuth: true
+        )
+    }
+    
+    /// Deactivate a meal plan
+    func deactivateMealPlan(id: String) async throws -> MealPlan {
+        return try await networkManager.post(
+            "/meal-plans/\(id)/deactivate/",
+            body: EmptyActivateRequest(),
+            responseType: MealPlan.self,
+            requiresAuth: true
+        )
+    }
+    
     // MARK: - AI-Powered Meal Plan Generation
     
     /// Generate a meal plan using AI
@@ -258,7 +345,8 @@ class MealPlanService {
     }
 }
 
-// MARK: - Update Meal Plan Request
+// MARK: - Request Models
+
 struct UpdateMealPlanRequest: Codable {
     let name: String?
     let description: String?
@@ -268,6 +356,43 @@ struct UpdateMealPlanRequest: Codable {
         case name
         case description
         case dailyMeals = "daily_meals"
+    }
+}
+
+struct AddMealPlanItemRequest: Codable {
+    let recipeId: String
+    let dayOfWeek: Int
+    let mealType: MealType
+    let servingSize: Double
+    
+    enum CodingKeys: String, CodingKey {
+        case recipeId = "recipe_id"
+        case dayOfWeek = "day_of_week"
+        case mealType = "meal_type"
+        case servingSize = "serving_size"
+    }
+}
+
+struct UpdateMealPlanItemRequest: Codable {
+    let servingSize: Double?
+    
+    enum CodingKeys: String, CodingKey {
+        case servingSize = "serving_size"
+    }
+}
+
+// MARK: - Empty Request for activation endpoints
+private struct EmptyActivateRequest: Codable {}
+
+// MARK: - Response Models
+
+struct ActivateMealPlanResponse: Codable {
+    let message: String
+    let mealPlan: MealPlan
+    
+    enum CodingKeys: String, CodingKey {
+        case message
+        case mealPlan = "meal_plan"
     }
 }
 

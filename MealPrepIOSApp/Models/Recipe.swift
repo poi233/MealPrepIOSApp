@@ -365,6 +365,57 @@ struct RecipeFilters: Codable {
     }
 }
 
+// MARK: - Sample Data
+extension Recipe {
+    static let sampleRecipe = Recipe(
+        id: "sample-recipe-1",
+        name: "Grilled Chicken Breast",
+        description: "Juicy grilled chicken breast with herbs and spices",
+        ingredients: [
+            Ingredient(name: "Chicken breast", amount: "2", unit: "pieces"),
+            Ingredient(name: "Olive oil", amount: "2", unit: "tbsp"),
+            Ingredient(name: "Salt", amount: "1", unit: "tsp"),
+            Ingredient(name: "Black pepper", amount: "1/2", unit: "tsp")
+        ],
+        instructions: "1. Season chicken with salt and pepper\n2. Heat grill to medium-high\n3. Grill 6-7 minutes per side",
+        nutritionInfo: NutritionInfo(
+            calories: "320",
+            protein: "45",
+            carbohydrates: "0",
+            fat: "15",
+            fiber: "0",
+            sodium: nil,
+            sugar: "0",
+            servings: 2
+        ),
+        cuisine: "American",
+        prepTime: 10,
+        cookTime: 15,
+        difficulty: .easy,
+        avgRating: 4.5,
+        ratingCount: 24,
+        imageUrl: nil,
+        tags: ["protein", "healthy", "quick"],
+        createdByUser: "Sample User",
+        createdByUserId: "user-1",
+        createdAt: Date(),
+        updatedAt: Date()
+    )
+}
+
+// MARK: - Sample Data
+extension MealPlanItem {
+    static let sample = MealPlanItem(
+        id: 1,
+        mealPlanId: "meal-plan-1",
+        recipe: Recipe.sampleRecipe,
+        recipeId: Recipe.sampleRecipe.id,
+        dayOfWeek: 0,
+        mealType: "breakfast",
+        addedAt: Date()
+    )
+}
+
 // MARK: - Paginated Response
 struct PaginatedResponse<T: Codable>: Codable {
     let count: Int

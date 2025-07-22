@@ -26,6 +26,10 @@ class MealPlanStore: ObservableObject {
     @Published var nutritionAnalysis: MealPlanAnalysis?
     @Published var isLoadingShoppingList = false
     
+    // Recent meals and AI recommendations
+    @Published var recentMeals: [Recipe] = []
+    @Published var aiRecommendedRecipes: [Recipe] = []
+    
     // Pagination
     @Published var currentPage = 1
     @Published var totalPages = 1
@@ -49,7 +53,9 @@ class MealPlanStore: ObservableObject {
     // MARK: - Initial Setup
     
     private func setupSelectedWeek() {
-        selectedWeekStartDate = startOfWeek(for: Date())
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        selectedWeekStartDate = calendar.date(from: components) ?? Date()
         weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
     }
     
@@ -266,7 +272,9 @@ class MealPlanStore: ObservableObject {
         case .next:
             newDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         case .current:
-            newDate = startOfWeek(for: Date())
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+            newDate = calendar.date(from: components) ?? Date()
         }
         
         selectedWeekStartDate = newDate
@@ -383,23 +391,371 @@ class MealPlanStore: ObservableObject {
         }
     }
     
+    // MARK: - Meal Management Methods
+    
+    func findMealPlanItem(recipeId: String, dayOfWeek: Int, mealType: MealType) -> MealPlanItem? {
+        guard let activePlan = activeMealPlan else { return nil }
+        return activePlan.items?.first { item in
+            item.recipe?.id == recipeId &&
+            item.dayOfWeek == dayOfWeek &&
+            item.mealType == mealType.rawValue
+        }
+    }
+    
+    func addMealToWeek(recipe: Recipe, dayOfWeek: Int, mealType: MealType, servingSize: Double = 1.0) async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoading = true
+        
+        do {
+            let _ = try await mealPlanService.addMealPlanItem(
+                mealPlanId: mealPlan.id,
+                recipeId: recipe.id,
+                dayOfWeek: dayOfWeek,
+                mealType: mealType,
+                servingSize: servingSize
+            )
+            
+            // Update local state
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to add meal: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func addCustomMealToWeek(name: String, calories: Double, dayOfWeek: Int, mealType: MealType) async {
+        // Create a temporary custom recipe
+        let customRecipe = Recipe(
+            id: UUID().uuidString,
+            name: name,
+            description: "Custom meal",
+            ingredients: [],
+            instructions: "Custom meal added manually",
+            nutritionInfo: NutritionInfo(calories: String(Int(calories))),
+            cuisine: nil,
+            prepTime: 0,
+            cookTime: 0,
+            difficulty: .easy,
+            avgRating: 0.0,
+            ratingCount: 0,
+            imageUrl: nil,
+            tags: ["custom"],
+            createdByUser: "system",
+            createdByUserId: "system",
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        
+        await addMealToWeek(recipe: customRecipe, dayOfWeek: dayOfWeek, mealType: mealType)
+    }
+    
+    func removeMealFromPlan(mealPlanItem: MealPlanItem) async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoading = true
+        
+        do {
+            try await mealPlanService.removeMealPlanItem(
+                mealPlanId: mealPlan.id,
+                dayOfWeek: mealPlanItem.dayOfWeek,
+                mealType: MealType(rawValue: mealPlanItem.mealType) ?? .breakfast
+            )
+            
+            // Update local state
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to remove meal: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func updateMealServingSize(mealPlanItem: MealPlanItem, newServingSize: Double) async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoading = true
+        
+        do {
+            let _ = try await mealPlanService.updateMealPlanItem(
+                mealPlanId: mealPlan.id,
+                itemId: String(mealPlanItem.id ?? 0),
+                servingSize: newServingSize
+            )
+            
+            // Update local state
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to update serving size: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func moveMeal(from item: MealPlanItem, toDayOfWeek: Int, toMealType: MealType) async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoading = true
+        
+        do {
+            // Remove from old location
+            try await mealPlanService.removeMealPlanItem(
+                mealPlanId: mealPlan.id,
+                dayOfWeek: item.dayOfWeek,
+                mealType: MealType(rawValue: item.mealType) ?? .breakfast
+            )
+            
+            // Add to new location
+            if let recipe = item.recipe {
+                let _ = try await mealPlanService.addMealPlanItem(
+                    mealPlanId: mealPlan.id,
+                    recipeId: recipe.id,
+                    dayOfWeek: toDayOfWeek,
+                    mealType: toMealType,
+                    servingSize: 1.0
+                )
+            }
+            
+            // Update local state
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to move meal: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func duplicateMeal(mealPlanItem: MealPlanItem, toDayOfWeek: Int, toMealType: MealType) async {
+        guard let _ = activeMealPlan,
+              let recipe = mealPlanItem.recipe else { return }
+        
+        await addMealToWeek(
+            recipe: recipe,
+            dayOfWeek: toDayOfWeek,
+            mealType: toMealType,
+            servingSize: 1.0
+        )
+    }
+    
+    // MARK: - Recent Meals Management
+    
+    func addToRecentMeals(_ recipe: Recipe) async {
+        // Add to beginning and limit to 10 items
+        recentMeals.removeAll { $0.id == recipe.id }
+        recentMeals.insert(recipe, at: 0)
+        recentMeals = Array(recentMeals.prefix(10))
+    }
+    
+    // MARK: - AI Recommendations
+    
+    func loadAIRecommendations(for mealType: MealType) async {
+        // TODO: Implement AI recommendations when AIService supports this method
+        // For now, return sample recommendations
+        await MainActor.run {
+            aiRecommendedRecipes = [Recipe.sampleRecipe]
+        }
+    }
+    
+    // MARK: - Batch Operations
+    
+    func copyMealsFromPlan(_ sourcePlan: MealPlan) async {
+        guard let targetPlan = activeMealPlan,
+              let sourceItems = sourcePlan.items else { return }
+        
+        isLoading = true
+        
+        do {
+            // Clear existing meals first
+            await clearAllMealsForWeek()
+            
+            // Copy each meal item
+            for item in sourceItems {
+                if let recipe = item.recipe {
+                    if let mealType = MealType(rawValue: item.mealType) {
+                        try await mealPlanService.addMealPlanItem(
+                            mealPlanId: targetPlan.id,
+                            recipeId: recipe.id,
+                            dayOfWeek: item.dayOfWeek,
+                            mealType: mealType,
+                            servingSize: 1.0
+                        )
+                    }
+                }
+            }
+            
+            // Refresh the weekly view
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to copy meals: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func generateWeekWithAI() async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoading = true
+        
+        do {
+            // Generate AI recommendations for empty slots
+            let emptySlots = findEmptyMealSlots()
+            
+            for slot in emptySlots {
+                // TODO: Replace with actual AI service call
+                let recommendations = [Recipe.sampleRecipe]
+                
+                if let recipe = recommendations.first {
+                    let _ = try await mealPlanService.addMealPlanItem(
+                        mealPlanId: mealPlan.id,
+                        recipeId: recipe.id,
+                        dayOfWeek: slot.dayOfWeek,
+                        mealType: slot.mealType,
+                        servingSize: 1.0
+                    )
+                }
+            }
+            
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to generate week with AI: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func clearAllMealsForWeek() async {
+        guard let mealPlan = activeMealPlan,
+              let items = mealPlan.items else { return }
+        
+        isLoading = true
+        
+        do {
+            // Remove all meal items
+            for item in items {
+                if let mealType = MealType(rawValue: item.mealType) {
+                    try await mealPlanService.removeMealPlanItem(
+                        mealPlanId: mealPlan.id,
+                        dayOfWeek: item.dayOfWeek,
+                        mealType: mealType
+                    )
+                }
+            }
+            
+            await loadWeeklyMealPlan()
+            
+        } catch {
+            errorMessage = "Failed to clear meals: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func duplicateWeekToPlan(_ sourcePlan: MealPlan, weekStartDate: Date) async {
+        guard let sourceItems = sourcePlan.items else { return }
+        
+        isLoading = true
+        
+        do {
+            // Create new meal plan for target week
+            let newPlanRequest = CreateMealPlanRequest(
+                name: "\(sourcePlan.name) (Copy)",
+                description: sourcePlan.description,
+                startDate: weekStartDate,
+                endDate: Calendar.current.date(byAdding: .day, value: 6, to: weekStartDate) ?? weekStartDate,
+                preferences: MealPlanPreferences(
+                    targetCalories: nil,
+                    dietaryRestrictions: nil,
+                    excludeIngredients: nil,
+                    cuisinePreferences: nil,
+                    mealTypes: MealType.allCases,
+                    maxPrepTime: nil,
+                    budgetLevel: nil
+                )
+            )
+            
+            let newPlan = try await mealPlanService.createMealPlan(newPlanRequest)
+            
+            // Copy all meal items
+            for item in sourceItems {
+                if let recipe = item.recipe {
+                    try await mealPlanService.addMealPlanItem(
+                        mealPlanId: newPlan.id,
+                        recipeId: recipe.id,
+                        dayOfWeek: item.dayOfWeek,
+                        mealType: MealType(rawValue: item.mealType) ?? MealType.breakfast,
+                        servingSize: 1.0
+                    )
+                }
+            }
+            
+            // Add to meal plans list
+            mealPlans.insert(newPlan, at: 0)
+            totalCount += 1
+            
+        } catch {
+            errorMessage = "Failed to duplicate week: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+    }
+    
+    func generateShoppingListForWeek() async {
+        guard let mealPlan = activeMealPlan else { return }
+        
+        isLoadingShoppingList = true
+        
+        do {
+            let generatedList = try await mealPlanService.generateShoppingList(mealPlan: mealPlan)
+            shoppingList = generatedList
+        } catch {
+            errorMessage = "Failed to generate shopping list: \(error.localizedDescription)"
+        }
+        
+        isLoadingShoppingList = false
+    }
+    
+    // MARK: - Helper Methods for Batch Operations
+    
+    private func findEmptyMealSlots() -> [MealSlot] {
+        var emptySlots: [MealSlot] = []
+        let allMealTypes = MealType.allCases
+        
+        for dayOfWeek in 0..<7 {
+            for mealType in allMealTypes {
+                // Check if this slot is empty
+                let hasExistingMeal = activeMealPlan?.items?.contains { item in
+                    item.dayOfWeek == dayOfWeek && item.mealType == mealType.rawValue
+                } ?? false
+                
+                if !hasExistingMeal {
+                    emptySlots.append(MealSlot(dayOfWeek: dayOfWeek, mealType: mealType))
+                }
+            }
+        }
+        
+        return emptySlots
+    }
+    
     // MARK: - Convenience Methods
     
     func getAllMealPlans() async {
         do {
             let allPlans = try await mealPlanService.getAllMealPlans()
-            mealPlans = allPlans
-            totalCount = allPlans.count
+            await MainActor.run {
+                mealPlans = allPlans
+                totalCount = allPlans.count
+            }
         } catch {
+            // Handle error silently for now
         }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func startOfWeek(for date: Date) -> Date {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-        return calendar.date(from: components) ?? date
     }
     
     // MARK: - Computed Properties
@@ -429,6 +785,13 @@ class MealPlanStore: ObservableObject {
     
     func handleError(_ error: Error) {
     }
+}
+
+// MARK: - Supporting Types
+
+struct MealSlot {
+    let dayOfWeek: Int
+    let mealType: MealType
 }
 
 // MARK: - Supporting Enums
