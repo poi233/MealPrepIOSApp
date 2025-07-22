@@ -19,13 +19,13 @@ struct FavoriteDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Header Image
+                // Header Image - full width without white space
                 AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                 } placeholder: {
-                    DefaultRecipeImageView_Elegant(width: 300, height: 250)
+                    DefaultRecipeImageView()
                 }
                 .frame(height: 250)
                 .clipped()

@@ -199,10 +199,8 @@ struct FavoritesView: View {
                         .environmentObject(favoritesStore)
                 }
             }
-            .task {
-                if favoritesStore.favorites.isEmpty {
-                    await favoritesStore.loadFavorites()
-                }
+            .autoRefresh {
+                await favoritesStore.refreshFavorites()
             }
         }
     }
@@ -298,20 +296,20 @@ struct FavoriteCard: View {
                 )
             
             VStack(alignment: .leading, spacing: 12) {
-                // Enhanced Recipe Image
+                // Recipe Image with enhanced styling - matching RecipeCard
                 ZStack {
                     AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        DefaultRecipeImageView_Elegant(width: 200, height: imageHeight)
+                        DefaultRecipeImageView_Elegant(width: 200, height: 150)
                     }
-                    .frame(height: imageHeight)
+                    .frame(maxWidth: .infinity, maxHeight: imageHeight)
                     .clipped()
                     .cornerRadius(12)
                     
-                    // Gradient overlay
+                    // Gradient overlay for better text readability
                     LinearGradient(
                         colors: [Color.clear, Color.black.opacity(0.3)],
                         startPoint: .top,
@@ -319,10 +317,12 @@ struct FavoriteCard: View {
                     )
                     .cornerRadius(12)
                     
-                    // Enhanced Favorite Actions
+                    // Action Buttons - positioned at top like RecipeCard
                     VStack {
                         HStack {
                             Spacer()
+                            
+                            // Menu Button
                             Menu {
                                 Button("Edit Rating & Notes") {
                                     showingEditView = true
@@ -334,20 +334,22 @@ struct FavoriteCard: View {
                                     }
                                 }
                             } label: {
-                                Image(systemName: "ellipsis.circle.fill")
+                                Image(systemName: "ellipsis")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
                                     .foregroundColor(.white)
-                                    .font(.title2)
+                                    .frame(width: 32, height: 32)
                                     .background(
                                         Circle()
-                                            .fill(Color.black.opacity(0.3))
-                                            .blur(radius: 4)
+                                            .fill(Color.black.opacity(0.6))
+                                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
                                     )
                                     .scaleEffect(isHovered ? 1.1 : 1.0)
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
                             }
-                            .padding(.trailing, 12)
-                            .padding(.top, 12)
                         }
+                        .padding(.trailing, 12)
+                        .padding(.top, 12)
+                        
                         Spacer()
                     }
                 }

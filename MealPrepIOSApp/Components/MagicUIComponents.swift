@@ -182,8 +182,6 @@ struct MagicCard<Content: View>: View {
     let cornerRadius: CGFloat
     let shadowRadius: CGFloat
     
-    @State private var isHovered = false
-    
     init(cornerRadius: CGFloat = 16, shadowRadius: CGFloat = 8, @ViewBuilder content: () -> Content) {
         self.content = content()
         self.cornerRadius = cornerRadius
@@ -192,7 +190,7 @@ struct MagicCard<Content: View>: View {
     
     var body: some View {
         ZStack {
-            // Background with gradient
+            // Background with gradient - static, no hover effects
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
                     LinearGradient(
@@ -207,38 +205,16 @@ struct MagicCard<Content: View>: View {
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .fill(Color.accentColor.opacity(0.1))
-                        .blur(radius: isHovered ? 20 : 0)
                 )
                 .shadow(
                     color: Color.black.opacity(0.1),
-                    radius: isHovered ? shadowRadius * 1.5 : shadowRadius,
+                    radius: shadowRadius,
                     x: 0,
-                    y: isHovered ? 8 : 4
-                )
-            
-            // Border with shimmer effect
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(
-                    LinearGradient(
-                        colors: isHovered ? [Color.accentColor.opacity(0.5), Color.accentColor] : [Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: isHovered ? 1 : 0
+                    y: 4
                 )
             
             content
                 .padding()
-        }
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
-        .onTapGesture {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                isHovered.toggle()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    isHovered = false
-                }
-            }
         }
     }
 }

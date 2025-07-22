@@ -18,6 +18,21 @@ struct ContentView: View {
                 LoginView()
             }
         }
+        .onReceive(authStore.$sessionError) { sessionError in
+            if sessionError != nil {
+                // Session expired - this will automatically redirect to LoginView
+                // because isAuthenticated becomes false when sessionError is set
+            }
+        }
+        .alert("Session Expired", isPresented: .constant(authStore.sessionError != nil)) {
+            Button("OK") {
+                authStore.clearSessionError()
+            }
+        } message: {
+            if let error = authStore.sessionError {
+                Text(error)
+            }
+        }
     }
 }
 

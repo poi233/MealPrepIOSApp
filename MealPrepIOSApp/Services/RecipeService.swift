@@ -173,4 +173,26 @@ class RecipeService {
         let filters = RecipeFilters(tags: tags)
         return try await getRecipes(page: page, filters: filters)
     }
+    
+    // MARK: - AI Recipe Generation
+    
+    /// Generate recipe details using AI
+    func generateRecipeWithAI(_ request: AIRecipeGenerationRequest) async throws -> AIGeneratedRecipe {
+        return try await networkManager.post(
+            "/ai/generate-recipe-details/",
+            body: request,
+            responseType: AIGeneratedRecipe.self,
+            requiresAuth: true
+        )
+    }
+    
+    /// Create recipe from AI-generated data
+    func createRecipeFromAI(_ request: CreateRecipeFromAIRequest) async throws -> Recipe {
+        return try await networkManager.post(
+            "/ai/create-recipe-from-ai/",
+            body: request,
+            responseType: Recipe.self,
+            requiresAuth: true
+        )
+    }
 }

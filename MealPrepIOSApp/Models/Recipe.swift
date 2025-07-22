@@ -104,7 +104,27 @@ struct Recipe: Codable, Identifiable {
         
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
-        ingredients = try container.decode([Ingredient].self, forKey: .ingredients)
+        
+        // Handle ingredients as either structured objects or string array (from AI generation)
+        if let structuredIngredients = try? container.decode([Ingredient].self, forKey: .ingredients) {
+            ingredients = structuredIngredients
+        } else if let stringIngredients = try? container.decode([String].self, forKey: .ingredients) {
+            // Parse string ingredients into structured format
+            ingredients = stringIngredients.map { ingredientString in
+                // Split ingredient string to extract components
+                let components = ingredientString.components(separatedBy: " ")
+                if components.count >= 2 {
+                    let name = components.dropLast().joined(separator: " ")
+                    let amountUnit = components.last ?? ""
+                    return Ingredient(name: name, amount: "1", unit: amountUnit, notes: ingredientString)
+                } else {
+                    return Ingredient(name: ingredientString, amount: "1", unit: "", notes: nil)
+                }
+            }
+        } else {
+            throw DecodingError.dataCorruptedError(forKey: .ingredients, in: container, debugDescription: "Ingredients must be either structured objects or string array")
+        }
+        
         instructions = try container.decode(String.self, forKey: .instructions)
         nutritionInfo = try container.decodeIfPresent(NutritionInfo.self, forKey: .nutritionInfo)
         cuisine = try container.decodeIfPresent(String.self, forKey: .cuisine)
@@ -122,7 +142,8 @@ struct Recipe: Codable, Identifiable {
         ratingCount = try container.decode(Int.self, forKey: .ratingCount)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         tags = try container.decode([String].self, forKey: .tags)
-        createdByUser = try container.decode(String.self, forKey: .createdByUser)
+        // Handle createdByUser field - use empty string if not present since API doesn't always return it
+        createdByUser = try container.decodeIfPresent(String.self, forKey: .createdByUser) ?? ""
         createdByUserId = try container.decode(String.self, forKey: .createdByUserId)
         
         // Handle flexible date parsing for timestamps

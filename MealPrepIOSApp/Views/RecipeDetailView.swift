@@ -40,8 +40,7 @@ struct RecipeDetailView: View {
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
                             
-                            Text(recipe.description)
-                                .font(.body)
+                            MarkdownText(recipe.description, font: .body)
                                 .foregroundColor(.secondary)
                             
                             // Recipe Stats
@@ -160,9 +159,7 @@ struct RecipeDetailView: View {
                             Text("Instructions")
                                 .font(.headline)
                             
-                            Text(recipe.instructions)
-                                .font(.body)
-                                .lineSpacing(4)
+                            MarkdownText(recipe.instructions, font: .body, lineSpacing: 6)
                         }
                         
                         // Nutrition Information
@@ -209,12 +206,14 @@ struct RecipeDetailView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
+                    HStack(spacing: 16) {
+                        // Favorite Button - always show for all recipes
                         Button(action: toggleFavorite) {
                             Image(systemName: isFavorite ? "heart.fill" : "heart")
                                 .foregroundColor(isFavorite ? .red : .primary)
                         }
                         
+                        // Menu Button - always show but content varies
                         Menu {
                             Button("Share Recipe") {
                                 showingShareSheet = true
@@ -235,7 +234,7 @@ struct RecipeDetailView: View {
                     }
                 }
             }
-            .task {
+            .autoRefresh {
                 await checkFavoriteStatus()
             }
             .sheet(isPresented: $showingEditView) {

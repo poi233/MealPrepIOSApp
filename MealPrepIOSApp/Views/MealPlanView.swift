@@ -95,10 +95,8 @@ struct MealPlanView: View {
                 ShoppingListView()
                     .environmentObject(mealPlanStore)
             }
-            .task {
-                if mealPlanStore.mealPlans.isEmpty {
-                    await mealPlanStore.loadMealPlans()
-                }
+            .autoRefresh {
+                await mealPlanStore.refreshMealPlans()
             }
         }
     }

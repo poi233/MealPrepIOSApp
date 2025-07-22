@@ -15,12 +15,15 @@ class AuthStore: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var sessionError: String?
+    @Published var sessionWillExpireSoon = false
     
     private let authService = AuthenticationService()
     private let networkManager = NetworkManager.shared
     private let userCacheManager = UserCacheManager()
     private let errorHandler = ErrorHandler.shared
     private var cancellables = Set<AnyCancellable>()
+    private var sessionCheckTimer: Timer?
+    private var sessionRefreshTimer: Timer?
     
     init() {
         // Observe network manager authentication state
@@ -42,6 +45,7 @@ class AuthStore: ObservableObject {
     
     func initialize() {
         checkAuthenticationStatus()
+        startSessionMonitoring()
     }
     
     // MARK: - Authentication Status
@@ -95,6 +99,9 @@ class AuthStore: ObservableObject {
             let response = try await authService.login(email: email, password: password)
             self.currentUser = response.user
             self.isAuthenticated = true
+            
+            // Start session monitoring after successful login
+            startSessionMonitoring()
         } catch {
             // Handle specific error types more gracefully
             if let networkError = error as? NetworkError {
@@ -131,6 +138,9 @@ class AuthStore: ObservableObject {
         }
         
         isLoading = false
+        
+        // Stop session monitoring on logout
+        stopSessionMonitoring()
     }
     
     func register(userData: RegisterData) async {
@@ -239,10 +249,94 @@ class AuthStore: ObservableObject {
     
     func clearSessionError() {
         sessionError = nil
+        sessionWillExpireSoon = false
     }
     
     func handleSessionError(_ error: String) {
         sessionError = error
+    }
+    
+    private func startSessionMonitoring() {
+        // Check session status every 5 minutes
+        sessionCheckTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.checkSessionStatus()
+            }
+        }
+        
+        // Auto-refresh token every 45 minutes (assuming 1-hour expiry)
+        sessionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2700, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refreshSessionIfNeeded()
+            }
+        }
+    }
+    
+    private func stopSessionMonitoring() {
+        sessionCheckTimer?.invalidate()
+        sessionRefreshTimer?.invalidate()
+        sessionCheckTimer = nil
+        sessionRefreshTimer = nil
+    }
+    
+    private func checkSessionStatus() async {
+        guard isAuthenticated else { return }
+        
+        do {
+            // Try a simple authenticated request to check session validity
+            let _ = try await authService.getCurrentUser()
+        } catch {
+            if let networkError = error as? NetworkError {
+                switch networkError {
+                case .tokenExpired, .authenticationRequired:
+                    await handleSessionExpired()
+                case .serverError(401, _):
+                    await handleSessionExpired()
+                default:
+                    break
+                }
+            }
+        }
+    }
+    
+    private func refreshSessionIfNeeded() async {
+        guard isAuthenticated else { return }
+        
+        do {
+            try await networkManager.refreshTokenIfNeeded()
+            print("Session refreshed successfully")
+        } catch {
+            print("Failed to refresh session: \(error)")
+            if error is NetworkError {
+                switch error as! NetworkError {
+                case .tokenExpired, .authenticationRequired:
+                    await handleSessionExpired()
+                default:
+                    break
+                }
+            }
+        }
+    }
+    
+    private func handleSessionExpired() async {
+        await MainActor.run {
+            self.sessionError = "Your session has expired. Please log in again."
+            self.isAuthenticated = false
+            self.currentUser = nil
+        }
+        
+        // Clear stored tokens
+        networkManager.clearTokens()
+        
+        // Clear cached user data
+        do {
+            try await userCacheManager.clearCurrentUser()
+        } catch {
+            print("Failed to clear cached user: \(error)")
+        }
+        
+        // Stop session monitoring
+        stopSessionMonitoring()
     }
     
     // MARK: - Validation Helpers

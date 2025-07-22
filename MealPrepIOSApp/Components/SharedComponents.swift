@@ -23,6 +23,36 @@ struct LoadingView: View {
     }
 }
 
+// MARK: - Auto-refresh View Modifier
+
+struct AutoRefreshViewModifier: ViewModifier {
+    let action: () async -> Void
+    @State private var hasAppeared = false
+    
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                if !hasAppeared {
+                    hasAppeared = true
+                    Task {
+                        await action()
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                Task {
+                    await action()
+                }
+            }
+    }
+}
+
+extension View {
+    func autoRefresh(action: @escaping () async -> Void) -> some View {
+        self.modifier(AutoRefreshViewModifier(action: action))
+    }
+}
+
 // MARK: - Enhanced Filter Chip with Magic UI styling
 struct FilterChip: View {
     let title: String
@@ -238,3 +268,6 @@ struct EmptyStateView: View {
         }
     }
 }
+
+
+

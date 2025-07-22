@@ -10,10 +10,14 @@ import SwiftUI
 struct RecipesView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var authStore: AuthStore
     @State private var showingFilters = false
     @State private var showingCreateRecipe = false
+    @State private var showingManualCreateRecipe = false
     @State private var selectedRecipe: Recipe?
     @State private var viewMode: RecipeViewMode = .list
+    @State private var recipeToEdit: Recipe?
+    @State private var showingEditRecipe = false
     
     var body: some View {
         NavigationView {
@@ -144,6 +148,20 @@ struct RecipesView: View {
                             Task {
                                 await recipeStore.loadMoreRecipes()
                             }
+                        },
+                        onEditRecipe: { recipe in
+                            recipeToEdit = recipe
+                            showingEditRecipe = true
+                        },
+                        onDeleteRecipe: { recipe in
+                            Task {
+                                let success = await recipeStore.deleteRecipe(id: recipe.id)
+                                if success {
+                                    print("Recipe deleted successfully")
+                                } else {
+                                    print("Failed to delete recipe")
+                                }
+                            }
                         }
                     )
                 }
@@ -166,8 +184,24 @@ struct RecipesView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingCreateRecipe = true
+                    Menu {
+                        Button {
+                            showingCreateRecipe = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "wand.and.stars")
+                                Text("AI Generated Recipe")
+                            }
+                        }
+                        
+                        Button {
+                            showingManualCreateRecipe = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "pencil")
+                                Text("Manual Entry")
+                            }
+                        }
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
@@ -192,7 +226,13 @@ struct RecipesView: View {
             }
             .sheet(isPresented: $showingCreateRecipe) {
                 NavigationView {
-                    CreateRecipeView()
+                    AIRecipeGenerationView()
+                        .environmentObject(recipeStore)
+                }
+            }
+            .sheet(isPresented: $showingManualCreateRecipe) {
+                NavigationView {
+                    ManualCreateRecipeView()
                         .environmentObject(recipeStore)
                 }
             }
@@ -203,10 +243,19 @@ struct RecipesView: View {
                         .environmentObject(favoritesStore)
                 }
             }
-            .task {
-                if recipeStore.recipes.isEmpty {
-                    await recipeStore.loadRecipes()
+            .sheet(isPresented: $showingEditRecipe) {
+                if let recipe = recipeToEdit {
+                    NavigationView {
+                        EditRecipeFormView(recipe: recipe)
+                            .environmentObject(recipeStore)
+                    }
+                } else {
+                    Text("Error: No recipe to edit")
+                        .foregroundColor(.red)
                 }
+            }
+            .autoRefresh {
+                await recipeStore.refreshRecipes()
             }
         }
     }
@@ -227,16 +276,23 @@ struct RecipeListView: View {
     let hasMorePages: Bool
     let onRecipeTap: (Recipe) -> Void
     let onLoadMore: () -> Void
+    let onEditRecipe: ((Recipe) -> Void)?
+    let onDeleteRecipe: ((Recipe) -> Void)?
     
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 if viewMode == .list {
                     ForEach(recipes) { recipe in
-                        RecipeCard(recipe: recipe, style: .standard)
-                            .onTapGesture {
-                                onRecipeTap(recipe)
-                            }
+                        RecipeCard(
+                            recipe: recipe,
+                            style: .standard,
+                            onEdit: onEditRecipe,
+                            onDelete: onDeleteRecipe
+                        )
+                        .onTapGesture {
+                            onRecipeTap(recipe)
+                        }
                     }
                 } else {
                     LazyVGrid(columns: [
@@ -244,10 +300,15 @@ struct RecipeListView: View {
                         GridItem(.flexible())
                     ], spacing: 16) {
                         ForEach(recipes) { recipe in
-                            RecipeCard(recipe: recipe, style: .compact)
-                                .onTapGesture {
-                                    onRecipeTap(recipe)
-                                }
+                            RecipeCard(
+                                recipe: recipe,
+                                style: .compact,
+                                onEdit: onEditRecipe,
+                                onDelete: onDeleteRecipe
+                            )
+                            .onTapGesture {
+                                onRecipeTap(recipe)
+                            }
                         }
                     }
                 }
@@ -276,12 +337,23 @@ struct RecipeListView: View {
 struct RecipeCard: View {
     let recipe: Recipe
     let style: RecipeCardStyle
+    let onEdit: ((Recipe) -> Void)?
+    let onDelete: ((Recipe) -> Void)?
+    
     @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var authStore: AuthStore
     @State private var isFavorite = false
     @State private var isHovered = false
+    @State private var showingDeleteAlert = false
+    @State private var showingActionMenu = false
+    @State private var isPressed = false
     
     enum RecipeCardStyle {
         case standard, compact, featured
+    }
+    
+    private var isOwnRecipe: Bool {
+        authStore.currentUser?.id == recipe.createdByUserId
     }
     
     var body: some View {
@@ -329,9 +401,9 @@ struct RecipeCard: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        DefaultRecipeImageView(width: 200, height: imageHeight)
+                        DefaultRecipeImageView(width: .infinity, height: imageHeight)
                     }
-                    .frame(height: imageHeight)
+                    .frame(maxWidth: .infinity, maxHeight: imageHeight)
                     .clipped()
                     .cornerRadius(12)
                     
@@ -343,35 +415,73 @@ struct RecipeCard: View {
                     )
                     .cornerRadius(12)
                     
-                    // Enhanced Favorite Button
+                    // Action Buttons (Favorite + Edit menu for own recipes, Favorite only for others)
                     VStack {
                         HStack {
                             Spacer()
-                            Button(action: toggleFavorite) {
+                            
+                            // Favorite Button - always show for all recipes
+                            Button(action: {
+                                withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                                    isPressed = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                                        isPressed = false
+                                    }
+                                }
+                                toggleFavorite()
+                            }) {
                                 Image(systemName: isFavorite ? "heart.fill" : "heart")
                                     .font(.title2)
                                     .foregroundColor(isFavorite ? .red : .white)
+                                    .frame(width: 32, height: 32)
                                     .background(
                                         Circle()
-                                            .fill(Color.black.opacity(0.3))
-                                            .blur(radius: 4)
+                                            .fill(Color.black.opacity(0.6))
+                                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
                                     )
-                                    .scaleEffect(isHovered ? 1.1 : 1.0)
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
+                                    .scaleEffect(isPressed ? 0.9 : 1.0)
+                                    .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
                             }
-                            .padding(.trailing, 12)
-                            .padding(.top, 12)
+                            .zIndex(1000) // Ensure button is on top layer
+                            
+                            // Edit menu - only show for own recipes
+                            if isOwnRecipe {
+                                Button {
+                                    showingActionMenu = true
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .frame(width: 32, height: 32)
+                                        .background(
+                                            Circle()
+                                                .fill(Color.black.opacity(0.6))
+                                                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                                        )
+                                }
+                                .scaleEffect(isPressed ? 0.9 : 1.0)
+                                .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+                                .onTapGesture {
+                                    withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                                        isPressed = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
+                                            isPressed = false
+                                        }
+                                    }
+                                    showingActionMenu = true
+                                }
+                                .zIndex(1000) // Ensure button is on top layer
+                            }
                         }
+                        .padding(.trailing, 12)
+                        .padding(.top, 12)
                         
                         Spacer()
-                        
-                        // Difficulty badge in bottom left
-                        HStack {
-                            DifficultyBadge(difficulty: recipe.difficulty)
-                                .padding(.leading, 12)
-                                .padding(.bottom, 12)
-                            Spacer()
-                        }
                     }
                 }
                 
@@ -446,6 +556,27 @@ struct RecipeCard: View {
         )
         .task {
             await checkFavoriteStatus()
+        }
+        .confirmationDialog("Recipe Options", isPresented: $showingActionMenu, titleVisibility: .visible) {
+            Button("Edit Recipe") {
+                onEdit?(recipe)
+            }
+            
+            Button("Delete Recipe", role: .destructive) {
+                showingDeleteAlert = true
+            }
+            
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Choose an action for \"\(recipe.name)\"")
+        }
+        .alert("Delete Recipe", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                onDelete?(recipe)
+            }
+        } message: {
+            Text("Are you sure you want to delete \"\(recipe.name)\"? This action cannot be undone.")
         }
     }
     

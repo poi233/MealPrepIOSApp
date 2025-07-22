@@ -1,16 +1,14 @@
 //
-//  CreateRecipeView.swift
+//  CreateRecipeSelectionView.swift
 //  MealPrepIOSApp
 //
-//  Updated by AI Assistant on 7/21/25.
+//  Created by AI Assistant on 7/21/25.
 //
 
 import SwiftUI
 
-struct CreateRecipeView: View {
-    @EnvironmentObject var recipeStore: RecipeStore
+struct CreateRecipeSelectionView: View {
     @Environment(\.dismiss) private var dismiss
-    
     @State private var showingAIGenerator = false
     @State private var showingManualCreator = false
     
@@ -65,6 +63,7 @@ struct CreateRecipeView: View {
                                 Text("AI Generated")
                                     .font(.headline)
                                     .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
                                 
                                 Text("Let AI create a complete recipe for you")
                                     .font(.subheadline)
@@ -105,6 +104,7 @@ struct CreateRecipeView: View {
                                 Text("Manual Entry")
                                     .font(.headline)
                                     .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
                                 
                                 Text("Create your recipe step by step")
                                     .font(.subheadline)
@@ -140,16 +140,15 @@ struct CreateRecipeView: View {
         }
         .sheet(isPresented: $showingAIGenerator) {
             AIRecipeGenerationView()
-                .environmentObject(recipeStore)
         }
         .sheet(isPresented: $showingManualCreator) {
-            ManualCreateRecipeView()
-                .environmentObject(recipeStore)
+            NavigationView {
+                ManualCreateRecipeView()
+            }
         }
     }
 }
 
 #Preview {
-    CreateRecipeView()
-        .environmentObject(RecipeStore())
+    CreateRecipeSelectionView()
 }

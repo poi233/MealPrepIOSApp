@@ -2,7 +2,6 @@ import Foundation
 // import Alamofire
 
 class UserService {
-    private let baseURL = "http://127.0.0.1:8000/api"
     
     func fetchProfile(completion: @escaping (Result<UserProfile, Error>) -> Void) {
         // Temporary mock implementation

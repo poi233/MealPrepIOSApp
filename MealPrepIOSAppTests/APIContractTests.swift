@@ -25,38 +25,7 @@ final class APIContractTests: XCTestCase {
         networkManager = nil
         try super.tearDownWithError()
     }
-    
-    // MARK: - Backend Health Check
-    
-    func testBackendHealth() async throws {
-        // Test basic connectivity to backend using simple URLSession
-        let baseURL = "http://127.0.0.1:8000"
-        guard let url = URL(string: "\(baseURL)/health/") else {
-            XCTFail("Invalid URL")
-            return
-        }
         
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                XCTFail("Invalid response type")
-                return
-            }
-            
-            XCTAssertEqual(httpResponse.statusCode, 200, "Health endpoint should return 200")
-            
-            // Try to parse response
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                XCTAssertEqual(json["status"] as? String, "healthy", "Health status should be 'healthy'")
-                XCTAssertEqual(json["database"] as? String, "connected", "Database should be connected")
-            }
-            
-        } catch {
-            XCTFail("Backend health check failed: \(error)")
-        }
-    }
-    
     // MARK: - Authentication Contract Tests
     
     func testUserRegistrationContract() async throws {

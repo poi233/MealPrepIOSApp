@@ -12,7 +12,7 @@ struct DefaultRecipeImageView: View {
     let height: CGFloat
     
     init(width: CGFloat = 150, height: CGFloat = 150) {
-        self.width = width
+        self.width = width == .infinity ? 200 : width // Handle infinity case
         self.height = height
     }
     
@@ -67,7 +67,8 @@ struct DefaultRecipeImageView: View {
                     )
             }
         }
-        .frame(width: width, height: height)
+        .frame(maxWidth: width == 200 ? .infinity : width, maxHeight: height)
+        .aspectRatio(contentMode: .fill)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
