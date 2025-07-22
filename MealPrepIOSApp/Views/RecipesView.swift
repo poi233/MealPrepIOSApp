@@ -246,7 +246,7 @@ struct RecipesView: View {
             .sheet(isPresented: $showingEditRecipe) {
                 if let recipe = recipeToEdit {
                     NavigationView {
-                        EditRecipeFormView(recipe: recipe)
+                        EditRecipeView(recipe: recipe)
                             .environmentObject(recipeStore)
                     }
                 } else {

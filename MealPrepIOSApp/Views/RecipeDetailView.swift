@@ -445,24 +445,7 @@ struct NutritionItem: View {
     }
 }
 
-// Placeholder for EditRecipeView
-struct EditRecipeView: View {
-    let recipe: Recipe
-    @EnvironmentObject var recipeStore: RecipeStore
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        Text("Edit Recipe - Coming Soon")
-            .navigationTitle("Edit Recipe")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-    }
-}
+// EditRecipeView is now implemented in its own file
 
 #Preview {
     let sampleRecipe = Recipe(

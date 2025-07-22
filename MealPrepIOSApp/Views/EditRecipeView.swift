@@ -8,150 +8,154 @@
 import SwiftUI
 
 struct EditRecipeView: View {
-    @EnvironmentObject
+    @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
     
-    Recipe
+    let recipe: Recipe
     
     // Recipe form data
     @State private var name: String
     @State private var description: String
-    @State private var instructions
+    @State private var instructions: String
     @State private var cuisine: String
     @State private var prepTime: Int
     @State private var cookTime: Int
-    @State private var difficulty: Dty
-    @State private var imageUrl:
+    @State private var difficulty: Difficulty
+    @State private var imageUrl: String
     @State private var tags: String
     @State private var ingredients: [IngredientInput]
-    
+    @State private var nutritionInfo: NutritionInput
     
     @State private var isUpdating = false
-    ng?
+    @State private var errorMessage: String?
     
-    init(recipe: Recipe)
-        self.recipipe
+    init(recipe: Recipe) {
+        self.recipe = recipe
         
         // Initialize state variables with recipe data
         _name = State(initialValue: recipe.name)
-        _description = State(initialValuen)
-        _instructionctions)
-        _cuisine = State(ini")
-        _prepTime = State(initialValue:Time)
-        _cookTime = State(initia)
+        _description = State(initialValue: recipe.description)
+        _instructions = State(initialValue: recipe.instructions)
+        _cuisine = State(initialValue: recipe.cuisine ?? "")
+        _prepTime = State(initialValue: recipe.prepTime)
+        _cookTime = State(initialValue: recipe.cookTime)
         _difficulty = State(initialValue: recipe.difficulty)
         _imageUrl = State(initialValue: recipe.imageUrl ?? "")
-        _tags = State
+        _tags = State(initialValue: recipe.tags.joined(separator: ", "))
         
-        // Conveput
-        let ingredientInputs = recipe.ingredient
+        // Convert ingredients to IngredientInput
+        let ingredientInputs = recipe.ingredients.map { ingredient in
             IngredientInput(
                 name: ingredient.name,
-                amount: ingredie
+                amount: ingredient.amount,
                 unit: ingredient.unit,
-                notes
+                notes: ingredient.notes
             )
         }
-        _ingredients = State(initialValue)
+        _ingredients = State(initialValue: ingredientInputs)
         
         // Convert nutrition info to NutritionInput
-        let nutritiono
-        _nutritionInnput(
+        let nutrition = recipe.nutritionInfo
+        _nutritionInfo = State(initialValue: NutritionInput(
             calories: nutrition?.calories ?? "",
             protein: nutrition?.protein ?? "",
             carbohydrates: nutrition?.carbohydrates ?? "",
-            fat: nutritio
-            fiber: nu",
-            sodiu
-            suga",
-            servings: nutrition?.serving? 0
+            fat: nutrition?.fat ?? "",
+            fiber: nutrition?.fiber ?? "",
+            sodium: nutrition?.sodium ?? "",
+            sugar: nutrition?.sugar ?? "",
+            servings: nutrition?.servings ?? 0
         ))
     }
     
     var body: some View {
         NavigationView {
             Form {
-                Secti {
-                    name)
-                    TextField("Description", t)
+                Section("Basic Information") {
+                    TextField("Recipe Name", text: $name)
+                    TextField("Description", text: $description, axis: .vertical)
                         .lineLimit(3...6)
                     
                     HStack {
-                 sine")
-                Spacer()
-                        TextField("e.g., 
+                        Text("Cuisine")
+                        Spacer()
+                        TextField("e.g., Italian, Mexican", text: $cuisine)
                             .multilineTextAlignment(.trailing)
                     }
                 }
                 
-                Section("Timing & Difficulty") 
+                Section("Timing & Difficulty") {
                     HStack {
                         Text("Prep Time")
                         Spacer()
-                 
-                
+                        Stepper("\(prepTime) minutes", value: $prepTime, in: 0...180, step: 5)
+                    }
                     
                     HStack {
-                 )
-             )
-                        Stepper("\(cookTime 5)
+                        Text("Cook Time")
+                        Spacer()
+                        Stepper("\(cookTime) minutes", value: $cookTime, in: 0...480, step: 5)
                     }
                     
                     Picker("Difficulty", selection: $difficulty) {
-                        ForEach(Difficin
-                            Text(
+                        ForEach(Difficulty.allCases, id: \.self) { level in
+                            Text(level.displayName)
                         }
                     }
                 }
                 
                 Section("Ingredients") {
-                    ForEach(ingredient
-                     
-                            if ingredients{
-                                ingredients.remove(at: in)
-                 }
-             
+                    ForEach($ingredients) { $ingredient in
+                        IngredientRow(
+                            ingredient: $ingredient,
+                            onDelete: {
+                                if let index = ingredients.firstIndex(where: { $0.id == ingredient.id }) {
+                                    if ingredients.count > 1 {
+                                        ingredients.remove(at: index)
+                                    }
+                                }
+                            }
+                        )
                     }
                     
-                    Button("Add ient") {
-             )
-         
-     olor)
-    
+                    Button("Add Ingredient") {
+                        ingredients.append(IngredientInput())
+                    }
+                    .foregroundColor(.accentColor)
+                }
                 
                 Section("Instructions") {
-                    TextField("Step-by-step instructions", text: $instructions,cal)
+                    TextField("Step-by-step instructions", text: $instructions, axis: .vertical)
                         .lineLimit(5...15)
                 }
-         
-    ails") {
-                    TextField("Imagl)
-                    TextFi$tags)
-                        .textInputAutocaever)
+                
+                Section("Additional Details") {
+                    TextField("Image URL (optional)", text: $imageUrl)
+                    TextField("Tags (comma separated)", text: $tags)
+                        .textInputAutocapitalization(.never)
                 }
                 
-                Section("Nutrition) {
-                    NutritionInfoVionInfo)
+                Section("Nutrition Information") {
+                    NutritionInfoView(nutritionInfo: $nutritionInfo)
                 }
                 
                 if let errorMessage = errorMessage {
-        {
+                    Section {
                         Text(errorMessage)
                             .foregroundColor(.red)
-                            )
+                            .font(.caption)
                     }
                 }
             }
             .navigationTitle("Edit Recipe")
-            .e)
-          {
-        ading) {
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        dismiss(
+                        dismiss()
                     }
-             }
-               
-                ToolbarItem(placementing) {
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         updateRecipe()
                     }
@@ -163,26 +167,25 @@ struct EditRecipeView: View {
         }
     }
     
-    priva {
-     
-    
-        !instructions.trimmingChapty &&
-        ingredients.conta }
+    private var isFormValid: Bool {
+        return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        ingredients.contains(where: { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
     }
     
     private func updateRecipe() {
         isUpdating = true
-        errosage = nil
+        errorMessage = nil
         
-        let validIngredients = ing
-            let trimmedName = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlin
+        let validIngredients = ingredients.compactMap { ingredient -> Ingredient? in
+            let trimmedName = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedName.isEmpty else { return nil }
             
-            rient(
-         e,
-        nes),
-                unit: ingredient.unit.trimmingCharacters
-                notes: ingredient.notes?.trimmingCharacters(in: .whitesnes)
+            return Ingredient(
+                name: trimmedName,
+                amount: ingredient.amount.trimmingCharacters(in: .whitespacesAndNewlines),
+                unit: ingredient.unit.trimmingCharacters(in: .whitespacesAndNewlines),
+                notes: ingredient.notes?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
         
@@ -191,40 +194,40 @@ struct EditRecipeView: View {
             .filter { !$0.isEmpty }
         
         let nutrition = nutritionInfo.hasValues ? NutritionInfo(
-            calories: nutritionInfo.calories.isEmpty ? nil : nutritionInfo.cal,
+            calories: nutritionInfo.calories.isEmpty ? nil : nutritionInfo.calories,
             protein: nutritionInfo.protein.isEmpty ? nil : nutritionInfo.protein,
-            carbohydrates: nutritionInfo.carbohydrates.isEmpty ? nil : nutritioydrates,
-            fatfo.fat,
-        
-            sodium: nutritionInfo.sodium.isEmptyodium,
-            sugar: nutritionInfo.sugar.isEmpty ? nil : nutritionInfo.su,
+            carbohydrates: nutritionInfo.carbohydrates.isEmpty ? nil : nutritionInfo.carbohydrates,
+            fat: nutritionInfo.fat.isEmpty ? nil : nutritionInfo.fat,
+            fiber: nutritionInfo.fiber.isEmpty ? nil : nutritionInfo.fiber,
+            sodium: nutritionInfo.sodium.isEmpty ? nil : nutritionInfo.sodium,
+            sugar: nutritionInfo.sugar.isEmpty ? nil : nutritionInfo.sugar,
             servings: nutritionInfo.servings > 0 ? nutritionInfo.servings : nil
         ) : nil
         
-        let updatedRecipe = CreateRect(
+        let updatedRecipe = CreateRecipeRequest(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            description: descri
-            ingredients: validInts,
-            instructions: instructi
+            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            ingredients: validIngredients,
+            instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines),
             nutritionInfo: nutrition,
-            cuisine: cuisiNewlines),
-         me,
-        Time,
-            di
-            imageUrl: imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil :wlines),
-            
+            cuisine: cuisine.trimmingCharacters(in: .whitespacesAndNewlines),
+            prepTime: prepTime,
+            cookTime: cookTime,
+            difficulty: difficulty,
+            imageUrl: imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : imageUrl.trimmingCharacters(in: .whitespacesAndNewlines),
+            tags: tagArray
         )
         
         Task {
-            let success = aw
+            let success = await recipeStore.updateRecipe(id: recipe.id, recipe: updatedRecipe)
             
-            await.run {
-             se
-         
-     ess {
- )
- else {
-          
+            await MainActor.run {
+                isUpdating = false
+                
+                if success {
+                    dismiss()
+                } else {
+                    errorMessage = "Failed to update recipe. Please try again."
                 }
             }
         }
@@ -233,28 +236,32 @@ struct EditRecipeView: View {
 
 #Preview {
     // Create a sample recipe for preview
-    let sampleRecipe 
+    let sampleRecipe = Recipe(
         id: "1",
         name: "Sample Recipe",
-        description: "A
+        description: "A delicious sample recipe",
         ingredients: [
-            Ingredient(),
-            Ingredient(name: "Ingrep")
+            Ingredient(name: "Ingredient 1", amount: "1", unit: "cup", notes: nil),
+            Ingredient(name: "Ingredient 2", amount: "2", unit: "tbsp", notes: "chopped")
         ],
-      ,
-        nutritionInfo: NutritionInfo(),
- )
-}()eStorect(RecipbjentOenvironme        .pleRecipe)
-(recipe: samiewEditRecipeV   return  )
+        instructions: "1. Step one\n2. Step two\n3. Enjoy!",
+        nutritionInfo: NutritionInfo(calories: "200", protein: "5g", carbohydrates: "30g", fat: "10g", fiber: "2g", sodium: "200mg", sugar: "5g", servings: 4),
+        cuisine: "Italian",
+        prepTime: 15,
+        cookTime: 30,
+        difficulty: .medium,
+        avgRating: 4.5,
+        ratingCount: 10,
+        imageUrl: nil,
+        tags: ["quick", "easy"],
+        createdByUser: "Test User",
+        createdByUserId: "user123",
+        createdAt: Date(),
+        updatedAt: Date()
+    )
     
-   23"
- "user1yUserId: eatedB    cr,
-    t User"r: "TesByUsereated c     
-  "easy"],k", "quic   tags: [   l: nil,
-   imageUr    10,
-   t: Coun      rating
-  4.5,ing: at        avgRium,
-.medficulty:  dif   0,
-    kTime: 3 coo     
-  epTime: 15,   pr,
-     Italian": "cuisine       
+    NavigationView {
+        EditRecipeView(recipe: sampleRecipe)
+            .environmentObject(RecipeStore())
+    }
+}

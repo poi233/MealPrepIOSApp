@@ -9,7 +9,8 @@ import SwiftUI
 
 // MARK: - Recipe Form Models
 
-struct IngredientInput {
+struct IngredientInput: Identifiable {
+    let id = UUID()
     var name = ""
     var amount = ""
     var unit = ""

@@ -11,14 +11,14 @@ struct LoginView: View {
         NavigationView {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
-                    // Top spacer - adaptive based on screen height
+                    // Top spacer - fixed height
                     Spacer()
-                        .frame(minHeight: geometry.size.height * 0.05, maxHeight: geometry.size.height * 0.1)
+                        .frame(height: 30)
                     
                     // Logo/Title - static, no animations or click interactions
-                    VStack(spacing: geometry.size.height > 700 ? 16 : 12) {
+                    VStack(spacing: 12) {
                         Image(systemName: "fork.knife.circle.fill")
-                            .font(.system(size: geometry.size.height > 700 ? 100 : 80))
+                            .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(
                                     colors: [.accentColor, .blue, .purple],
@@ -29,33 +29,33 @@ struct LoginView: View {
                             .shadow(color: .accentColor.opacity(0.3), radius: 10)
                         
                         Text("MealPrep AI")
-                            .font(geometry.size.height > 700 ? .title : .title2)
+                            .font(.title2)
                             .fontWeight(.bold)
                         
                         Text("Your personal cooking companion")
-                            .font(geometry.size.height > 700 ? .subheadline : .caption)
+                            .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
                     
                     // Middle spacer
                     Spacer()
-                        .frame(minHeight: geometry.size.height * 0.02, maxHeight: geometry.size.height * 0.05)
+                        .frame(height: 15)
                     
                     // Login Form in Magic Card
                     MagicCard {
-                        VStack(spacing: geometry.size.height > 700 ? 24 : 20) {
+                        VStack(spacing: 20) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Welcome back")
-                                    .font(geometry.size.height > 700 ? .title2 : .title3)
+                                    .font(.title3)
                                     .fontWeight(.bold)
                                 Text("Sign in to your account")
-                                    .font(geometry.size.height > 700 ? .subheadline : .caption)
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            VStack(spacing: geometry.size.height > 700 ? 20 : 16) {
+                            VStack(spacing: 16) {
                                 AnimatedTextField("Email", text: $email, keyboardType: .emailAddress)
                                     .textInputAutocapitalization(.never)
                                 
@@ -72,7 +72,7 @@ struct LoginView: View {
                                 }
                             }
                             
-                            VStack(spacing: geometry.size.height > 700 ? 16 : 12) {
+                            VStack(spacing: 12) {
                                 ShimmerButton(
                                     "Sign In",
                                     isLoading: authStore.isLoading,
@@ -95,35 +95,38 @@ struct LoginView: View {
                             }
                         }
                     }
-                    .frame(maxWidth: min(geometry.size.width - 48, 400))
+                    .frame(maxWidth: 350)
                     
                     // Bottom spacer
                     Spacer()
-                        .frame(minHeight: geometry.size.height * 0.02, maxHeight: geometry.size.height * 0.04)
+                        .frame(height: 15)
                     
                     // Register Link
-                    VStack(spacing: geometry.size.height > 700 ? 16 : 12) {
+                    VStack(spacing: 12) {
                         HStack {
                             Rectangle()
                                 .frame(height: 1)
+                                .frame(minWidth: 20)
                                 .foregroundColor(.secondary.opacity(0.3))
                             Text("or")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .padding(.horizontal, 8)
                             Rectangle()
                                 .frame(height: 1)
+                                .frame(minWidth: 20)
                                 .foregroundColor(.secondary.opacity(0.3))
                         }
                         
                         RippleButton("Create new account", style: .outline) {
                             showingRegister = true
                         }
-                        .frame(maxWidth: min(geometry.size.width - 48, 400))
+                        .frame(maxWidth: 350)
                     }
                     
                     // Bottom spacer
                     Spacer()
-                        .frame(minHeight: geometry.size.height * 0.05, maxHeight: geometry.size.height * 0.1)
+                        .frame(height: 30)
                 }
                 .padding(.horizontal, 24)
             }
