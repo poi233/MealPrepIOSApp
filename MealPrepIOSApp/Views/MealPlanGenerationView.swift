@@ -18,7 +18,7 @@ struct MealPlanGenerationView: View {
     @State private var calorieTarget: Double = 2000
     @State private var weekStartDate = Date()
     @State private var additionalRequirements = ""
-    @State private var selectedTemplate: MealPlanTemplate?
+    @State private var selectedTemplate: MealPlanGenerationTemplate?
     
     @State private var newAllergy = ""
     @State private var newDislike = ""
@@ -270,13 +270,13 @@ struct MealPlanGenerationView: View {
 // MARK: - Templates View
 
 struct MealPlanTemplatesView: View {
-    @Binding var selectedTemplate: MealPlanTemplate?
+    @Binding var selectedTemplate: MealPlanGenerationTemplate?
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationView {
             List {
-                ForEach(MealPlanTemplate.allTemplates, id: \.id) { template in
+                ForEach(MealPlanGenerationTemplate.allTemplates, id: \.id) { template in
                     TemplateRow(
                         template: template,
                         isSelected: selectedTemplate?.id == template.id
@@ -300,7 +300,7 @@ struct MealPlanTemplatesView: View {
 }
 
 struct TemplateRow: View {
-    let template: MealPlanTemplate
+    let template: MealPlanGenerationTemplate
     let isSelected: Bool
     let action: () -> Void
     
@@ -346,6 +346,42 @@ struct TemplateRow: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
+}
+
+// MARK: - Supporting Types for Generation View
+
+struct MealPlanGenerationTemplate: Identifiable {
+    let id: String
+    let name: String
+    let description: String
+    let tags: [String]
+    
+    static let allTemplates: [MealPlanGenerationTemplate] = [
+        MealPlanGenerationTemplate(
+            id: "balanced-week",
+            name: "Balanced Week",
+            description: "A well-rounded meal plan with variety in proteins, vegetables, and grains",
+            tags: ["Balanced", "Nutritious", "Family-Friendly"]
+        ),
+        MealPlanGenerationTemplate(
+            id: "mediterranean",
+            name: "Mediterranean Style",
+            description: "Fresh, healthy meals inspired by Mediterranean cuisine",
+            tags: ["Mediterranean", "Heart-Healthy", "Fish", "Vegetables"]
+        ),
+        MealPlanGenerationTemplate(
+            id: "quick-easy",
+            name: "Quick & Easy",
+            description: "Simple meals that can be prepared in 30 minutes or less",
+            tags: ["Quick", "Simple", "30-min", "Busy Schedule"]
+        ),
+        MealPlanGenerationTemplate(
+            id: "vegetarian",
+            name: "Vegetarian Focus",
+            description: "Plant-based meals with complete proteins and nutrients",
+            tags: ["Vegetarian", "Plant-Based", "Protein-Rich"]
+        )
+    ]
 }
 
 #Preview {

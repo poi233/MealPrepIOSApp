@@ -266,14 +266,14 @@ class MealPlanService {
     // MARK: - Meal Plan Templates
     
     /// Get available meal plan templates
-    func getMealPlanTemplates() async -> [MealPlanTemplate] {
+    func getMealPlanTemplates() async -> [MealPlanServiceTemplate] {
         // For now, return static templates
         // In the future, these could come from the backend
-        return MealPlanTemplate.allTemplates
+        return MealPlanServiceTemplate.allTemplates
     }
     
     /// Apply a template to create a meal plan
-    func createMealPlanFromTemplate(_ template: MealPlanTemplate, preferences: MealPlanPreferences) async throws -> MealPlan {
+    func createMealPlanFromTemplate(_ template: MealPlanServiceTemplate, preferences: MealPlanPreferences) async throws -> MealPlan {
         let description = "\(template.description). Preferences: \(template.tags.joined(separator: ", "))"
         return try await generateMealPlan(preferences: preferences, description: description)
     }
@@ -303,11 +303,18 @@ class MealPlanService {
         let now = Date()
         let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
         
-        // Search for meal plans that start this week
+        return try await getMealPlanForWeek(startDate: weekStart)
+    }
+    
+    /// Get meal plan for a specific week
+    func getMealPlanForWeek(startDate: Date) async throws -> MealPlan? {
+        let calendar = Calendar.current
+        
+        // Search for meal plans that start in the specified week
         let allMealPlans = try await getAllMealPlans()
         
         return allMealPlans.first { mealPlan in
-            calendar.isDate(mealPlan.weekStartDate, inSameDayAs: weekStart)
+            calendar.isDate(mealPlan.weekStartDate, inSameDayAs: startDate)
         }
     }
     
@@ -396,44 +403,44 @@ struct ActivateMealPlanResponse: Codable {
     }
 }
 
-// MARK: - Meal Plan Template
-struct MealPlanTemplate: Identifiable {
+// MARK: - Meal Plan Template (Service Model)
+struct MealPlanServiceTemplate: Identifiable {
     let id: String
     let name: String
     let description: String
     let tags: [String]
     let mealPatterns: [MealPattern]
     
-    static let allTemplates: [MealPlanTemplate] = [
-        MealPlanTemplate(
+    static let allTemplates: [MealPlanServiceTemplate] = [
+        MealPlanServiceTemplate(
             id: "balanced-week",
             name: "Balanced Week",
             description: "A well-rounded meal plan with variety in proteins, vegetables, and grains",
             tags: ["Balanced", "Nutritious", "Family-Friendly"],
             mealPatterns: []
         ),
-        MealPlanTemplate(
+        MealPlanServiceTemplate(
             id: "mediterranean",
             name: "Mediterranean Style",
             description: "Fresh, healthy meals inspired by Mediterranean cuisine",
             tags: ["Mediterranean", "Heart-Healthy", "Fish", "Vegetables"],
             mealPatterns: []
         ),
-        MealPlanTemplate(
+        MealPlanServiceTemplate(
             id: "quick-easy",
             name: "Quick & Easy",
             description: "Simple meals that can be prepared in 30 minutes or less",
             tags: ["Quick", "Simple", "30-min", "Busy Schedule"],
             mealPatterns: []
         ),
-        MealPlanTemplate(
+        MealPlanServiceTemplate(
             id: "vegetarian",
             name: "Vegetarian Focus",
             description: "Plant-based meals with complete proteins and nutrients",
             tags: ["Vegetarian", "Plant-Based", "Protein-Rich"],
             mealPatterns: []
         ),
-        MealPlanTemplate(
+        MealPlanServiceTemplate(
             id: "keto-friendly",
             name: "Keto Friendly",
             description: "Low-carb, high-fat meals perfect for ketogenic diet",

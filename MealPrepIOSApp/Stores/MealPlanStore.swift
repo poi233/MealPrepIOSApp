@@ -54,17 +54,40 @@ class MealPlanStore: ObservableObject {
     
     private func setupSelectedWeek() {
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-        selectedWeekStartDate = calendar.date(from: components) ?? Date()
+        let now = Date()
+        // Get the start of the current week (Sunday)
+        let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now)
+        selectedWeekStartDate = weekInterval?.start ?? now
+        
+        // Always initialize with an empty weekly grid for the current week
         weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
     }
     
     private func loadInitialData() {
-        Task {
-            await loadMealPlans()
-            await loadActiveMealPlan()
-            await loadWeeklyMealPlan()
+        // Load local stored meal plan instead of fetching from backend
+        loadLocalMealPlan()
+    }
+    
+    // MARK: - Local Storage Methods
+    
+    private func loadLocalMealPlan() {
+        if let storedGrid = LocalMealPlanStorage.shared.loadWeeklyMealPlan() {
+            // Check if stored grid is for current selected week
+            let calendar = Calendar.current
+            if calendar.isDate(storedGrid.weekStartDate, equalTo: selectedWeekStartDate, toGranularity: .weekOfYear) {
+                weeklyGrid = storedGrid
+                print("✅ Loaded meal plan from local storage for current week")
+                return
+            }
         }
+        
+        // No stored plan or wrong week, create empty grid
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
+        print("📱 Created new empty meal plan grid")
+    }
+    
+    func saveLocalMealPlan() {
+        LocalMealPlanStorage.shared.saveWeeklyMealPlan(weeklyGrid)
     }
     
     // MARK: - Meal Plan Loading
@@ -245,14 +268,20 @@ class MealPlanStore: ObservableObject {
     
     func loadWeeklyMealPlan() async {
         do {
-            if let weekMealPlan = try await mealPlanService.getCurrentWeekMealPlan() {
-                activeMealPlan = weekMealPlan
-                updateWeeklyGridFromMealPlan(weekMealPlan)
+            // Try to get meal plan for the selected week
+            let weekMealPlan = try await mealPlanService.getMealPlanForWeek(startDate: selectedWeekStartDate)
+            
+            if let mealPlan = weekMealPlan {
+                activeMealPlan = mealPlan
+                updateWeeklyGridFromMealPlan(mealPlan)
             } else {
-                // No meal plan for current week, initialize empty grid
+                // No meal plan for this week, but still show empty grid
+                activeMealPlan = nil
                 weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
             }
         } catch {
+            // On error, show empty grid
+            activeMealPlan = nil
             weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         }
     }
@@ -263,6 +292,9 @@ class MealPlanStore: ObservableObject {
     }
     
     func navigateToWeek(_ direction: WeekDirection) async {
+        // First save current week's data
+        saveLocalMealPlan()
+        
         let calendar = Calendar.current
         let newDate: Date
         
@@ -278,8 +310,9 @@ class MealPlanStore: ObservableObject {
         }
         
         selectedWeekStartDate = newDate
-        weeklyGrid = WeeklyMealGrid(weekStartDate: newDate)
-        await loadWeeklyMealPlan()
+        
+        // Load meal plan for new week from local storage or create empty
+        loadLocalMealPlan()
     }
     
     private func updateWeeklyGridFromMealPlan(_ mealPlan: MealPlan) {
@@ -403,27 +436,76 @@ class MealPlanStore: ObservableObject {
     }
     
     func addMealToWeek(recipe: Recipe, dayOfWeek: Int, mealType: MealType, servingSize: Double = 1.0) async {
-        guard let mealPlan = activeMealPlan else { return }
-        
-        isLoading = true
-        
-        do {
-            let _ = try await mealPlanService.addMealPlanItem(
-                mealPlanId: mealPlan.id,
-                recipeId: recipe.id,
-                dayOfWeek: dayOfWeek,
-                mealType: mealType,
-                servingSize: servingSize
-            )
+        // Ensure we're on the main actor for UI updates
+        await MainActor.run {
+            // Add meal to local weekly grid directly
+            guard dayOfWeek < weeklyGrid.dailyMeals.count else {
+                errorMessage = "Invalid day of week: \(dayOfWeek)"
+                return
+            }
             
-            // Update local state
-            await loadWeeklyMealPlan()
+            // Add recipe to appropriate meal type
+            switch mealType {
+            case .breakfast:
+                weeklyGrid.dailyMeals[dayOfWeek].breakfast.append(recipe)
+            case .lunch:
+                weeklyGrid.dailyMeals[dayOfWeek].lunch.append(recipe)
+            case .dinner:
+                weeklyGrid.dailyMeals[dayOfWeek].dinner.append(recipe)
+            case .snack:
+                weeklyGrid.dailyMeals[dayOfWeek].snack.append(recipe)
+            }
             
-        } catch {
-            errorMessage = "Failed to add meal: \(error.localizedDescription)"
+            print("✅ Added \(recipe.name) to \(mealType.rawValue) for day \(dayOfWeek)")
         }
         
-        isLoading = false
+        // Save to local storage (this can be done off main thread)
+        saveLocalMealPlan()
+        
+        // Add to recent meals
+        await addToRecentMeals(recipe)
+    }
+    
+    // MARK: - Create Meal Plan for Current Week
+    
+    private func createMealPlanForCurrentWeek() async {
+        let calendar = Calendar.current
+        let now = Date()
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
+        
+        let request = CreateMealPlanRequest(
+            name: "Week of \(DateFormatter.shortDate.string(from: weekStart))",
+            description: "Automatically created meal plan for the current week",
+            startDate: weekStart,
+            endDate: weekEnd,
+            preferences: MealPlanPreferences(
+                targetCalories: nil,
+                dietaryRestrictions: nil,
+                excludeIngredients: nil,
+                cuisinePreferences: nil,
+                mealTypes: MealType.allCases,
+                maxPrepTime: nil,
+                budgetLevel: nil
+            )
+        )
+        
+        do {
+            let newMealPlan = try await mealPlanService.createMealPlan(request)
+            activeMealPlan = newMealPlan
+            
+            // Also add to the meal plans list if not already there
+            if !mealPlans.contains(where: { $0.id == newMealPlan.id }) {
+                mealPlans.insert(newMealPlan, at: 0)
+                totalCount += 1
+            }
+            
+            // Update the weekly grid
+            updateWeeklyGridFromMealPlan(newMealPlan)
+            
+        } catch {
+            errorMessage = "Failed to create meal plan for current week: \(error.localizedDescription)"
+        }
     }
     
     func addCustomMealToWeek(name: String, calories: Double, dayOfWeek: Int, mealType: MealType) async {
@@ -798,4 +880,14 @@ struct MealSlot {
 
 enum WeekDirection {
     case previous, next, current
+}
+
+// MARK: - Extensions
+
+extension DateFormatter {
+    static let shortDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
 }

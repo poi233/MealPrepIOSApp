@@ -18,8 +18,7 @@ struct MealSelectionBottomSheet: View {
     
     @State private var selectedTab: MealSelectionTab = .search
     @State private var searchText = ""
-    @State private var selectedRecipe: Recipe?
-    @State private var servingSize: Double = 1.0
+    // Removed unused state variables
     @State private var customMealName = ""
     @State private var customCalories = ""
     
@@ -43,15 +42,7 @@ struct MealSelectionBottomSheet: View {
                 loadInitialData()
             }
         }
-        .sheet(item: $selectedRecipe) { recipe in
-            ServingAdjustmentSheet(
-                recipe: recipe,
-                servingSize: $servingSize,
-                onConfirm: {
-                    addMealToWeek(with: recipe)
-                }
-            )
-        }
+        // Removed serving adjustment sheet as it's no longer needed
     }
 }
 
@@ -586,7 +577,8 @@ extension MealSelectionBottomSheet {
     }
     
     private func selectRecipe(_ recipe: Recipe) {
-        selectedRecipe = recipe
+        // Add directly with default serving size (no serving adjustment needed)
+        addMealToWeek(with: recipe)
     }
     
     private func addMealToWeek(with recipe: Recipe) {
@@ -595,13 +587,19 @@ extension MealSelectionBottomSheet {
                 recipe: recipe,
                 dayOfWeek: dayOfWeek,
                 mealType: mealType,
-                servingSize: servingSize
+                servingSize: 1.0 // Default serving size
             )
             
             // Add to recent meals
             await mealPlanStore.addToRecentMeals(recipe)
             
-            dismiss()
+            // No need to reload from backend - addMealToWeek already updates the local data
+            print("✅ Recipe \(recipe.name) added successfully to \(mealType.rawValue)")
+            
+            // Dismiss the sheet
+            await MainActor.run {
+                dismiss()
+            }
         }
     }
     

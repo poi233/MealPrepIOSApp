@@ -224,7 +224,7 @@ struct MealPlanAnalysis: Codable {
 }
 
 // MARK: - Weekly Meal Grid (UI Helper)
-struct WeeklyMealGrid {
+struct WeeklyMealGrid: Codable {
     let weekStartDate: Date
     var dailyMeals: [DailyMealSlots]
     
@@ -243,14 +243,25 @@ struct WeeklyMealGrid {
     }
 }
 
-struct DailyMealSlots: Identifiable {
-    let id = UUID()
+struct DailyMealSlots: Identifiable, Codable {
+    let id: UUID
     let day: String
     let date: Date
     var breakfast: [Recipe] = []
     var lunch: [Recipe] = []
     var dinner: [Recipe] = []
     var snack: [Recipe] = []
+    
+    init(day: String, date: Date) {
+        self.id = UUID()
+        self.day = day
+        self.date = date
+    }
+    
+    // Custom Codable implementation to handle UUID
+    enum CodingKeys: String, CodingKey {
+        case id, day, date, breakfast, lunch, dinner, snack
+    }
 }
 
 // MARK: - Shopping List

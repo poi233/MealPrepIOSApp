@@ -9,11 +9,11 @@ import SwiftUI
 
 struct MealPlanView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    @State private var showingGenerationView = false
     @State private var showingMealPlanList = false
     @State private var showingAnalysisView = false
     @State private var showingShoppingList = false
     @State private var showingBatchOperations = false
+    @State private var showingTemplateSheet = false
     @State private var selectedViewMode: MealPlanViewMode = .weekly
     
     var body: some View {
@@ -72,9 +72,9 @@ struct MealPlanView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showingGenerationView = true
+                        showingTemplateSheet = true
                     } label: {
-                        Image(systemName: "plus.circle.fill")
+                        Label("Add to Template", systemImage: "folder.badge.plus")
                             .font(.title2)
                             .foregroundStyle(
                                 LinearGradient(
@@ -86,8 +86,8 @@ struct MealPlanView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingGenerationView) {
-                MealPlanGenerationView()
+            .sheet(isPresented: $showingTemplateSheet) {
+                MealPlanTemplateSheet()
                     .environmentObject(mealPlanStore)
             }
             .sheet(isPresented: $showingMealPlanList) {
@@ -129,13 +129,11 @@ struct WeeklyMealPlanView: View {
             // Week Navigation
             WeekNavigationView()
             
-            if mealPlanStore.activeMealPlan != nil {
-                // Weekly Grid
-                WeeklyMealGridView()
-            } else if mealPlanStore.isLoading {
+            if mealPlanStore.isLoading {
                 LoadingView(message: "Loading meal plan...")
             } else {
-                EmptyWeekView()
+                // Always show the weekly grid, even if empty
+                WeeklyMealGridView()
             }
         }
     }
@@ -209,11 +207,36 @@ struct WeekNavigationView: View {
 struct WeeklyMealGridView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     
+    private var sortedDailyMeals: [(dailyMeal: DailyMealSlots, dayOfWeek: Int)] {
+        let calendar = Calendar.current
+        let today = Date()
+        let currentWeekday = calendar.component(.weekday, from: today) - 1 // Sunday = 0
+        
+        let dailyMealsWithIndex = Array(mealPlanStore.weeklyGrid.dailyMeals.enumerated())
+            .map { (dailyMeal: $0.element, dayOfWeek: $0.offset) }
+        
+        // Check if we're viewing the current week
+        let weekStart = mealPlanStore.selectedWeekStartDate
+        let isCurrentWeek = calendar.isDate(weekStart, equalTo: today, toGranularity: .weekOfYear)
+        
+        if isCurrentWeek {
+            // Current week: Today first, then future days, then past days
+            let todayMeals = dailyMealsWithIndex.filter { $0.dayOfWeek == currentWeekday }
+            let futureMeals = dailyMealsWithIndex.filter { $0.dayOfWeek > currentWeekday }
+            let pastMeals = dailyMealsWithIndex.filter { $0.dayOfWeek < currentWeekday }
+            
+            return todayMeals + futureMeals + pastMeals
+        } else {
+            // Past/future week: normal order
+            return dailyMealsWithIndex
+        }
+    }
+    
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(Array(mealPlanStore.weeklyGrid.dailyMeals.enumerated()), id: \.element.id) { index, dailyMeal in
-                DailyMealCard(dailyMeal: dailyMeal, dayOfWeek: index)
+                ForEach(sortedDailyMeals, id: \.dailyMeal.id) { item in
+                    DailyMealCard(dailyMeal: item.dailyMeal, dayOfWeek: item.dayOfWeek)
                 }
             }
             .padding()
@@ -224,71 +247,53 @@ struct WeeklyMealGridView: View {
 struct DailyMealCard: View {
     let dailyMeal: DailyMealSlots
     let dayOfWeek: Int
-    @State private var isHovered = false
     
     var body: some View {
-        BlurFade(delay: 0.1) {
-            MagicCard {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Enhanced Day Header
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(dailyMeal.day)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.primary, .accentColor],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                            
-                            Text(dailyMeal.date, style: .date)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Day status indicator
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.accentColor, Color.accentColor.opacity(0.6)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 12, height: 12)
-                            .scaleEffect(isHovered ? 1.2 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
-                    }
+        VStack(alignment: .leading, spacing: 16) {
+            // Clean Day Header
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(dailyMeal.day)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                     
-                    // Enhanced Meal Slots
-                    VStack(spacing: 12) {
-                        MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast, dayOfWeek: dayOfWeek, date: dailyMeal.date)
-                        MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch, dayOfWeek: dayOfWeek, date: dailyMeal.date)
-                        MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner, dayOfWeek: dayOfWeek, date: dailyMeal.date)
-                        MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack, dayOfWeek: dayOfWeek, date: dailyMeal.date)
-                    }
+                    Text(dailyMeal.date, style: .date)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Simple status indicator
+                if hasMeals {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 8, height: 8)
                 }
             }
-            .scaleEffect(isHovered ? 1.01 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
-            .onHover { hovering in
-                isHovered = hovering
+            
+            // Clean Meal Slots
+            VStack(spacing: 16) {
+                MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+                MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack, dayOfWeek: dayOfWeek, date: dailyMeal.date)
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        isHovered = true
-                    }
-                    .onEnded { _ in
-                        isHovered = false
-                    }
-            )
         }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
+    }
+    
+    private var hasMeals: Bool {
+        !dailyMeal.breakfast.isEmpty || 
+        !dailyMeal.lunch.isEmpty || 
+        !dailyMeal.dinner.isEmpty || 
+        !dailyMeal.snack.isEmpty
     }
 }
 
@@ -300,9 +305,9 @@ struct MealSlotView: View {
     let date: Date
     
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    @State private var isAddHovered = false
     @State private var showingMealSelection = false
     @State private var showingMealActions = false
+    @State private var showingRecipeDetail = false
     @State private var selectedRecipe: Recipe?
     @State private var selectedMealPlanItem: MealPlanItem?
     
@@ -325,104 +330,108 @@ struct MealSlotView: View {
     }
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Enhanced meal type indicator
-            VStack(spacing: 4) {
-                Image(systemName: mealIcon)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(mealColor)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        Circle()
-                            .fill(mealColor.opacity(0.1))
-                    )
-                
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-            }
-            .frame(width: 70)
-            
-            if recipes.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("No meal planned")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .italic()
+        VStack(alignment: .leading, spacing: 12) {
+            // Meal type header
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: mealIcon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(mealColor)
                     
-                    Text("Tap to add a recipe")
-                        .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.7))
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
                 }
                 
                 Spacer()
                 
+                // Add button - always visible, larger size
                 Button(action: {
                     showingMealSelection = true
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
                         .foregroundColor(.accentColor)
-                        .scaleEffect(isAddHovered ? 1.1 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAddHovered)
                 }
-                .onHover { hovering in
-                    isAddHovered = hovering
-                }
+                .buttonStyle(PlainButtonStyle())
+                .frame(width: 32, height: 32)
+            }
+            
+            // Recipe list - support multiple recipes
+            if recipes.isEmpty {
+                Text("Tap + to add recipes")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
             } else {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(spacing: 6) {
                     ForEach(recipes) { recipe in
-                        Button(action: {
-                            selectedRecipe = recipe
-                            // Find the corresponding meal plan item
-                            selectedMealPlanItem = mealPlanStore.findMealPlanItem(
-                                recipeId: recipe.id,
-                                dayOfWeek: dayOfWeek,
-                                mealType: mealType
-                            )
-                            showingMealActions = true
-                        }) {
-                            HStack(spacing: 8) {
-                                Text(recipe.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                                
-                                // Recipe time indicator
-                                Text("\(recipe.totalTime)m")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.secondary.opacity(0.1))
-                                    )
+                        HStack(spacing: 0) {
+                            // Main recipe button - click to view details
+                            Button(action: {
+                                selectedRecipe = recipe
+                                showingRecipeDetail = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    // Recipe icon
+                                    Circle()
+                                        .fill(mealColor.opacity(0.2))
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Image(systemName: "fork.knife")
+                                                .font(.caption)
+                                                .foregroundColor(mealColor)
+                                        )
+                                    
+                                    Text(recipe.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                             }
-                            .padding(.vertical, 2)
-                            .padding(.horizontal, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(mealColor.opacity(0.05))
-                            )
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            // Actions button
+                            Button(action: {
+                                selectedRecipe = recipe
+                                selectedMealPlanItem = mealPlanStore.findMealPlanItem(
+                                    recipeId: recipe.id,
+                                    dayOfWeek: dayOfWeek,
+                                    mealType: mealType
+                                )
+                                showingMealActions = true
+                            }) {
+                                Image(systemName: "ellipsis")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 20, height: 20)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.trailing, 8)
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(mealColor.opacity(0.2), lineWidth: 1)
+                        )
                     }
                 }
-                
-                Spacer()
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemGray6))
         )
         .sheet(isPresented: $showingMealSelection) {
             MealSelectionBottomSheet(
@@ -445,37 +454,27 @@ struct MealSlotView: View {
                 .environmentObject(RecipeStore())
             }
         }
+        .sheet(isPresented: $showingRecipeDetail) {
+            if let recipe = selectedRecipe {
+                NavigationView {
+                    RecipeDetailView(recipe: recipe)
+                        .environmentObject(RecipeStore())
+                        .environmentObject(FavoritesStore())
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    showingRecipeDetail = false
+                                }
+                            }
+                        }
+                }
+            }
+        }
     }
 }
 
-struct EmptyWeekView: View {
-    @EnvironmentObject var mealPlanStore: MealPlanStore
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            
-            Text("No Meal Plan for This Week")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Generate an AI-powered meal plan to get started!")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            Button("Generate Meal Plan") {
-                mealPlanStore.showingGenerationView = true
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-}
+
 
 // MARK: - Meal Plan List View
 
@@ -601,16 +600,11 @@ struct EmptyMealPlanListView: View {
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            Text("Create your first AI-powered meal plan to get started!")
+            Text("Start planning your meals by adding recipes to the weekly view.")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            
-            Button("Generate Meal Plan") {
-                mealPlanStore.showingGenerationView = true
-            }
-            .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
