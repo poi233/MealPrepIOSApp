@@ -41,6 +41,7 @@ class RecipeStore: ObservableObject {
     private let errorHandler = ErrorHandler.shared
     private var cancellables = Set<AnyCancellable>()
     private let pageSize = 20
+    private let mealSelectionPageSize = 5 // Smaller page size for meal selection
     
     init() {
         setupSearchDebouncing()
@@ -205,6 +206,74 @@ class RecipeStore: ObservableObject {
     
     func refreshRecipes() async {
         await loadRecipes(refresh: true)
+    }
+    
+    // MARK: - Meal Selection Specific Loading
+    
+    func loadRecipesForMealSelection(refresh: Bool = false) async {
+        if refresh {
+            currentPage = 1
+            recipes = []
+        }
+        
+        // Don't reload if we already have data and it's not a refresh
+        if !refresh && !recipes.isEmpty {
+            print("📱 Using cached recipes for meal selection, skipping API call")
+            return
+        }
+        
+        isLoading = !refresh && recipes.isEmpty
+        isLoadingMore = !recipes.isEmpty
+        
+        // If offline, load from cache
+        if isOffline {
+            await loadFromCache()
+            return
+        }
+        
+        do {
+            let response = try await recipeService.getRecipes(
+                page: currentPage,
+                pageSize: mealSelectionPageSize, // Use smaller page size for meal selection
+                filters: buildCurrentFilters()
+            )
+            
+            if refresh || currentPage == 1 {
+                recipes = response.results
+            } else {
+                // Append only new recipes to avoid duplicates
+                let newRecipes = response.results.filter { newRecipe in
+                    !recipes.contains { existingRecipe in
+                        existingRecipe.id == newRecipe.id
+                    }
+                }
+                recipes.append(contentsOf: newRecipes)
+            }
+            
+            totalPages = response.totalPages
+            totalCount = response.count
+            hasMorePages = response.next != nil
+            
+            // Cache the recipes
+            try await cacheManager.save(response.results)
+            
+            print("📱 Loaded \(response.results.count) recipes for meal selection (page \(currentPage))")
+            
+        } catch {
+            errorHandler.handle(error, context: "Loading recipes for meal selection")
+            // Fallback to cache on error
+            await loadFromCache()
+        }
+        
+        isLoading = false
+        isLoadingMore = false
+    }
+    
+    func loadMoreRecipesForMealSelection() async {
+        guard hasMorePages && !isLoadingMore else { return }
+        
+        currentPage += 1
+        await loadRecipesForMealSelection()
     }
     
     // MARK: - Search

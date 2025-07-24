@@ -19,6 +19,24 @@ class MealPlanTemplateService {
         print("   Template name: '\(request.name)'")
         print("   Total meals: \(request.meals.count)")
         
+        // Remove duplicate meals for same day/meal_type combination
+        // Keep only the first occurrence to avoid database constraint violation
+        var uniqueMeals: [CreateMealPlanTemplateMeal] = []
+        var seenCombinations: Set<String> = []
+        
+        for meal in request.meals {
+            let key = "\(meal.dayOfWeek)-\(meal.mealType)"
+            if !seenCombinations.contains(key) {
+                uniqueMeals.append(meal)
+                seenCombinations.insert(key)
+                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+            } else {
+                print("⚠️ [MealPlanTemplateService] Skipped duplicate meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+            }
+        }
+        
+        print("📊 [MealPlanTemplateService] Filtered meals: \(request.meals.count) → \(uniqueMeals.count)")
+        
         // Convert template request to meal plan creation request matching backend API spec
         // week_start_date is required by backend - use current week's Monday
         let weekStartDate = getMondayOfCurrentWeek()
@@ -26,7 +44,7 @@ class MealPlanTemplateService {
             name: request.name,
             description: request.description ?? "Saved as template",
             weekStartDate: weekStartDate,
-            items: request.meals.map { templateMeal in
+            items: uniqueMeals.map { templateMeal in
                 BackendCreateMealPlanItemRequest(
                     recipeId: templateMeal.recipeId,
                     dayOfWeek: templateMeal.dayOfWeek,
@@ -144,17 +162,40 @@ class MealPlanTemplateService {
         print("   Name: '\(mealPlan.name)'")
         print("   Items: \(mealPlan.items?.count ?? 0)")
         
+        // Debug: Print original meal plan items
+        if let items = mealPlan.items {
+            print("🔍 [MealPlanTemplateService] Original MealPlan items:")
+            for item in items {
+                print("   Item ID: \(item.id ?? 0), Day: \(item.dayOfWeek), MealType: '\(item.mealType)', Recipe: \(item.recipe?.name ?? "Unknown")")
+            }
+        }
+        
         let templateName = mealPlan.name // Use original name (no prefix removal)
         
-        let templateMeals = (mealPlan.items ?? []).map { item in
-            MealPlanTemplateMeal(
-                id: String(item.id ?? 0),
+        let templateMeals = (mealPlan.items ?? []).enumerated().map { (index, item) in
+            // Generate unique ID using index and item properties
+            let uniqueId = "\(item.recipe?.id ?? "unknown")_\(item.dayOfWeek)_\(item.mealType)_\(index)"
+            
+            let templateMeal = MealPlanTemplateMeal(
+                id: uniqueId,
                 recipeId: item.recipe?.id ?? "",
                 recipe: item.recipe,
                 dayOfWeek: item.dayOfWeek,
                 mealType: item.mealType,
                 servingSize: 1.0 // Default serving size
             )
+            
+            // Debug: Print conversion
+            print("🔄 [MealPlanTemplateService] Converting item: Day \(item.dayOfWeek), '\(item.mealType)' -> '\(templateMeal.mealType)' (ID: \(uniqueId))")
+            
+            return templateMeal
+        }
+        
+        // Debug: Print final template meals
+        print("📊 [MealPlanTemplateService] Final template meals:")
+        let mealTypeDistribution = Dictionary(grouping: templateMeals) { $0.mealType }
+        for (mealType, meals) in mealTypeDistribution {
+            print("   \(mealType): \(meals.count) meals")
         }
         
         return MealPlanTemplateDetail(
@@ -196,7 +237,60 @@ class MealPlanTemplateService {
     
     /// Delete a template
     func deleteTemplate(id: String) async throws {
+        print("🗑️ [MealPlanTemplateService] Deleting template ID: \(id)")
         try await networkManager.delete("/meal-plans/\(id)/", requiresAuth: true)
+        print("✅ [MealPlanTemplateService] Template deleted successfully")
+    }
+    
+    /// Update existing meal plan with template meals (override items)
+    func updateExistingMealPlan(mealPlanId: String, name: String?, description: String?, templateMeals: [CreateMealPlanTemplateMeal]) async throws -> MealPlan {
+        print("🔄 [MealPlanTemplateService] Updating existing meal plan ID: \(mealPlanId)")
+        print("   New name: \(name ?? "unchanged")")
+        print("   New description: \(description ?? "unchanged")")
+        print("   Template meals to apply: \(templateMeals.count)")
+        
+        // Remove duplicate meals for same day/meal_type combination
+        var uniqueMeals: [CreateMealPlanTemplateMeal] = []
+        var seenCombinations: Set<String> = []
+        
+        for meal in templateMeals {
+            let key = "\(meal.dayOfWeek)-\(meal.mealType)"
+            if !seenCombinations.contains(key) {
+                uniqueMeals.append(meal)
+                seenCombinations.insert(key)
+                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+            } else {
+                print("⚠️ [MealPlanTemplateService] Skipped duplicate meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+            }
+        }
+        
+        print("📊 [MealPlanTemplateService] Filtered meals: \(templateMeals.count) → \(uniqueMeals.count)")
+        
+        // Create update request with name, description, and new items (this will override existing items)
+        let updateRequest = UpdateExistingMealPlanRequest(
+            name: name,
+            description: description,
+            items: uniqueMeals.map { templateMeal in
+                BackendCreateMealPlanItemRequest(
+                    recipeId: templateMeal.recipeId,
+                    dayOfWeek: templateMeal.dayOfWeek,
+                    mealType: templateMeal.mealType,
+                    servingSize: templateMeal.servingSize
+                )
+            }
+        )
+        
+        // Update the meal plan using PATCH endpoint
+        let updatedMealPlan = try await networkManager.patch(
+            "/meal-plans/\(mealPlanId)/",
+            body: updateRequest,
+            responseType: MealPlan.self,
+            requiresAuth: true
+        )
+        
+        print("✅ [MealPlanTemplateService] Meal plan updated successfully")
+        print("   Updated name: \(updatedMealPlan.name)")
+        return updatedMealPlan
     }
     
     /// Apply a template to create a meal plan (duplicate an existing meal plan for new week)
@@ -259,6 +353,13 @@ class MealPlanTemplateService {
 }
 
 // MARK: - Backend-Specific Request Models (for correct API format)
+
+/// Backend meal plan update request for overriding items
+struct UpdateExistingMealPlanRequest: Codable {
+    let name: String?
+    let description: String?
+    let items: [BackendCreateMealPlanItemRequest]
+}
 
 /// Backend meal plan creation request matching API specification
 struct BackendCreateMealPlanRequest: Codable {

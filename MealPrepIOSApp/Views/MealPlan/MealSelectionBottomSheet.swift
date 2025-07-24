@@ -198,16 +198,42 @@ extension MealSelectionBottomSheet {
                                 selectRecipe(recipe)
                             }
                         }
+                        
+                        // Load more button/indicator
+                        if recipeStore.hasMorePages {
+                            if recipeStore.isLoadingMore {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Loading more recipes...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding()
+                            } else {
+                                Button("Load More Recipes") {
+                                    Task {
+                                        await recipeStore.loadMoreRecipesForMealSelection()
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .padding()
+                            }
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 16)
                 }
+                .refreshable {
+                    await recipeStore.loadRecipesForMealSelection(refresh: true)
+                }
             }
         }
         .onAppear {
+            // Only load if we don't have any recipes cached
             if recipeStore.recipes.isEmpty {
                 Task {
-                    await recipeStore.loadRecipes()
+                    await recipeStore.loadRecipesForMealSelection()
                 }
             }
         }
@@ -570,7 +596,8 @@ enum MealSelectionTab: CaseIterable {
 extension MealSelectionBottomSheet {
     private func loadInitialData() {
         Task {
-            await recipeStore.loadRecipes()
+            // Use meal selection specific loading for better caching
+            await recipeStore.loadRecipesForMealSelection()
             await favoritesStore.loadFavorites()
         }
     }
@@ -578,7 +605,8 @@ extension MealSelectionBottomSheet {
     private func performSearch() {
         recipeStore.searchQuery = searchText
         Task {
-            await recipeStore.searchRecipes()
+            // Use meal selection specific search for better performance
+            await recipeStore.loadRecipesForMealSelection(refresh: true)
         }
     }
     

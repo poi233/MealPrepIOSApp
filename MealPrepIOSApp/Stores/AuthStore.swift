@@ -13,6 +13,7 @@ class AuthStore: ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentUser: User?
     @Published var isLoading = false
+    @Published var isInitializing = true // Track initial session loading
     @Published var errorMessage: String?
     @Published var sessionError: String?
     @Published var sessionWillExpireSoon = false
@@ -56,6 +57,7 @@ class AuthStore: ObservableObject {
         
         // Clear current user
         currentUser = nil
+        isInitializing = false // Ensure we're not stuck in loading state
         
         // Clear any cached user data
         Task {
@@ -67,23 +69,30 @@ class AuthStore: ObservableObject {
             }
         }
         
-        // Set session error message
-        sessionError = "Your session has expired. Please log in again."
+        // Don't set session error - just redirect silently
+        // sessionError = "Your session has expired. Please log in again."
         
         // Stop session monitoring
         stopSessionMonitoring()
         
-        print("🚪 [AuthStore] User logged out due to authentication failure")
+        print("🚪 [AuthStore] User logged out due to authentication failure - redirecting to login")
     }
     
     func checkAuthenticationStatus() {
         Task {
+            isInitializing = true
+            
             // First try to load from cache
             await loadCurrentUserFromCache()
             
             // Then update from server if authenticated
             if networkManager.isAuthenticated {
                 await loadCurrentUser()
+            }
+            
+            // Mark initialization as complete
+            await MainActor.run {
+                isInitializing = false
             }
         }
     }

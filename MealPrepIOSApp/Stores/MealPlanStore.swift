@@ -487,6 +487,24 @@ class MealPlanStore: ObservableObject {
                 return
             }
             
+            // Check for duplicate recipe in the same day and meal type
+            let existingRecipes: [Recipe]
+            switch mealType {
+            case .breakfast:
+                existingRecipes = weeklyGrid.dailyMeals[dayOfWeek].breakfast
+            case .lunch:
+                existingRecipes = weeklyGrid.dailyMeals[dayOfWeek].lunch
+            case .dinner:
+                existingRecipes = weeklyGrid.dailyMeals[dayOfWeek].dinner
+            }
+            
+            // Check if recipe already exists in this meal slot
+            if existingRecipes.contains(where: { $0.id == recipe.id }) {
+                print("⚠️ Recipe \(recipe.name) already exists in \(mealType.rawValue) for day \(dayOfWeek), skipping duplicate")
+                errorMessage = "This recipe is already added to \(mealType.rawValue) for this day"
+                return
+            }
+            
             // Add recipe to appropriate meal type
             switch mealType {
             case .breakfast:

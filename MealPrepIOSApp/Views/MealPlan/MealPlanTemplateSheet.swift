@@ -25,6 +25,15 @@ struct MealPlanTemplateSheet: View {
     @State private var loadError: String?
     @State private var selectedWeekForSave: Date
     @State private var showingWeekPicker = false
+    @State private var saveMode: SaveMode = .newTemplate
+    @State private var selectedExistingMealPlan: MealPlan?
+    @State private var availableMealPlans: [MealPlan] = []
+    @State private var isLoadingMealPlans = false
+    
+    enum SaveMode: String, CaseIterable {
+        case newTemplate = "Save as New Template"
+        case updateExisting = "Update Existing Meal Plan"
+    }
     
     init() {
         let calendar = Calendar.current
@@ -33,7 +42,7 @@ struct MealPlanTemplateSheet: View {
     }
     
     enum TemplateTab: String, CaseIterable {
-        case load = "Load Template"
+        case load = "My Templates"
         case save = "Save Template"
     }
     
@@ -131,9 +140,11 @@ extension MealPlanTemplateSheet {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(availableTemplates, id: \.id) { template in
-                            TemplateCard(template: template) {
-                                applyTemplate(template)
-                            }
+                            TemplateCard(template: template, onApply: {
+                                Task { await applyTemplate(template) }
+                            }, onDelete: {
+                                Task { await deleteTemplate(template) }
+                            })
                         }
                     }
                     .padding()
@@ -168,9 +179,42 @@ extension MealPlanTemplateSheet {
                 // Selected week preview
                 selectedWeekPreviewCard
                 
+                // Save mode selection
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Save Mode")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Picker("Save Mode", selection: $saveMode) {
+                        ForEach(SaveMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .onChange(of: saveMode) { _, newMode in
+                        // Clear fields when switching to new template mode
+                        if newMode == .newTemplate {
+                            templateName = ""
+                            templateDescription = ""
+                            selectedExistingMealPlan = nil
+                        }
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                )
+                
+                // Existing meal plan selection (only show when update mode is selected)
+                if saveMode == .updateExisting {
+                    existingMealPlanSelectionCard
+                }
+                
                 // Template details form
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Template Details")
+                    Text(saveMode == .newTemplate ? "Template Details" : "Update Details")
                         .font(.headline)
                         .fontWeight(.semibold)
                     
@@ -199,16 +243,20 @@ extension MealPlanTemplateSheet {
                     
                     // Save button
                     Button(action: {
-                        saveCurrentWeekAsTemplate()
+                        if saveMode == .newTemplate {
+                            Task { await saveCurrentWeekAsTemplate() }
+                        } else {
+                            Task { await updateExistingMealPlan() }
+                        }
                     }) {
                         HStack {
                             if isSaving {
                                 ProgressView()
                                     .scaleEffect(0.8)
                             } else {
-                                Image(systemName: "folder.badge.plus")
+                                Image(systemName: saveMode == .newTemplate ? "folder.badge.plus" : "arrow.clockwise")
                             }
-                            Text(isSaving ? "Saving..." : "Save as Template")
+                            Text(isSaving ? "Saving..." : (saveMode == .newTemplate ? "Save as Template" : "Update Meal Plan"))
                         }
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .foregroundColor(.white)
@@ -221,7 +269,7 @@ extension MealPlanTemplateSheet {
                         )
                         .cornerRadius(12)
                     }
-                    .disabled(templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !hasSelectedWeekMeals || isSaving)
+                    .disabled(isButtonDisabled || isSaving)
                     
                     if let error = saveError {
                         Text("Error: \(error)")
@@ -289,6 +337,110 @@ extension MealPlanTemplateSheet {
         }
     }
     
+    private var existingMealPlanSelectionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Select Meal Plan to Update")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            if isLoadingMealPlans {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading meal plans...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+            } else if availableMealPlans.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "folder")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    Text("No meal plans found")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Button("Retry") {
+                        Task { await loadAvailableMealPlans() }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(availableMealPlans, id: \.id) { mealPlan in
+                            Button(action: {
+                                selectedExistingMealPlan = mealPlan
+                                // Auto-fill name and description when meal plan is selected
+                                templateName = mealPlan.name
+                                templateDescription = mealPlan.description ?? ""
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(mealPlan.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text("Week of \(mealPlan.weekStartDate, style: .date)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        
+                                        if let itemsCount = mealPlan.itemsCount {
+                                            Text("\(itemsCount) meals")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if selectedExistingMealPlan?.id == mealPlan.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.accentColor)
+                                    } else {
+                                        Image(systemName: "circle")
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(selectedExistingMealPlan?.id == mealPlan.id ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(selectedExistingMealPlan?.id == mealPlan.id ? Color.accentColor : Color.clear, lineWidth: 1)
+                                        )
+                                )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+                .frame(maxHeight: 200)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        )
+        .onAppear {
+            if availableMealPlans.isEmpty {
+                Task { await loadAvailableMealPlans() }
+            }
+        }
+        .onChange(of: selectedExistingMealPlan) { _, newMealPlan in
+            if let mealPlan = newMealPlan {
+                templateName = mealPlan.name
+                templateDescription = mealPlan.description ?? ""
+            }
+        }
+    }
+    
     private var selectedWeekPreviewCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Week Preview")
@@ -346,6 +498,14 @@ extension MealPlanTemplateSheet {
         }
     }
     
+    private var isButtonDisabled: Bool {
+        if saveMode == .newTemplate {
+            return templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !hasSelectedWeekMeals
+        } else {
+            return selectedExistingMealPlan == nil || !hasSelectedWeekMeals
+        }
+    }
+    
     private func getSelectedWeekMeals() -> [DailyMealSlots] {
         // If selected week is current week, use current week's data
         if Calendar.current.isDate(selectedWeekForSave, equalTo: mealPlanStore.selectedWeekStartDate, toGranularity: .weekOfYear) {
@@ -389,9 +549,11 @@ extension MealPlanTemplateSheet {
 struct TemplateCard: View {
     let template: MealPlanTemplate
     let onApply: () -> Void
+    let onDelete: () -> Void
     @State private var isExpanded = false
     @State private var templateDetail: MealPlanTemplateDetail?
     @State private var isLoadingDetail = false
+    @State private var showingDeleteConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -420,11 +582,23 @@ struct TemplateCard: View {
                 Spacer()
                 
                 VStack(spacing: 8) {
-                    Button("Apply") {
-                        onApply()
+                    HStack(spacing: 8) {
+                        Button("Apply") {
+                            onApply()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        
+                        Button(action: {
+                            showingDeleteConfirmation = true
+                        }) {
+                            Image(systemName: "trash")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundColor(.red)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
                     
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.3)) {
@@ -485,9 +659,13 @@ struct TemplateCard: View {
                         let mealsByDay = Dictionary(grouping: detail.meals) { $0.dayOfWeek }
                         let sortedDays = mealsByDay.keys.sorted()
                         
+
+                        
                         ForEach(sortedDays, id: \.self) { dayIndex in
                             if let dayMeals = mealsByDay[dayIndex], !dayMeals.isEmpty {
-                                let dayName = Calendar.current.weekdaySymbols[dayIndex]
+                                // Convert dayIndex (0=Monday, 1=Tuesday, ..., 6=Sunday) to weekdaySymbols index (0=Sunday, 1=Monday, ..., 6=Saturday)
+                                let weekdaySymbolIndex = (dayIndex + 1) % 7 // 0->1, 1->2, ..., 5->6, 6->0
+                                let dayName = Calendar.current.weekdaySymbols[weekdaySymbolIndex]
                                 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(dayName)
@@ -501,6 +679,9 @@ struct TemplateCard: View {
                                                 .font(.caption2)
                                                 .foregroundColor(.secondary)
                                                 .frame(width: 60, alignment: .leading)
+                                                .onAppear {
+                                                    print("🎨 [UI] Displaying meal: Day \(meal.dayOfWeek), Type: '\(meal.mealType)', Recipe: '\(meal.recipe?.name ?? "Unknown")'")
+                                                }
                                             
                                             Text(meal.recipe?.name ?? "Unknown Recipe")
                                                 .font(.caption2)
@@ -522,6 +703,14 @@ struct TemplateCard: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
         )
+        .alert("Delete Template", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                onDelete()
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(template.name)'? This action cannot be undone.")
+        }
     }
     
     private func loadTemplateDetail() {
@@ -529,6 +718,20 @@ struct TemplateCard: View {
         Task {
             do {
                 let detail = try await MealPlanTemplateService().getTemplate(id: template.id)
+                
+                // Debug: Print template detail meals
+                print("🔍 [TemplatePreview] Template '\(detail.name)' has \(detail.meals.count) meals:")
+                for meal in detail.meals {
+                    print("   Day \(meal.dayOfWeek), mealType: '\(meal.mealType)', recipe: \(meal.recipe?.name ?? "Unknown")")
+                }
+                
+                // Additional debug: Check meal type distribution
+                let mealTypeCount = Dictionary(grouping: detail.meals) { $0.mealType }
+                print("🍽️ [TemplatePreview] Meal type distribution:")
+                for (mealType, meals) in mealTypeCount {
+                    print("   \(mealType): \(meals.count) meals")
+                }
+                
                 await MainActor.run {
                     templateDetail = detail
                     isLoadingDetail = false
@@ -677,6 +880,129 @@ extension MealPlanTemplateSheet {
     }
     
     @MainActor
+    private func deleteTemplate(_ template: MealPlanTemplate) async {
+        print("🗑️ [DeleteTemplate] Starting to delete template: \(template.name)")
+        print("📍 [DeleteTemplate] Template ID: \(template.id)")
+        
+        do {
+            try await MealPlanTemplateService().deleteTemplate(id: template.id)
+            
+            // Remove from local list
+            availableTemplates.removeAll { $0.id == template.id }
+            
+            print("✅ [DeleteTemplate] Template deleted successfully")
+            
+        } catch {
+            print("❌ [DeleteTemplate] Failed to delete template")
+            print("🚨 [DeleteTemplate] Error details: \(error)")
+            
+            loadError = "Failed to delete template: \(error.localizedDescription)"
+        }
+        
+        print("🔚 [DeleteTemplate] Delete operation completed")
+    }
+    
+    @MainActor
+    private func loadAvailableMealPlans() async {
+        print("🔄 [LoadMealPlans] Loading available meal plans for update...")
+        isLoadingMealPlans = true
+        
+        do {
+            // Get meal plans directly from the meal plan service instead of templates
+            let mealPlanService = MealPlanService()
+            let response = try await mealPlanService.getMealPlans(page: 1, pageSize: 50)
+            availableMealPlans = response.results
+            
+            print("✅ [LoadMealPlans] Loaded \(availableMealPlans.count) meal plans")
+            
+        } catch {
+            print("❌ [LoadMealPlans] Failed to load meal plans: \(error)")
+            availableMealPlans = []
+        }
+        
+        isLoadingMealPlans = false
+    }
+    
+    @MainActor
+    private func updateExistingMealPlan() async {
+        guard let selectedMealPlan = selectedExistingMealPlan else {
+            print("⚠️ [UpdateMealPlan] No meal plan selected, aborting update")
+            return
+        }
+        
+        print("🔄 [UpdateMealPlan] Starting to update existing meal plan...")
+        print("📝 [UpdateMealPlan] Target meal plan: '\(selectedMealPlan.name)' (ID: \(selectedMealPlan.id))")
+        print("📅 [UpdateMealPlan] Selected week: \(formatWeekRange(from: selectedWeekForSave))")
+        
+        isSaving = true
+        saveError = nil
+        
+        do {
+            // Extract meals from selected week
+            print("🔍 [UpdateMealPlan] Extracting meals from local storage for selected week...")
+            let selectedWeekMeals = getSelectedWeekMeals()
+            
+            var meals: [CreateMealPlanTemplateMeal] = []
+            
+            for (dayIndex, dayMeals) in selectedWeekMeals.enumerated() {
+                // Add breakfast meals
+                for recipe in dayMeals.breakfast {
+                    meals.append(CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "breakfast",
+                        servingSize: 1.0
+                    ))
+                }
+                
+                // Add lunch meals
+                for recipe in dayMeals.lunch {
+                    meals.append(CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "lunch",
+                        servingSize: 1.0
+                    ))
+                }
+                
+                // Add dinner meals
+                for recipe in dayMeals.dinner {
+                    meals.append(CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "dinner",
+                        servingSize: 1.0
+                    ))
+                }
+            }
+            
+            print("🍽️ [UpdateMealPlan] Total meals to update: \(meals.count)")
+            
+            // Update the existing meal plan with name and description
+            let updatedMealPlan = try await MealPlanTemplateService().updateExistingMealPlan(
+                mealPlanId: selectedMealPlan.id,
+                name: templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : templateName.trimmingCharacters(in: .whitespacesAndNewlines),
+                description: templateDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : templateDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+                templateMeals: meals
+            )
+            
+            print("✅ [UpdateMealPlan] Meal plan updated successfully")
+            print("📊 [UpdateMealPlan] Updated meal plan: '\(updatedMealPlan.name)'")
+            
+            showingSaveConfirmation = true
+            
+        } catch {
+            print("❌ [UpdateMealPlan] Failed to update meal plan")
+            print("🚨 [UpdateMealPlan] Error details: \(error)")
+            
+            saveError = "Failed to update meal plan: \(error.localizedDescription)"
+        }
+        
+        isSaving = false
+        print("🔚 [UpdateMealPlan] Update operation completed")
+    }
+    
+    @MainActor
     private func saveCurrentWeekAsTemplate() async {
         guard !templateName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { 
             print("⚠️ [SaveTemplate] Template name is empty, aborting save")
@@ -706,7 +1032,9 @@ extension MealPlanTemplateSheet {
             print("📊 [SaveTemplate] Processing meals by day:")
             
             for (dayIndex, dayMeals) in selectedWeekMeals.enumerated() {
-                let dayName = Calendar.current.weekdaySymbols[dayIndex]
+                // Convert dayIndex (0=Monday, 1=Tuesday, ..., 6=Sunday) to weekdaySymbols index (0=Sunday, 1=Monday, ..., 6=Saturday)
+                let weekdaySymbolIndex = (dayIndex + 1) % 7 // 0->1, 1->2, ..., 5->6, 6->0
+                let dayName = Calendar.current.weekdaySymbols[weekdaySymbolIndex]
                 let dayTotal = dayMeals.breakfast.count + dayMeals.lunch.count + dayMeals.dinner.count
                 totalMealCount += dayTotal
                 

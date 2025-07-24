@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - Meal Plan Model
-struct MealPlan: Codable, Identifiable {
+struct MealPlan: Codable, Identifiable, Equatable {
     let id: String
     let userId: String?
     let name: String
@@ -97,6 +97,11 @@ struct MealPlan: Codable, Identifiable {
         // Handle flexible date parsing for timestamps
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+    }
+    
+    // MARK: - Equatable Implementation
+    static func == (lhs: MealPlan, rhs: MealPlan) -> Bool {
+        return lhs.id == rhs.id
     }
 }
 

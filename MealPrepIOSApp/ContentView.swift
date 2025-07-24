@@ -12,7 +12,19 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            if authStore.isAuthenticated {
+            if authStore.isInitializing {
+                // Show loading screen while checking authentication status
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    
+                    Text("Loading...")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground))
+            } else if authStore.isAuthenticated {
                 MainTabView()
             } else {
                 LoginView()
@@ -20,17 +32,9 @@ struct ContentView: View {
         }
         .onReceive(authStore.$sessionError) { sessionError in
             if sessionError != nil {
-                // Session expired - this will automatically redirect to LoginView
-                // because isAuthenticated becomes false when sessionError is set
-            }
-        }
-        .alert("Session Expired", isPresented: .constant(authStore.sessionError != nil)) {
-            Button("OK") {
+                // Session expired - automatically clear the error and redirect to LoginView
+                // The redirect happens automatically because isAuthenticated becomes false
                 authStore.clearSessionError()
-            }
-        } message: {
-            if let error = authStore.sessionError {
-                Text(error)
             }
         }
     }

@@ -25,6 +25,7 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 - `AuthenticationService`: User authentication and profile management
 - `RecipeService`: Recipe CRUD operations
 - `MealPlanService`: Meal plan management
+- `MealPlanTemplateService`: Template creation and management with duplicate filtering
 - `FavoritesService`: User favorites handling
 - `NetworkManager`: Centralized HTTP client with JWT handling
 
@@ -156,6 +157,7 @@ MealPrepIOSApp/
 │   │   ├── AuthenticationService.swift
 │   │   ├── RecipeService.swift
 │   │   ├── MealPlanService.swift
+│   │   ├── MealPlanTemplateService.swift  # Template management with duplicate filtering
 │   │   └── FavoritesService.swift
 │   ├── Stores/              # ViewModels
 │   │   ├── AuthStore.swift
@@ -187,11 +189,13 @@ MealPrepIOSApp/
 ### Meal Planning (Primary Feature - Default Tab)
 - **User Experience Priority**: Meal planning is the first screen users see when opening the app
 - Weekly meal plan generation
+- **Template Management**: Save and apply meal plan templates with robust duplicate filtering and auto-fill functionality for seamless template selection
 - Manual recipe assignment with streamlined workflow:
   - Quick meal addition with default serving size (1.0)
   - Simplified one-tap meal selection process
   - Categorized recipe browsing (Search, Recent, Favorites, AI Picks)
   - Custom meal creation option
+  - **Duplicate Prevention**: Intelligent duplicate recipe detection prevents adding the same recipe to the same day and meal type combination, with user-friendly error messaging
 - **Advanced Serving Size Adjustment** (available after meal addition): 
   - Interactive serving size selection with predefined options (½, 1, 1½, 2, 2½, 3 servings)
   - Custom serving size input with decimal precision and validation
