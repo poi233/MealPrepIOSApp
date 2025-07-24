@@ -327,6 +327,7 @@ class MealPlanService {
             description: originalPlan.description,
             startDate: newWeekStartDate,
             endDate: Calendar.current.date(byAdding: .day, value: 6, to: newWeekStartDate) ?? newWeekStartDate,
+            items: nil, // No items initially, will be copied separately
             preferences: MealPlanPreferences(
                 targetCalories: nil,
                 dietaryRestrictions: nil,

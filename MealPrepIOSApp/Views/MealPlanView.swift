@@ -305,11 +305,10 @@ struct MealSlotView: View {
     let date: Date
     
     @EnvironmentObject var mealPlanStore: MealPlanStore
+    @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var showingMealSelection = false
-    @State private var showingMealActions = false
     @State private var showingRecipeDetail = false
     @State private var selectedRecipe: Recipe?
-    @State private var selectedMealPlanItem: MealPlanItem?
     
     private var mealIcon: String {
         switch mealType {
@@ -367,63 +366,93 @@ struct MealSlotView: View {
             } else {
                 VStack(spacing: 6) {
                     ForEach(recipes) { recipe in
-                        HStack(spacing: 0) {
-                            // Main recipe button - click to view details
-                            Button(action: {
-                                selectedRecipe = recipe
-                                showingRecipeDetail = true
-                            }) {
-                                HStack(spacing: 8) {
-                                    // Recipe icon
-                                    Circle()
-                                        .fill(mealColor.opacity(0.2))
-                                        .frame(width: 24, height: 24)
-                                        .overlay(
-                                            Image(systemName: "fork.knife")
-                                                .font(.caption)
-                                                .foregroundColor(mealColor)
-                                        )
-                                    
-                                    Text(recipe.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .lineLimit(1)
-                                        .foregroundColor(.primary)
-                                    
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            // Actions button
-                            Button(action: {
-                                selectedRecipe = recipe
-                                selectedMealPlanItem = mealPlanStore.findMealPlanItem(
-                                    recipeId: recipe.id,
-                                    dayOfWeek: dayOfWeek,
-                                    mealType: mealType
-                                )
-                                showingMealActions = true
-                            }) {
-                                Image(systemName: "ellipsis")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 20, height: 20)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.trailing, 8)
-                        }
-                        .background(
+                        ZStack {
+                            // Full-area clickable background
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(Color(.systemBackground))
                                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(mealColor.opacity(0.2), lineWidth: 1)
-                        )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(mealColor.opacity(0.2), lineWidth: 1)
+                                )
+                                .onTapGesture {
+                                    print("🔍 Recipe card tapped: \(recipe.name) (ID: \(recipe.id))")
+                                    
+                                    // Validate recipe before setting
+                                    guard !recipe.id.isEmpty && !recipe.name.isEmpty else {
+                                        print("⚠️ Invalid recipe data, cannot show details")
+                                        return
+                                    }
+                                    
+                                    // Set recipe to trigger sheet - using .sheet(item:) pattern
+                                    selectedRecipe = recipe
+                                    print("📱 Sheet triggered for recipe: \(recipe.name)")
+                                }
+                            
+                            // Recipe content
+                            HStack(spacing: 8) {
+                                // Recipe icon
+                                Circle()
+                                    .fill(mealColor.opacity(0.2))
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Image(systemName: "fork.knife")
+                                            .font(.caption)
+                                            .foregroundColor(mealColor)
+                                    )
+                                
+                                Text(recipe.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .lineLimit(1)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .allowsHitTesting(false) // Allow tap to pass through to background
+                            
+                            // Top overlay action buttons - highest z-index
+                            HStack {
+                                Spacer()
+                                
+                                HStack(spacing: 6) {
+                                    // Favorite button - shows current state
+                                    Button(action: {
+                                        toggleFavorite(recipe)
+                                    }) {
+                                        FavoriteButtonView(recipe: recipe)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(.white)
+                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                    )
+                                    .zIndex(10) // Ensure it's on top
+                                    
+                                    // Delete button
+                                    Button(action: {
+                                        removeRecipeFromMealPlan(recipe)
+                                    }) {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.red)
+                                            .frame(width: 24, height: 24)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(.white)
+                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                    )
+                                    .zIndex(10) // Ensure it's on top
+                                }
+                                .padding(.trailing, 8)
+                                .padding(.top, 4)
+                            }
+                        }
                     }
                 }
             }
@@ -443,33 +472,80 @@ struct MealSlotView: View {
             .environmentObject(RecipeStore())
             .environmentObject(FavoritesStore())
         }
-        .sheet(isPresented: $showingMealActions) {
-            if let recipe = selectedRecipe,
-               let mealPlanItem = selectedMealPlanItem {
-                MealActionSheet(
-                    mealPlanItem: mealPlanItem,
-                    recipe: recipe
-                )
-                .environmentObject(mealPlanStore)
-                .environmentObject(RecipeStore())
-            }
-        }
-        .sheet(isPresented: $showingRecipeDetail) {
-            if let recipe = selectedRecipe {
-                NavigationView {
-                    RecipeDetailView(recipe: recipe)
-                        .environmentObject(RecipeStore())
-                        .environmentObject(FavoritesStore())
-                        .navigationBarTitleDisplayMode(.large)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button("Done") {
-                                    showingRecipeDetail = false
-                                }
+        .sheet(item: $selectedRecipe) { recipe in
+            NavigationView {
+                RecipeDetailView(recipe: recipe)
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") {
+                                print("📱 Done button tapped, dismissing sheet")
+                                selectedRecipe = nil
                             }
                         }
-                }
+                    }
             }
+            .environmentObject(RecipeStore())
+            .environmentObject(FavoritesStore())
+            .onAppear {
+                print("📱 Recipe detail sheet appeared for: \(recipe.name)")
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func toggleFavorite(_ recipe: Recipe) {
+        Task {
+            do {
+                print("🔄 Toggling favorite for recipe: \(recipe.name)")
+                // Use the environment object instead of creating a new instance
+                let newStatus = try await favoritesStore.toggleFavorite(recipeId: recipe.id, rating: nil, notes: nil)
+                print("✅ Toggled favorite for recipe: \(recipe.name), new status: \(newStatus)")
+                
+                // Force update the favorite button view by triggering a re-render
+                await MainActor.run {
+                    // This will cause FavoriteButtonView to refresh
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("FavoriteStatusChanged"), 
+                        object: recipe.id,
+                        userInfo: ["newStatus": newStatus]
+                    )
+                }
+            } catch {
+                print("❌ Failed to toggle favorite for recipe: \(recipe.name), error: \(error)")
+            }
+        }
+    }
+    
+    private func removeRecipeFromMealPlan(_ recipe: Recipe) {
+        Task {
+            await MainActor.run {
+                // Remove recipe from the appropriate meal type
+                switch mealType {
+                case .breakfast:
+                    if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].breakfast.firstIndex(where: { $0.id == recipe.id }) {
+                        mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].breakfast.remove(at: index)
+                    }
+                case .lunch:
+                    if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].lunch.firstIndex(where: { $0.id == recipe.id }) {
+                        mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].lunch.remove(at: index)
+                    }
+                case .dinner:
+                    if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].dinner.firstIndex(where: { $0.id == recipe.id }) {
+                        mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].dinner.remove(at: index)
+                    }
+                case .snack:
+                    if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].snack.firstIndex(where: { $0.id == recipe.id }) {
+                        mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].snack.remove(at: index)
+                    }
+                }
+                
+                print("✅ Removed \(recipe.name) from \(mealType.rawValue) for day \(dayOfWeek)")
+            }
+            
+            // Save changes to local storage
+            mealPlanStore.saveLocalMealPlan()
         }
     }
 }
@@ -612,6 +688,71 @@ struct EmptyMealPlanListView: View {
 }
 
 // MARK: - Supporting Views
+
+// Favorite button component that shows current favorite status
+struct FavoriteButtonView: View {
+    let recipe: Recipe
+    @EnvironmentObject var favoritesStore: FavoritesStore
+    @State private var isFavorite = false
+    @State private var isLoading = false
+    
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 24, height: 24)
+            } else {
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(isFavorite ? .red : .gray)
+                    .frame(width: 24, height: 24)
+            }
+        }
+        .onAppear {
+            loadFavoriteStatus()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("FavoriteStatusChanged"))) { notification in
+            // Update when favorite status changes for this recipe
+            if let recipeId = notification.object as? String, recipeId == recipe.id {
+                print("📡 Received favorite status change notification for recipe: \(recipe.name)")
+                // Check if we have the new status in userInfo
+                if let userInfo = notification.userInfo,
+                   let newStatus = userInfo["newStatus"] as? Bool {
+                    // Use the provided status immediately
+                    DispatchQueue.main.async {
+                        isFavorite = newStatus
+                        print("❤️ Updated favorite status to: \(newStatus) for recipe: \(recipe.name)")
+                    }
+                } else {
+                    // Fallback to loading from server
+                    loadFavoriteStatus()
+                }
+            }
+        }
+    }
+    
+    private func loadFavoriteStatus() {
+        isLoading = true
+        Task {
+            do {
+                let status = try await favoritesStore.checkFavoriteStatus(recipeId: recipe.id)
+                await MainActor.run {
+                    isFavorite = status.isFavorite
+                    isLoading = false
+                    print("🔄 Loaded favorite status: \(status.isFavorite) for recipe: \(recipe.name)")
+                }
+            } catch {
+                // Handle error silently, default to not favorite
+                await MainActor.run {
+                    isFavorite = false
+                    isLoading = false
+                    print("⚠️ Failed to load favorite status for recipe: \(recipe.name), error: \(error)")
+                }
+            }
+        }
+    }
+}
 
 // LoadingView is now in SharedComponents.swift
 

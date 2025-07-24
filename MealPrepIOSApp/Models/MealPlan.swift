@@ -310,13 +310,31 @@ struct CreateMealPlanRequest: Codable {
     let description: String?
     let startDate: Date
     let endDate: Date
-    let preferences: MealPlanPreferences
+    let items: [CreateMealPlanItemRequest]?
+    let preferences: MealPlanPreferences?
     
     enum CodingKeys: String, CodingKey {
         case name
         case description
-        case startDate = "start_date"
+        case startDate = "week_start_date" // Changed to match backend
         case endDate = "end_date"
+        case items
         case preferences
     }
 }
+
+// MARK: - Create Meal Plan Item Request
+struct CreateMealPlanItemRequest: Codable {
+    let recipeId: String
+    let dayOfWeek: Int
+    let mealType: String
+    let servingSize: Double
+    
+    enum CodingKeys: String, CodingKey {
+        case recipeId = "recipe_id"
+        case dayOfWeek = "day_of_week"
+        case mealType = "meal_type"
+        case servingSize = "serving_size"
+    }
+}
+

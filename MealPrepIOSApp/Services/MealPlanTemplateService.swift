@@ -2,7 +2,7 @@
 //  MealPlanTemplateService.swift
 //  MealPrepIOSApp
 //
-//  Created by AI Assistant on 7/22/25.
+//  Updated by AI Assistant on 7/23/25.
 //
 
 import Foundation
@@ -11,84 +11,174 @@ import Foundation
 class MealPlanTemplateService {
     private let networkManager = NetworkManager.shared
     
-    // MARK: - Template CRUD Operations
+    // MARK: - Template Operations (Using existing meal plan endpoints)
     
-    /// Create a new meal plan template
+    /// Save current meal plan as template (creates a new meal plan with template naming)
     func createTemplate(_ request: CreateMealPlanTemplateRequest) async throws -> MealPlanTemplateResponse {
-        return try await networkManager.post(
-            "/meal-plan-templates/",
-            body: request,
-            responseType: MealPlanTemplateResponse.self,
-            requiresAuth: true
+        // Convert template request to meal plan creation request
+        let mealPlanRequest = CreateMealPlanRequest(
+            name: "Template: \(request.name)",
+            description: request.description ?? "Saved as template",
+            startDate: Date(), // Use current date as placeholder for templates
+            endDate: Calendar.current.date(byAdding: .day, value: 6, to: Date()) ?? Date(),
+            items: request.meals.map { templateMeal in
+                CreateMealPlanItemRequest(
+                    recipeId: templateMeal.recipeId,
+                    dayOfWeek: templateMeal.dayOfWeek,
+                    mealType: templateMeal.mealType,
+                    servingSize: templateMeal.servingSize
+                )
+            },
+            preferences: nil
         )
-    }
-    
-    /// Get user's meal plan templates
-    func getTemplates() async throws -> [MealPlanTemplate] {
-        let response = try await networkManager.get(
-            "/meal-plan-templates/",
-            responseType: PaginatedResponse<MealPlanTemplateResponse>.self,
+        
+        // Create meal plan using standard endpoint
+        let createdMealPlan = try await networkManager.post(
+            "/meal-plans/",
+            body: mealPlanRequest,
+            responseType: MealPlan.self,
             requiresAuth: true
         )
         
-        // Convert response to MealPlanTemplate array
-        return response.results.map { templateResponse in
-            MealPlanTemplate(
-                id: templateResponse.id,
-                name: templateResponse.name,
-                description: templateResponse.description,
+        // Convert back to template response format
+        return MealPlanTemplateResponse(
+            id: createdMealPlan.id,
+            name: request.name, // Use original name without "Template:" prefix
+            description: request.description,
+            meals: request.meals.map { templateMeal in
+                MealPlanTemplateMeal(
+                    id: nil,
+                    recipeId: templateMeal.recipeId,
+                    recipe: nil, // Will be populated when fetching templates
+                    dayOfWeek: templateMeal.dayOfWeek,
+                    mealType: templateMeal.mealType,
+                    servingSize: templateMeal.servingSize
+                )
+            },
+            createdAt: createdMealPlan.createdAt,
+            updatedAt: createdMealPlan.updatedAt
+        )
+    }
+    
+    /// Get user's meal plan templates (filters meal plans that start with "Template:")
+    func getTemplates() async throws -> [MealPlanTemplate] {
+        let response = try await networkManager.get(
+            "/meal-plans/",
+            responseType: PaginatedResponse<MealPlan>.self,
+            requiresAuth: true
+        )
+        
+        // Filter for templates (meal plans with "Template:" prefix)
+        let templateMealPlans = response.results.filter { mealPlan in
+            mealPlan.name.hasPrefix("Template:")
+        }
+        
+        // Convert to MealPlanTemplate array
+        return templateMealPlans.map { mealPlan in
+            let cleanName = String(mealPlan.name.dropFirst(10)) // Remove "Template: " prefix
+            return MealPlanTemplate(
+                id: mealPlan.id,
+                name: cleanName,
+                description: mealPlan.description,
                 category: .healthy, // Default category
-                previewMeals: extractPreviewMeals(from: templateResponse.meals)
+                previewMeals: extractPreviewMeals(from: mealPlan.items ?? [])
             )
         }
     }
     
     /// Get a specific template with full details
     func getTemplate(id: String) async throws -> MealPlanTemplateDetail {
-        let response = try await networkManager.get(
-            "/meal-plan-templates/\(id)/",
-            responseType: MealPlanTemplateResponse.self,
+        let mealPlan = try await networkManager.get(
+            "/meal-plans/\(id)/",
+            responseType: MealPlan.self,
             requiresAuth: true
         )
         
+        let cleanName = mealPlan.name.hasPrefix("Template:") ? 
+            String(mealPlan.name.dropFirst(10)) : mealPlan.name
+        
+        let templateMeals = (mealPlan.items ?? []).map { item in
+            MealPlanTemplateMeal(
+                id: String(item.id ?? 0),
+                recipeId: item.recipe?.id ?? "",
+                recipe: item.recipe,
+                dayOfWeek: item.dayOfWeek,
+                mealType: item.mealType,
+                servingSize: 1.0 // Default serving size
+            )
+        }
+        
         return MealPlanTemplateDetail(
-            id: response.id,
-            name: response.name,
-            description: response.description,
-            meals: response.meals
+            id: mealPlan.id,
+            name: cleanName,
+            description: mealPlan.description,
+            meals: templateMeals
         )
     }
     
-    private func extractPreviewMeals(from meals: [MealPlanTemplateMeal]) -> [String] {
-        return Array(Set(meals.compactMap { $0.recipe?.name })).prefix(3).map { String($0) }
+    private func extractPreviewMeals(from items: [MealPlanItem]) -> [String] {
+        return Array(Set(items.compactMap { $0.recipe?.name })).prefix(3).map { String($0) }
     }
-    
     
     /// Update an existing template
     func updateTemplate(id: String, updates: UpdateMealPlanTemplateRequest) async throws -> MealPlanTemplateResponse {
-        return try await networkManager.patch(
-            "/meal-plan-templates/\(id)/",
-            body: updates,
-            responseType: MealPlanTemplateResponse.self,
+        let updateRequest = UpdateMealPlanRequest(
+            name: updates.name.map { "Template: \($0)" }, // Add template prefix
+            description: updates.description,
+            dailyMeals: nil // Convert template meals to daily meals if needed
+        )
+        
+        let updatedMealPlan = try await networkManager.patch(
+            "/meal-plans/\(id)/",
+            body: updateRequest,
+            responseType: MealPlan.self,
             requiresAuth: true
+        )
+        
+        return MealPlanTemplateResponse(
+            id: updatedMealPlan.id,
+            name: updates.name ?? updatedMealPlan.name,
+            description: updatedMealPlan.description,
+            meals: [], // Will be populated if needed
+            createdAt: updatedMealPlan.createdAt,
+            updatedAt: updatedMealPlan.updatedAt
         )
     }
     
     /// Delete a template
     func deleteTemplate(id: String) async throws {
-        try await networkManager.delete("/meal-plan-templates/\(id)/", requiresAuth: true)
+        try await networkManager.delete("/meal-plans/\(id)/", requiresAuth: true)
     }
     
-    /// Apply a template to create a meal plan
+    /// Apply a template to create a meal plan (duplicate an existing meal plan for new week)
     func applyTemplate(templateId: String, weekStartDate: Date) async throws -> MealPlan {
-        let request = ApplyTemplateRequest(
-            templateId: templateId,
-            weekStartDate: weekStartDate
+        // First get the template meal plan
+        let templateMealPlan = try await networkManager.get(
+            "/meal-plans/\(templateId)/",
+            responseType: MealPlan.self,
+            requiresAuth: true
+        )
+        
+        // Create new meal plan from template
+        let newMealPlanRequest = CreateMealPlanRequest(
+            name: "Week of \(DateFormatter.shortDate.string(from: weekStartDate))",
+            description: "Created from template: \(templateMealPlan.name)",
+            startDate: weekStartDate,
+            endDate: Calendar.current.date(byAdding: .day, value: 6, to: weekStartDate) ?? weekStartDate,
+            items: (templateMealPlan.items ?? []).map { item in
+                CreateMealPlanItemRequest(
+                    recipeId: item.recipe?.id ?? "",
+                    dayOfWeek: item.dayOfWeek,
+                    mealType: item.mealType,
+                    servingSize: 1.0
+                )
+            },
+            preferences: nil
         )
         
         return try await networkManager.post(
-            "/meal-plan-templates/\(templateId)/apply/",
-            body: request,
+            "/meal-plans/",
+            body: newMealPlanRequest,
             responseType: MealPlan.self,
             requiresAuth: true
         )

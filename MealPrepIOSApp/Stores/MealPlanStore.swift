@@ -71,23 +71,28 @@ class MealPlanStore: ObservableObject {
     // MARK: - Local Storage Methods
     
     private func loadLocalMealPlan() {
-        if let storedGrid = LocalMealPlanStorage.shared.loadWeeklyMealPlan() {
-            // Check if stored grid is for current selected week
-            let calendar = Calendar.current
-            if calendar.isDate(storedGrid.weekStartDate, equalTo: selectedWeekStartDate, toGranularity: .weekOfYear) {
-                weeklyGrid = storedGrid
-                print("✅ Loaded meal plan from local storage for current week")
-                return
-            }
+        // Load meal plan for the currently selected week
+        if let storedGrid = LocalMealPlanStorage.shared.loadWeeklyMealPlan(for: selectedWeekStartDate) {
+            weeklyGrid = storedGrid
+            print("✅ Loaded meal plan from local storage for week \(formatSelectedWeekDate())")
+        } else {
+            // No stored plan for this week, create empty grid
+            weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
+            print("📱 Created new empty meal plan grid for week \(formatSelectedWeekDate())")
         }
-        
-        // No stored plan or wrong week, create empty grid
-        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
-        print("📱 Created new empty meal plan grid")
     }
     
     func saveLocalMealPlan() {
-        LocalMealPlanStorage.shared.saveWeeklyMealPlan(weeklyGrid)
+        // Save meal plan for the currently selected week
+        LocalMealPlanStorage.shared.saveWeeklyMealPlan(for: selectedWeekStartDate, weeklyGrid)
+    }
+    
+    // MARK: - Helper Methods for Local Storage
+    
+    private func formatSelectedWeekDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: selectedWeekStartDate)
     }
     
     // MARK: - Meal Plan Loading
@@ -479,6 +484,7 @@ class MealPlanStore: ObservableObject {
             description: "Automatically created meal plan for the current week",
             startDate: weekStart,
             endDate: weekEnd,
+            items: nil, // No items initially
             preferences: MealPlanPreferences(
                 targetCalories: nil,
                 dietaryRestrictions: nil,
@@ -752,6 +758,7 @@ class MealPlanStore: ObservableObject {
                 description: sourcePlan.description,
                 startDate: weekStartDate,
                 endDate: Calendar.current.date(byAdding: .day, value: 6, to: weekStartDate) ?? weekStartDate,
+                items: nil, // Items will be copied separately
                 preferences: MealPlanPreferences(
                     targetCalories: nil,
                     dietaryRestrictions: nil,

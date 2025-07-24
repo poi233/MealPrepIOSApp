@@ -5,7 +5,7 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 ## Features
 
 - **Native iOS Experience**: Built with SwiftUI for iOS 15+ compatibility
-- **AI-Powered Meal Planning**: Generate personalized weekly meal plans
+- **AI-Powered Meal Planning**: Generate personalized weekly meal plans (primary feature - default tab)
 - **Recipe Management**: Browse, create, and manage recipes
 - **Favorites System**: Save and organize favorite recipes
 - **Offline Support**: Core Data integration for offline functionality
@@ -167,10 +167,10 @@ MealPrepIOSApp/
 │   │   ├── RecipesView.swift
 │   │   ├── MealPlanView.swift
 │   │   ├── MealPlan/        # Meal planning components
-│   │   │   ├── ServingAdjustmentSheet.swift  # Serving size adjustment UI
+│   │   │   ├── ServingAdjustmentSheet.swift  # Serving size adjustment UI (post-addition)
 │   │   │   ├── BatchOperationsSheet.swift
 │   │   │   ├── MealActionSheet.swift
-│   │   │   └── MealSelectionBottomSheet.swift
+│   │   │   └── MealSelectionBottomSheet.swift  # Streamlined meal selection UI
 │   │   ├── FavoritesView.swift
 │   │   ├── FavoriteDetailView.swift
 │   │   └── EditFavoriteView.swift
@@ -183,6 +183,24 @@ MealPrepIOSApp/
 ```
 
 ## Key Features Implementation
+
+### Meal Planning (Primary Feature - Default Tab)
+- **User Experience Priority**: Meal planning is the first screen users see when opening the app
+- Weekly meal plan generation
+- Manual recipe assignment with streamlined workflow:
+  - Quick meal addition with default serving size (1.0)
+  - Simplified one-tap meal selection process
+  - Categorized recipe browsing (Search, Recent, Favorites, AI Picks)
+  - Custom meal creation option
+- **Advanced Serving Size Adjustment** (available after meal addition): 
+  - Interactive serving size selection with predefined options (½, 1, 1½, 2, 2½, 3 servings)
+  - Custom serving size input with decimal precision and validation
+  - Real-time nutrition calculation and preview for adjusted portions
+  - Visual feedback with animated selection states and gradient backgrounds
+  - Fine-tuning controls with stepper for precise adjustments
+  - Recipe information display with image, description, and cooking time
+- Meal plan analysis
+- Shopping list generation
 
 ### Authentication
 - JWT token management with automatic refresh
@@ -198,20 +216,6 @@ MealPrepIOSApp/
 - Create custom recipes
 - AI-generated recipe details
 - Recipe search and filtering
-
-### Meal Planning
-- Weekly meal plan generation
-- Manual recipe assignment
-- **Advanced Serving Size Adjustment**: 
-  - Interactive serving size selection with predefined options (½, 1, 1½, 2, 2½, 3 servings)
-  - Custom serving size input with decimal precision and validation
-  - Real-time nutrition calculation and preview for adjusted portions
-  - Visual feedback with animated selection states and gradient backgrounds
-  - Fine-tuning controls with stepper for precise adjustments
-  - Recipe information display with image, description, and cooking time
-  - Seamless integration with meal plan addition workflow
-- Meal plan analysis
-- Shopping list generation
 
 ### Favorites System
 - Save favorite recipes with personal ratings (1-5 stars) and notes

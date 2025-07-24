@@ -37,31 +37,37 @@ struct ContentView: View {
 }
 
 struct MainTabView: View {
+    @State private var selectedTab: Int = 0 // Default to MealPlan tab (now index 0)
+    
     var body: some View {
-        TabView {
-            RecipesView()
-                .tabItem {
-                    Image(systemName: "book.fill")
-                    Text("Recipes")
-                }
-            
+        TabView(selection: $selectedTab) {
             MealPlanView()
                 .tabItem {
                     Image(systemName: "calendar")
                     Text("Meal Plan")
                 }
+                .tag(0)
+            
+            RecipesView()
+                .tabItem {
+                    Image(systemName: "book.fill")
+                    Text("Recipes")
+                }
+                .tag(1)
             
             FavoritesView()
                 .tabItem {
                     Image(systemName: "heart.fill")
                     Text("Favorites")
                 }
+                .tag(2)
             
             ProfileView()
                 .tabItem {
                     Image(systemName: "person.fill")
                     Text("Profile")
                 }
+                .tag(3)
         }
         .accentColor(Color(red: 77/255, green: 182/255, blue: 172/255)) // Teal color
     }
