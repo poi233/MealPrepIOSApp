@@ -170,13 +170,34 @@ class NetworkManager: ObservableObject {
     func request<T: Codable>(_ endpoint: APIEndpoint, responseType: T.Type) async throws -> T {
         let request = try buildURLRequest(for: endpoint)
         
+        // Log detailed request information
+        print("🌐 [NetworkManager] Making HTTP request:")
+        print("   URL: \(request.url?.absoluteString ?? "Unknown")")
+        print("   Method: \(request.httpMethod ?? "Unknown")")
+        print("   Headers: \(request.allHTTPHeaderFields ?? [:])")
+        if let body = request.httpBody {
+            print("   Body: \(String(data: body, encoding: .utf8) ?? "Unable to decode body")")
+        } else {
+            print("   Body: None")
+        }
+        print("   Expected Response Type: \(T.self)")
+        print("   Requires Auth: \(endpoint.requiresAuth)")
+        
         do {
             let (data, response) = try await session.data(for: request)
             
             // Handle HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ [NetworkManager] Invalid response type")
                 throw NetworkError.unknownError(NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response type"]))
             }
+            
+            // Log response details
+            print("📥 [NetworkManager] HTTP response received:")
+            print("   Status Code: \(httpResponse.statusCode)")
+            print("   Headers: \(httpResponse.allHeaderFields)")
+            print("   Data Size: \(data.count) bytes")
+            print("   Raw Data: \(String(data: data, encoding: .utf8) ?? "Unable to decode data")")
             
             // Check for authentication errors
             if httpResponse.statusCode == 401 {
@@ -315,6 +336,29 @@ class NetworkManager: ObservableObject {
         // Add authentication header if required
         if endpoint.requiresAuth, let accessToken = accessToken {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            
+            // Debug JWT token information
+            print("🔐 [NetworkManager] JWT Token debugging:")
+            print("   Token exists: true")
+            print("   Token length: \(accessToken.count) characters")
+            print("   Token preview: \(String(accessToken.prefix(50)))...")
+            
+            // Try to decode JWT payload for user ID
+            if let userInfo = decodeJWTPayload(token: accessToken) {
+                print("   Decoded JWT payload:")
+                for (key, value) in userInfo {
+                    print("     \(key): \(value)")
+                }
+                if let userId = userInfo["user_id"] as? String {
+                    print("   🆔 User ID from JWT: \(userId)")
+                } else {
+                    print("   ⚠️ No user_id found in JWT payload")
+                }
+            } else {
+                print("   ❌ Failed to decode JWT payload")
+            }
+        } else if endpoint.requiresAuth {
+            print("❌ [NetworkManager] Auth required but no access token available")
         }
         
         // Add request body
@@ -384,12 +428,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-        return "https://meal-prep-app-backend.vercel.app/api"
-//        #if DEBUG
-//        return "http://127.0.0.1:8000/api"
-//        #else
 //        return "https://meal-prep-app-backend.vercel.app/api"
-//        #endif
+        #if DEBUG
+        return "http://127.0.0.1:8000/api"
+        #else
+        return "https://meal-prep-app-backend.vercel.app/api"
+        #endif
     }
 }
 
@@ -438,5 +482,38 @@ extension NetworkManager {
     func delete(_ path: String, requiresAuth: Bool = true) async throws {
         let endpoint = APIEndpoint(path: path, method: .DELETE, requiresAuth: requiresAuth)
         let _: EmptyResponse = try await request(endpoint, responseType: EmptyResponse.self)
+    }
+    
+    // MARK: - JWT Debugging Helper
+    
+    private func decodeJWTPayload(token: String) -> [String: Any]? {
+        let segments = token.components(separatedBy: ".")
+        guard segments.count == 3 else {
+            print("🚨 [JWT] Invalid JWT format - expected 3 segments, got \(segments.count)")
+            return nil
+        }
+        
+        let payloadSegment = segments[1]
+        
+        // Add padding if needed (JWT base64 might not have padding)
+        var base64 = payloadSegment
+        while base64.count % 4 != 0 {
+            base64 += "="
+        }
+        
+        // Decode base64
+        guard let data = Data(base64Encoded: base64) else {
+            print("🚨 [JWT] Failed to decode base64 payload")
+            return nil
+        }
+        
+        // Parse JSON
+        do {
+            let payload = try JSONSerialization.jsonObject(with: data, options: [])
+            return payload as? [String: Any]
+        } catch {
+            print("🚨 [JWT] Failed to parse JSON payload: \(error)")
+            return nil
+        }
     }
 }

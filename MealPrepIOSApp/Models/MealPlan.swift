@@ -143,14 +143,12 @@ struct DailyMeal: Codable, Identifiable {
     let breakfast: [MealItem]
     let lunch: [MealItem]
     let dinner: [MealItem]
-    let snack: [MealItem]
     
     enum CodingKeys: String, CodingKey {
         case day
         case breakfast
         case lunch
         case dinner
-        case snack
     }
 }
 
@@ -250,7 +248,6 @@ struct DailyMealSlots: Identifiable, Codable {
     var breakfast: [Recipe] = []
     var lunch: [Recipe] = []
     var dinner: [Recipe] = []
-    var snack: [Recipe] = []
     
     init(day: String, date: Date) {
         self.id = UUID()
@@ -260,7 +257,7 @@ struct DailyMealSlots: Identifiable, Codable {
     
     // Custom Codable implementation to handle UUID
     enum CodingKeys: String, CodingKey {
-        case id, day, date, breakfast, lunch, dinner, snack
+        case id, day, date, breakfast, lunch, dinner
     }
 }
 

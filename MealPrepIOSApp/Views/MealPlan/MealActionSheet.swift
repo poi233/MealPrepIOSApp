@@ -98,7 +98,7 @@ struct MealActionSheet: View {
             }
         }
         .sheet(isPresented: $showingRecipeDetail) {
-            RecipeDetailView(recipe: recipe)
+            RecipeDetailView(recipe: recipe, isFromMealPlan: true)
         }
         .sheet(isPresented: $showingSwapMeal) {
             MealSelectionBottomSheet(
@@ -264,8 +264,7 @@ extension MealActionSheet {
             switch MealType(rawValue: mealPlanItem.mealType) {
             case .breakfast: return .lunch
             case .lunch: return .dinner
-            case .dinner: return .snack
-            case .snack: return .breakfast
+            case .dinner: return .breakfast // Wrap back to breakfast since snack was removed
             case .none: return .breakfast
             }
         }()

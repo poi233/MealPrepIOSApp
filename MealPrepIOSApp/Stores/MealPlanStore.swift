@@ -85,6 +85,7 @@ class MealPlanStore: ObservableObject {
     func saveLocalMealPlan() {
         // Save meal plan for the currently selected week
         LocalMealPlanStorage.shared.saveWeeklyMealPlan(for: selectedWeekStartDate, weeklyGrid)
+        print("💾 Saved meal plan for week \(formatSelectedWeekDate())")
     }
     
     // MARK: - Helper Methods for Local Storage
@@ -93,6 +94,20 @@ class MealPlanStore: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, yyyy"
         return formatter.string(from: selectedWeekStartDate)
+    }
+    
+    // MARK: - Navigation Helper Methods
+    
+    var canNavigateToPreviousWeek: Bool {
+        let calendar = Calendar.current
+        let previousWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedWeekStartDate) ?? selectedWeekStartDate
+        return isWithinAllowedWeekRange(previousWeek)
+    }
+    
+    var canNavigateToNextWeek: Bool {
+        let calendar = Calendar.current
+        let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
+        return isWithinAllowedWeekRange(nextWeek)
     }
     
     // MARK: - Meal Plan Loading
@@ -314,10 +329,35 @@ class MealPlanStore: ObservableObject {
             newDate = calendar.date(from: components) ?? Date()
         }
         
+        // Check if navigation is within allowed range (current +/- 4 weeks)
+        if !isWithinAllowedWeekRange(newDate) {
+            print("⚠️ Navigation blocked: Week \(formatWeekDate(newDate)) is outside allowed range")
+            return
+        }
+        
         selectedWeekStartDate = newDate
         
         // Load meal plan for new week from local storage or create empty
         loadLocalMealPlan()
+    }
+    
+    // MARK: - Week Range Validation
+    
+    private func isWithinAllowedWeekRange(_ weekStartDate: Date) -> Bool {
+        let calendar = Calendar.current
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        
+        // Calculate the difference in weeks
+        let weekDifference = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: weekStartDate).weekOfYear ?? 0
+        
+        // Allow current week plus/minus 4 weeks (total range: 9 weeks)
+        return abs(weekDifference) <= 4
+    }
+    
+    private func formatWeekDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
     }
     
     private func updateWeeklyGridFromMealPlan(_ mealPlan: MealPlan) {
@@ -338,8 +378,6 @@ class MealPlanStore: ObservableObject {
                     weeklyGrid.dailyMeals[dayIndex].lunch.append(recipe)
                 case "dinner":
                     weeklyGrid.dailyMeals[dayIndex].dinner.append(recipe)
-                case "snack":
-                    weeklyGrid.dailyMeals[dayIndex].snack.append(recipe)
                 default:
                     break
                 }
@@ -457,8 +495,6 @@ class MealPlanStore: ObservableObject {
                 weeklyGrid.dailyMeals[dayOfWeek].lunch.append(recipe)
             case .dinner:
                 weeklyGrid.dailyMeals[dayOfWeek].dinner.append(recipe)
-            case .snack:
-                weeklyGrid.dailyMeals[dayOfWeek].snack.append(recipe)
             }
             
             print("✅ Added \(recipe.name) to \(mealType.rawValue) for day \(dayOfWeek)")

@@ -307,8 +307,8 @@ struct MealPlanListSheet: View {
     
     var body: some View {
         NavigationView {
-            MealPlanListView()
-                .navigationTitle("All Meal Plans")
+            MealPlanView()
+                .navigationTitle("Meal Plans")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {

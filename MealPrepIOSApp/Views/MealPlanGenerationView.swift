@@ -34,6 +34,8 @@ struct MealPlanGenerationView: View {
                     TextField("Describe your ideal meal plan...", text: $planDescription, axis: .vertical)
                         .lineLimit(3...6)
                         .textInputAutocapitalization(.sentences)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 
                 Section("Dietary Preferences") {
@@ -70,6 +72,8 @@ struct MealPlanGenerationView: View {
                     // Add allergy
                     HStack {
                         TextField("Add allergy", text: $newAllergy)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         Button("Add") {
                             addAllergy()
                         }
@@ -117,6 +121,8 @@ struct MealPlanGenerationView: View {
                     // Add dislike
                     HStack {
                         TextField("Add dislike", text: $newDislike)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         Button("Add") {
                             addDislike()
                         }
@@ -154,6 +160,8 @@ struct MealPlanGenerationView: View {
                     TextField("Any special requirements or preferences...", text: $additionalRequirements, axis: .vertical)
                         .lineLimit(2...4)
                         .textInputAutocapitalization(.sentences)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 
                 Section("Templates") {

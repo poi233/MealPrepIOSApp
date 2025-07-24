@@ -9,8 +9,7 @@ struct LoginView: View {
     
     var body: some View {
         NavigationView {
-            GeometryReader { geometry in
-                VStack(spacing: 0) {
+            VStack(spacing: 0) {
                     // Top spacer - fixed height
                     Spacer()
                         .frame(height: 30)
@@ -42,60 +41,64 @@ struct LoginView: View {
                     Spacer()
                         .frame(height: 15)
                     
-                    // Login Form in Magic Card
-                    MagicCard {
-                        VStack(spacing: 20) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Welcome back")
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                Text("Sign in to your account")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            VStack(spacing: 16) {
-                                AnimatedTextField("Email", text: $email, keyboardType: .emailAddress)
-                                    .textInputAutocapitalization(.never)
-                                
-                                AnimatedTextField("Password", text: $password, isSecure: true)
-                                
-                                if let errorMessage = authStore.errorMessage {
-                                    HStack {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                        Text(errorMessage)
-                                            .font(.caption)
-                                    }
-                                    .foregroundColor(.red)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                            
-                            VStack(spacing: 12) {
-                                ShimmerButton(
-                                    "Sign In",
-                                    isLoading: authStore.isLoading,
-                                    disabled: email.isEmpty || password.isEmpty || loginTask != nil
-                                ) {
-                                    // Cancel any existing login task
-                                    loginTask?.cancel()
-                                    
-                                    loginTask = Task { @MainActor in
-                                        await authStore.login(email: email, password: password)
-                                        loginTask = nil
-                                    }
-                                }
-                                
-                                Button("Forgot password?") {
-                                    // TODO: Implement forgot password
-                                }
+                    // Login Form in Fixed Size Card
+                    VStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome back")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            Text("Sign in to your account")
                                 .font(.caption)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        VStack(spacing: 16) {
+                            AnimatedTextField("Email", text: $email, keyboardType: .emailAddress)
+                                .textInputAutocapitalization(.never)
+                            
+                            AnimatedTextField("Password", text: $password, isSecure: true)
+                            
+                            if let errorMessage = authStore.errorMessage {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                    Text(errorMessage)
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
+                        
+                        VStack(spacing: 12) {
+                            ShimmerButton(
+                                "Sign In",
+                                isLoading: authStore.isLoading,
+                                disabled: email.isEmpty || password.isEmpty || loginTask != nil
+                            ) {
+                                // Cancel any existing login task
+                                loginTask?.cancel()
+                                
+                                loginTask = Task { @MainActor in
+                                    await authStore.login(email: email, password: password)
+                                    loginTask = nil
+                                }
+                            }
+                            
+                            Button("Forgot password?") {
+                                // TODO: Implement forgot password
+                            }
+                            .font(.caption)
+                            .foregroundColor(.accentColor)
+                        }
                     }
-                    .frame(maxWidth: 350)
+                    .frame(width: 350, height: 380)
+                    .padding(24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    )
                     
                     // Bottom spacer
                     Spacer()
@@ -121,7 +124,7 @@ struct LoginView: View {
                         RippleButton("Create new account", style: .outline) {
                             showingRegister = true
                         }
-                        .frame(maxWidth: 350)
+                        .frame(width: 350)
                     }
                     
                     // Bottom spacer
@@ -129,7 +132,7 @@ struct LoginView: View {
                         .frame(height: 30)
                 }
                 .padding(.horizontal, 24)
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationBarHidden(true)
             .background(
                 // Gradient background

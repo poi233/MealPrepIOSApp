@@ -13,23 +13,32 @@ class MealPlanTemplateService {
     
     // MARK: - Template Operations (Using existing meal plan endpoints)
     
-    /// Save current meal plan as template (creates a new meal plan with template naming)
+    /// Save current meal plan as template (creates a new meal plan)
     func createTemplate(_ request: CreateMealPlanTemplateRequest) async throws -> MealPlanTemplateResponse {
-        // Convert template request to meal plan creation request
-        let mealPlanRequest = CreateMealPlanRequest(
-            name: "Template: \(request.name)",
+        print("💾 [MealPlanTemplateService] Creating template (saving as regular meal plan)")
+        print("   Template name: '\(request.name)'")
+        print("   Total meals: \(request.meals.count)")
+        
+        // Get the next Monday as week_start_date (backend requires Monday and YYYY-MM-DD format)
+        let nextMonday = getNextMonday()
+        print("   📅 Using week start date: \(formatDateForBackend(nextMonday)) (next Monday)")
+        
+        // Convert template request to meal plan creation request with correct backend format
+        let mealPlanRequest = BackendCreateMealPlanRequest(
+            name: request.name, // Use original name (no "Template:" prefix)
             description: request.description ?? "Saved as template",
-            startDate: Date(), // Use current date as placeholder for templates
-            endDate: Calendar.current.date(byAdding: .day, value: 6, to: Date()) ?? Date(),
+            weekStartDate: formatDateForBackend(nextMonday), // Backend expects YYYY-MM-DD string
             items: request.meals.map { templateMeal in
-                CreateMealPlanItemRequest(
+                BackendCreateMealPlanItemRequest(
                     recipeId: templateMeal.recipeId,
                     dayOfWeek: templateMeal.dayOfWeek,
-                    mealType: templateMeal.mealType,
-                    servingSize: templateMeal.servingSize
+                    mealType: templateMeal.mealType
+                    // Note: removed serving_size (not implemented in backend)
+                    // Note: meal_plan field will be auto-populated by backend
                 )
-            },
-            preferences: nil
+            }
+            // Note: removed end_date (not used by backend)
+            // Note: removed preferences (not needed for templates)
         )
         
         // Create meal plan using standard endpoint
@@ -40,10 +49,12 @@ class MealPlanTemplateService {
             requiresAuth: true
         )
         
+        print("✅ [MealPlanTemplateService] Template created successfully as meal plan ID: \(createdMealPlan.id)")
+        
         // Convert back to template response format
         return MealPlanTemplateResponse(
             id: createdMealPlan.id,
-            name: request.name, // Use original name without "Template:" prefix
+            name: request.name, // Use original name
             description: request.description,
             meals: request.meals.map { templateMeal in
                 MealPlanTemplateMeal(
@@ -62,40 +73,81 @@ class MealPlanTemplateService {
     
     /// Get user's meal plan templates (filters meal plans that start with "Template:")
     func getTemplates() async throws -> [MealPlanTemplate] {
+        print("🔧 [MealPlanTemplateService] getTemplates() called")
+        print("🌐 [MealPlanTemplateService] Preparing API request:")
+        print("   URL: GET /meal-plans/")
+        print("   Auth Required: true")
+        print("   Response Type: PaginatedResponse<MealPlan>")
+        print("📝 [MealPlanTemplateService] Backend behavior:")
+        print("   - API automatically filters by authenticated user (no userId needed)")
+        print("   - Showing ALL meal plans as templates (no name filtering)")
+        print("   - Users can use any existing meal plan as a template")
+        
         let response = try await networkManager.get(
             "/meal-plans/",
             responseType: PaginatedResponse<MealPlan>.self,
             requiresAuth: true
         )
         
-        // Filter for templates (meal plans with "Template:" prefix)
-        let templateMealPlans = response.results.filter { mealPlan in
-            mealPlan.name.hasPrefix("Template:")
+        print("✅ [MealPlanTemplateService] Raw API response received:")
+        print("   Total results: \(response.results.count)")
+        print("   Count: \(response.count)")
+        print("   Next: \(response.next ?? "null")")
+        print("   Previous: \(response.previous ?? "null")")
+        
+        print("📋 [MealPlanTemplateService] All meal plans from API:")
+        for (index, mealPlan) in response.results.enumerated() {
+            print("   \(index + 1). ID: \(mealPlan.id)")
+            print("      Name: '\(mealPlan.name)'")
+            print("      Description: '\(mealPlan.description ?? "null")'")
+            print("      Week Start Date: \(mealPlan.weekStartDate.description)")
+            print("      User ID: \(mealPlan.userId ?? "null")")
+            print("      Is Active: \(mealPlan.isActive)")
+            print("      Items Count: \(mealPlan.items?.count ?? 0)")
         }
         
-        // Convert to MealPlanTemplate array
-        return templateMealPlans.map { mealPlan in
-            let cleanName = String(mealPlan.name.dropFirst(10)) // Remove "Template: " prefix
-            return MealPlanTemplate(
+        print("🔄 [MealPlanTemplateService] Converting ALL meal plans to templates (no filtering):")
+        print("   Using \(response.results.count) meal plans as templates")
+        
+        // Convert ALL meal plans to MealPlanTemplate array (no filtering)
+        let templates = response.results.map { mealPlan in
+            let template = MealPlanTemplate(
                 id: mealPlan.id,
-                name: cleanName,
+                name: mealPlan.name, // Use original name (no prefix removal)
                 description: mealPlan.description,
                 category: .healthy, // Default category
                 previewMeals: extractPreviewMeals(from: mealPlan.items ?? [])
             )
+            
+            print("   ✅ Converted: '\(mealPlan.name)' → Template ID: \(template.id)")
+            if let previewMeals = template.previewMeals, !previewMeals.isEmpty {
+                print("      Preview meals: \(previewMeals.joined(separator: ", "))")
+            } else {
+                print("      Preview meals: No items found")
+            }
+            
+            return template
         }
+        
+        print("🎯 [MealPlanTemplateService] Returning \(templates.count) templates")
+        return templates
     }
     
     /// Get a specific template with full details
     func getTemplate(id: String) async throws -> MealPlanTemplateDetail {
+        print("🔍 [MealPlanTemplateService] Fetching template details for ID: \(id)")
+        
         let mealPlan = try await networkManager.get(
             "/meal-plans/\(id)/",
             responseType: MealPlan.self,
             requiresAuth: true
         )
         
-        let cleanName = mealPlan.name.hasPrefix("Template:") ? 
-            String(mealPlan.name.dropFirst(10)) : mealPlan.name
+        print("📋 [MealPlanTemplateService] Template details retrieved:")
+        print("   Name: '\(mealPlan.name)'")
+        print("   Items: \(mealPlan.items?.count ?? 0)")
+        
+        let templateName = mealPlan.name // Use original name (no prefix removal)
         
         let templateMeals = (mealPlan.items ?? []).map { item in
             MealPlanTemplateMeal(
@@ -110,7 +162,7 @@ class MealPlanTemplateService {
         
         return MealPlanTemplateDetail(
             id: mealPlan.id,
-            name: cleanName,
+            name: templateName,
             description: mealPlan.description,
             meals: templateMeals
         )
@@ -123,7 +175,7 @@ class MealPlanTemplateService {
     /// Update an existing template
     func updateTemplate(id: String, updates: UpdateMealPlanTemplateRequest) async throws -> MealPlanTemplateResponse {
         let updateRequest = UpdateMealPlanRequest(
-            name: updates.name.map { "Template: \($0)" }, // Add template prefix
+            name: updates.name, // Use original name (no prefix)
             description: updates.description,
             dailyMeals: nil // Convert template meals to daily meals if needed
         )
@@ -182,6 +234,69 @@ class MealPlanTemplateService {
             responseType: MealPlan.self,
             requiresAuth: true
         )
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Get the next Monday date (backend requires week_start_date to be Monday)
+    private func getNextMonday() -> Date {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // If today is Monday, use today. Otherwise find next Monday
+        let weekday = calendar.component(.weekday, from: today)
+        if weekday == 1 { // Sunday = 1, so Monday = 2
+            // Today is Sunday, next Monday is tomorrow
+            return calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        } else if weekday == 2 {
+            // Today is Monday, use today
+            return today
+        } else {
+            // Find next Monday
+            let daysUntilMonday = (9 - weekday) % 7
+            return calendar.date(byAdding: .day, value: daysUntilMonday, to: today) ?? today
+        }
+    }
+    
+    /// Format date as YYYY-MM-DD string for backend API
+    private func formatDateForBackend(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Backend-Specific Request Models (for correct API format)
+
+/// Backend meal plan creation request with correct field types and names
+struct BackendCreateMealPlanRequest: Codable {
+    let name: String
+    let description: String?
+    let weekStartDate: String // Backend expects YYYY-MM-DD string, not Date
+    let items: [BackendCreateMealPlanItemRequest]
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case weekStartDate = "week_start_date"
+        case items
+    }
+}
+
+/// Backend meal plan item creation request with correct field types and names
+struct BackendCreateMealPlanItemRequest: Codable {
+    let recipeId: String
+    let dayOfWeek: Int
+    let mealType: String
+    // Note: meal_plan field is auto-populated by backend
+    // Note: serving_size not implemented in backend yet
+    
+    enum CodingKeys: String, CodingKey {
+        case recipeId = "recipe_id"
+        case dayOfWeek = "day_of_week"
+        case mealType = "meal_type"
     }
 }
 

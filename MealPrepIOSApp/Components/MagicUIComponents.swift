@@ -238,15 +238,19 @@ struct AnimatedTextField: View {
     
     var body: some View {
         ZStack(alignment: .leading) {
-            // Background
+            // Expanded clickable background
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemGray6))
                 .stroke(
                     isFocused ? Color.accentColor : Color.clear,
                     lineWidth: isFocused ? 2 : 0
                 )
-                .frame(height: 56)
+                .frame(height: 60)
                 .animation(.easeInOut(duration: 0.2), value: isFocused)
+                .contentShape(Rectangle()) // Make entire area tappable
+                .onTapGesture {
+                    isFocused = true
+                }
             
             VStack(alignment: .leading, spacing: 4) {
                 // Animated label
@@ -256,8 +260,9 @@ struct AnimatedTextField: View {
                     .offset(y: animateLabel ? -8 : 0)
                     .scaleEffect(animateLabel ? 0.9 : 1.0, anchor: .leading)
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateLabel)
+                    .allowsHitTesting(false) // Allow taps to pass through to background
                 
-                // Text field
+                // Text field with expanded hit area
                 Group {
                     if isSecure {
                         SecureField("", text: $text)
@@ -274,10 +279,15 @@ struct AnimatedTextField: View {
                 .onChange(of: text) { _, newText in
                     animateLabel = !newText.isEmpty || isFocused
                 }
+                .frame(minHeight: 24) // Ensure minimum tap target height
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, animateLabel ? 12 : 0)
+            .padding(.horizontal, 20)
+            .padding(.vertical, animateLabel ? 16 : 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle()) // Make entire content area tappable
+            .allowsHitTesting(false) // Allow background to handle taps
         }
+        .frame(minHeight: 60) // Minimum recommended tap target size
         .onAppear {
             animateLabel = !text.isEmpty
         }

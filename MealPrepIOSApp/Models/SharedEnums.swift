@@ -13,7 +13,6 @@ enum MealType: String, CaseIterable, Codable {
     case breakfast = "breakfast"
     case lunch = "lunch"
     case dinner = "dinner"
-    case snack = "snack"
     
     var displayName: String {
         return rawValue.capitalized

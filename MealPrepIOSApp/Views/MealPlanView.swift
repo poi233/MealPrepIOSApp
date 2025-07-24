@@ -14,26 +14,9 @@ struct MealPlanView: View {
     @State private var showingShoppingList = false
     @State private var showingBatchOperations = false
     @State private var showingTemplateSheet = false
-    @State private var selectedViewMode: MealPlanViewMode = .weekly
-    
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // View Mode Selector
-                Picker("View Mode", selection: $selectedViewMode) {
-                    Text("Weekly").tag(MealPlanViewMode.weekly)
-                    Text("List").tag(MealPlanViewMode.list)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-                
-                // Content based on view mode
-                if selectedViewMode == .weekly {
-                    WeeklyMealPlanView()
-                } else {
-                    MealPlanListView()
-                }
-            }
+            WeeklyMealPlanView()
             .navigationTitle("Meal Plans")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -113,12 +96,6 @@ struct MealPlanView: View {
     }
 }
 
-// MARK: - View Mode Enum
-
-enum MealPlanViewMode {
-    case weekly, list
-}
-
 // MARK: - Weekly Meal Plan View
 
 struct WeeklyMealPlanView: View {
@@ -151,7 +128,9 @@ struct WeekNavigationView: View {
             }) {
                 Image(systemName: "chevron.left")
                     .font(.title2)
+                    .foregroundColor(mealPlanStore.canNavigateToPreviousWeek ? .primary : .gray)
             }
+            .disabled(!mealPlanStore.canNavigateToPreviousWeek)
             
             Spacer()
             
@@ -174,7 +153,9 @@ struct WeekNavigationView: View {
             }) {
                 Image(systemName: "chevron.right")
                     .font(.title2)
+                    .foregroundColor(mealPlanStore.canNavigateToNextWeek ? .primary : .gray)
             }
+            .disabled(!mealPlanStore.canNavigateToNextWeek)
         }
         .padding()
         .background(Color(.systemGray6))
@@ -264,13 +245,6 @@ struct DailyMealCard: View {
                 }
                 
                 Spacer()
-                
-                // Simple status indicator
-                if hasMeals {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 8, height: 8)
-                }
             }
             
             // Clean Meal Slots
@@ -278,7 +252,7 @@ struct DailyMealCard: View {
                 MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast, dayOfWeek: dayOfWeek, date: dailyMeal.date)
                 MealSlotView(title: "Lunch", recipes: dailyMeal.lunch, mealType: .lunch, dayOfWeek: dayOfWeek, date: dailyMeal.date)
                 MealSlotView(title: "Dinner", recipes: dailyMeal.dinner, mealType: .dinner, dayOfWeek: dayOfWeek, date: dailyMeal.date)
-                MealSlotView(title: "Snack", recipes: dailyMeal.snack, mealType: .snack, dayOfWeek: dayOfWeek, date: dailyMeal.date)
+
             }
         }
         .padding(20)
@@ -289,12 +263,7 @@ struct DailyMealCard: View {
         )
     }
     
-    private var hasMeals: Bool {
-        !dailyMeal.breakfast.isEmpty || 
-        !dailyMeal.lunch.isEmpty || 
-        !dailyMeal.dinner.isEmpty || 
-        !dailyMeal.snack.isEmpty
-    }
+
 }
 
 struct MealSlotView: View {
@@ -315,7 +284,6 @@ struct MealSlotView: View {
         case .breakfast: return "sunrise"
         case .lunch: return "sun.max"
         case .dinner: return "moon"
-        case .snack: return "leaf"
         }
     }
     
@@ -324,7 +292,6 @@ struct MealSlotView: View {
         case .breakfast: return .orange
         case .lunch: return .yellow
         case .dinner: return .purple
-        case .snack: return .green
         }
     }
     
@@ -366,91 +333,86 @@ struct MealSlotView: View {
             } else {
                 VStack(spacing: 6) {
                     ForEach(recipes) { recipe in
-                        ZStack {
-                            // Full-area clickable background
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                                .overlay(
+                        HStack(spacing: 8) {
+                            // Large recipe button (takes most space)
+                            Button(action: {
+                                print("🔍 Recipe card tapped: \(recipe.name) (ID: \(recipe.id))")
+                                
+                                // Validate recipe before setting
+                                guard !recipe.id.isEmpty && !recipe.name.isEmpty else {
+                                    print("⚠️ Invalid recipe data, cannot show details")
+                                    return
+                                }
+                                
+                                // Set recipe to trigger sheet - using .sheet(item:) pattern
+                                selectedRecipe = recipe
+                                print("📱 Sheet triggered for recipe: \(recipe.name)")
+                            }) {
+                                HStack(spacing: 8) {
+                                    // Recipe icon
+                                    Circle()
+                                        .fill(mealColor.opacity(0.2))
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Image(systemName: "fork.knife")
+                                                .font(.caption)
+                                                .foregroundColor(mealColor)
+                                        )
+                                    
+                                    Text(recipe.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .stroke(mealColor.opacity(0.2), lineWidth: 1)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(mealColor.opacity(0.2), lineWidth: 1)
+                                        )
                                 )
-                                .onTapGesture {
-                                    print("🔍 Recipe card tapped: \(recipe.name) (ID: \(recipe.id))")
-                                    
-                                    // Validate recipe before setting
-                                    guard !recipe.id.isEmpty && !recipe.name.isEmpty else {
-                                        print("⚠️ Invalid recipe data, cannot show details")
-                                        return
-                                    }
-                                    
-                                    // Set recipe to trigger sheet - using .sheet(item:) pattern
-                                    selectedRecipe = recipe
-                                    print("📱 Sheet triggered for recipe: \(recipe.name)")
-                                }
-                            
-                            // Recipe content
-                            HStack(spacing: 8) {
-                                // Recipe icon
-                                Circle()
-                                    .fill(mealColor.opacity(0.2))
-                                    .frame(width: 24, height: 24)
-                                    .overlay(
-                                        Image(systemName: "fork.knife")
-                                            .font(.caption)
-                                            .foregroundColor(mealColor)
-                                    )
-                                
-                                Text(recipe.name)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .lineLimit(1)
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .allowsHitTesting(false) // Allow tap to pass through to background
+                            .buttonStyle(PlainButtonStyle())
                             
-                            // Top overlay action buttons - highest z-index
-                            HStack {
-                                Spacer()
-                                
-                                HStack(spacing: 6) {
-                                    // Favorite button - shows current state
-                                    Button(action: {
-                                        toggleFavorite(recipe)
-                                    }) {
-                                        FavoriteButtonView(recipe: recipe)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(.white)
-                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
-                                    )
-                                    .zIndex(10) // Ensure it's on top
-                                    
-                                    // Delete button
-                                    Button(action: {
-                                        removeRecipeFromMealPlan(recipe)
-                                    }) {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.red)
-                                            .frame(width: 24, height: 24)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(.white)
-                                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
-                                    )
-                                    .zIndex(10) // Ensure it's on top
+                            // Two small action buttons on the right (horizontal layout)
+                            HStack(spacing: 4) {
+                                // Favorite button
+                                Button(action: {
+                                    toggleFavorite(recipe)
+                                }) {
+                                    FavoriteButtonView(recipe: recipe)
                                 }
-                                .padding(.trailing, 8)
-                                .padding(.top, 4)
+                                .buttonStyle(PlainButtonStyle())
+                                .frame(width: 32, height: 24)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(.white)
+                                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                )
+                                
+                                // Delete button
+                                Button(action: {
+                                    removeRecipeFromMealPlan(recipe)
+                                }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.red)
+                                        .frame(width: 16, height: 16)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .frame(width: 32, height: 24)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(.white)
+                                        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                                )
                             }
                         }
                     }
@@ -474,16 +436,8 @@ struct MealSlotView: View {
         }
         .sheet(item: $selectedRecipe) { recipe in
             NavigationView {
-                RecipeDetailView(recipe: recipe)
+                RecipeDetailView(recipe: recipe, isFromMealPlan: true)
                     .navigationBarTitleDisplayMode(.large)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("Done") {
-                                print("📱 Done button tapped, dismissing sheet")
-                                selectedRecipe = nil
-                            }
-                        }
-                    }
             }
             .environmentObject(RecipeStore())
             .environmentObject(FavoritesStore())
@@ -535,10 +489,6 @@ struct MealSlotView: View {
                     if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].dinner.firstIndex(where: { $0.id == recipe.id }) {
                         mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].dinner.remove(at: index)
                     }
-                case .snack:
-                    if let index = mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].snack.firstIndex(where: { $0.id == recipe.id }) {
-                        mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].snack.remove(at: index)
-                    }
                 }
                 
                 print("✅ Removed \(recipe.name) from \(mealType.rawValue) for day \(dayOfWeek)")
@@ -551,141 +501,6 @@ struct MealSlotView: View {
 }
 
 
-
-// MARK: - Meal Plan List View
-
-struct MealPlanListView: View {
-    @EnvironmentObject var mealPlanStore: MealPlanStore
-    
-    var body: some View {
-        if mealPlanStore.isLoading && mealPlanStore.mealPlans.isEmpty {
-            LoadingView(message: "Loading meal plans...")
-        } else if mealPlanStore.mealPlans.isEmpty && !mealPlanStore.isLoading {
-            EmptyMealPlanListView()
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(mealPlanStore.mealPlans) { mealPlan in
-                        MealPlanCard(mealPlan: mealPlan)
-                            .onTapGesture {
-                                mealPlanStore.currentMealPlan = mealPlan
-                            }
-                    }
-                    
-                    // Load More
-                    if mealPlanStore.hasMorePages {
-                        if mealPlanStore.isLoading {
-                            ProgressView()
-                                .padding()
-                        } else {
-                            Button("Load More") {
-                                Task {
-                                    await mealPlanStore.loadMoreMealPlans()
-                                }
-                            }
-                            .padding()
-                            .onAppear {
-                                Task {
-                                    await mealPlanStore.loadMoreMealPlans()
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding()
-            }
-            .refreshable {
-                Task {
-                    await mealPlanStore.refreshMealPlans()
-                }
-            }
-        }
-    }
-}
-
-struct MealPlanCard: View {
-    let mealPlan: MealPlan
-    @EnvironmentObject var mealPlanStore: MealPlanStore
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mealPlan.name)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    
-                    if let description = mealPlan.description {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(mealPlan.weekStartDate, style: .date)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    if mealPlanStore.currentMealPlan?.id == mealPlan.id {
-                        Text("Current")
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(4)
-                    }
-                }
-            }
-            
-            // Meal Summary
-            HStack(spacing: 16) {
-                Label("7 days", systemImage: "calendar")
-                Label("\(totalMeals) meals", systemImage: "fork.knife")
-                
-                Spacer()
-            }
-            .font(.caption)
-            .foregroundColor(.secondary)
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-    }
-    
-    private var totalMeals: Int {
-        return mealPlan.items?.count ?? 0
-    }
-}
-
-struct EmptyMealPlanListView: View {
-    @EnvironmentObject var mealPlanStore: MealPlanStore
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "list.clipboard")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            
-            Text("No Meal Plans Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Start planning your meals by adding recipes to the weekly view.")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-}
 
 // MARK: - Supporting Views
 

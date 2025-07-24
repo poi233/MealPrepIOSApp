@@ -164,6 +164,8 @@ extension MealSelectionBottomSheet {
                 
                 TextField("Search recipes...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                     .onSubmit {
                         performSearch()
                     }
@@ -386,6 +388,8 @@ extension MealSelectionBottomSheet {
                         
                         TextField("Enter meal name...", text: $customMealName)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {
@@ -396,6 +400,8 @@ extension MealSelectionBottomSheet {
                         TextField("Enter calories...", text: $customCalories)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.numberPad)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     
                     Button(action: addCustomMeal) {

@@ -238,7 +238,7 @@ struct RecipesView: View {
             }
             .sheet(item: $selectedRecipe) { recipe in
                 NavigationView {
-                    RecipeDetailView(recipe: recipe)
+                    RecipeDetailView(recipe: recipe, isFromMealPlan: false)
                         .environmentObject(recipeStore)
                         .environmentObject(favoritesStore)
                 }
