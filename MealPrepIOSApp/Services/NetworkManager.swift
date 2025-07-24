@@ -168,6 +168,12 @@ class NetworkManager: ObservableObject {
     
     /// Make a generic request
     func request<T: Codable>(_ endpoint: APIEndpoint, responseType: T.Type) async throws -> T {
+        // Check if token is expired before making authenticated requests
+        if endpoint.requiresAuth && isTokenExpired() {
+            print("🔄 [NetworkManager] Token expired, attempting refresh before request")
+            try await refreshTokenIfNeeded()
+        }
+        
         let request = try buildURLRequest(for: endpoint)
         
         // Log detailed request information
@@ -285,6 +291,45 @@ class NetworkManager: ObservableObject {
             self.isAuthenticated = false
         }
         clearStoredTokens()
+    }
+    
+    func isTokenExpired() -> Bool {
+        guard let accessToken = accessToken else { return true }
+        
+        // Simple JWT token expiration check
+        let tokenParts = accessToken.split(separator: ".")
+        guard tokenParts.count == 3 else {
+            print("⚠️ [NetworkManager] Invalid JWT token format, assuming expired")
+            return true
+        }
+        
+        // Decode the payload (add padding if needed for base64 decoding)
+        var payload = String(tokenParts[1])
+        while payload.count % 4 != 0 {
+            payload += "="
+        }
+        
+        guard let payloadData = Data(base64Encoded: payload),
+              let payloadDict = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+              let exp = payloadDict["exp"] as? TimeInterval else {
+            print("⚠️ [NetworkManager] Unable to parse token expiration, assuming expired")
+            return true
+        }
+        
+        let expirationDate = Date(timeIntervalSince1970: exp)
+        let currentDate = Date()
+        let isExpired = currentDate >= expirationDate
+        
+        print("🔍 [NetworkManager] Token expiration check:")
+        print("   Current time: \(currentDate)")
+        print("   Token expires: \(expirationDate)")
+        print("   Is expired: \(isExpired)")
+        
+        if isExpired {
+            print("⚠️ [NetworkManager] Access token has expired")
+        }
+        
+        return isExpired
     }
     
     func refreshTokenIfNeeded() async throws {

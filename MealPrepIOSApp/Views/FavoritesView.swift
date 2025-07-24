@@ -269,7 +269,6 @@ struct FavoriteCard: View {
     let favorite: Favorite
     let style: FavoriteCardStyle
     @EnvironmentObject var favoritesStore: FavoritesStore
-    @State private var showingEditView = false
     @State private var isHovered = false
     
     enum FavoriteCardStyle {
@@ -322,26 +321,20 @@ struct FavoriteCard: View {
                         HStack {
                             Spacer()
                             
-                            // Menu Button
-                            Menu {
-                                Button("Edit Rating & Notes") {
-                                    showingEditView = true
-                                }
-                                
-                                Button("Remove from Favorites", role: .destructive) {
-                                    Task {
-                                        await favoritesStore.removeFromFavorites(recipeId: favorite.recipe.id)
-                                    }
+                            // Delete Favorite Button
+                            Button {
+                                Task {
+                                    await favoritesStore.removeFromFavorites(recipeId: favorite.recipe.id)
                                 }
                             } label: {
-                                Image(systemName: "ellipsis")
+                                Image(systemName: "heart.slash.fill")
                                     .font(.title3)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.red)
                                     .frame(width: 32, height: 32)
                                     .background(
                                         Circle()
-                                            .fill(Color.black.opacity(0.6))
+                                            .fill(Color.white.opacity(0.9))
                                             .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
                                     )
                                     .scaleEffect(isHovered ? 1.1 : 1.0)
@@ -459,12 +452,6 @@ struct FavoriteCard: View {
                     isHovered = false
                 }
         )
-        .sheet(isPresented: $showingEditView) {
-            NavigationView {
-                EditFavoriteView(favorite: favorite)
-                    .environmentObject(favoritesStore)
-            }
-        }
     }
     
     private var imageHeight: CGFloat {

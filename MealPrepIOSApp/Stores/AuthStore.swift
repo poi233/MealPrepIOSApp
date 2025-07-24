@@ -32,7 +32,8 @@ class AuthStore: ObservableObject {
             .sink { [weak self] isAuth in
                 self?.isAuthenticated = isAuth
                 if !isAuth {
-                    self?.currentUser = nil
+                    // Authentication lost - clear user data and show logout message
+                    self?.handleAuthenticationLost()
                 }
             }
             .store(in: &cancellables)
@@ -49,6 +50,31 @@ class AuthStore: ObservableObject {
     }
     
     // MARK: - Authentication Status
+    
+    private func handleAuthenticationLost() {
+        print("🔒 [AuthStore] Authentication lost - clearing user data")
+        
+        // Clear current user
+        currentUser = nil
+        
+        // Clear any cached user data
+        Task {
+            do {
+                try await userCacheManager.clearCurrentUser()
+                print("✅ [AuthStore] Cleared cached user data")
+            } catch {
+                print("⚠️ [AuthStore] Failed to clear cached user data: \(error)")
+            }
+        }
+        
+        // Set session error message
+        sessionError = "Your session has expired. Please log in again."
+        
+        // Stop session monitoring
+        stopSessionMonitoring()
+        
+        print("🚪 [AuthStore] User logged out due to authentication failure")
+    }
     
     func checkAuthenticationStatus() {
         Task {

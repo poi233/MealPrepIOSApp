@@ -12,8 +12,6 @@ struct FavoriteDetailView: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
     @Environment(\.dismiss) private var dismiss
     
-    @State private var showingEditView = false
-    @State private var showingRemoveAlert = false
     @State private var servingMultiplier: Double = 1.0
     
     var body: some View {
@@ -237,36 +235,6 @@ struct FavoriteDetailView: View {
                     dismiss()
                 }
             }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("Edit Rating & Notes") {
-                        showingEditView = true
-                    }
-                    
-                    Divider()
-                    
-                    Button("Remove from Favorites", role: .destructive) {
-                        showingRemoveAlert = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
-        }
-        .sheet(isPresented: $showingEditView) {
-            NavigationView {
-                EditFavoriteView(favorite: favorite)
-                    .environmentObject(favoritesStore)
-            }
-        }
-        .alert("Remove from Favorites", isPresented: $showingRemoveAlert) {
-            Button("Remove", role: .destructive) {
-                removeFavorite()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Are you sure you want to remove this recipe from your favorites?")
         }
     }
     
@@ -278,16 +246,6 @@ struct FavoriteDetailView: View {
         }
     }
     
-    private func removeFavorite() {
-        Task {
-            let success = await favoritesStore.removeFromFavorites(recipeId: favorite.recipe.id)
-            if success {
-                await MainActor.run {
-                    dismiss()
-                }
-            }
-        }
-    }
 }
 
 #Preview {

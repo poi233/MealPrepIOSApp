@@ -389,9 +389,13 @@ extension MealPlanTemplateSheet {
 struct TemplateCard: View {
     let template: MealPlanTemplate
     let onApply: () -> Void
+    @State private var isExpanded = false
+    @State private var templateDetail: MealPlanTemplateDetail?
+    @State private var isLoadingDetail = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Header section
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(template.name)
@@ -404,17 +408,45 @@ struct TemplateCard: View {
                             .foregroundColor(.secondary)
                             .lineLimit(2)
                     }
+                    
+                    // Creation date
+                    if let createdAt = template.createdAt {
+                        Text("Created \(createdAt, style: .date)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Spacer()
                 
-                Button("Apply") {
-                    onApply()
+                VStack(spacing: 8) {
+                    Button("Apply") {
+                        onApply()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isExpanded.toggle()
+                        }
+                        if isExpanded && templateDetail == nil {
+                            loadTemplateDetail()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("Preview")
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        }
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundColor(.accentColor)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
             
+            // Preview meals (always visible but basic)
             if let previewMeals = template.previewMeals, !previewMeals.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Sample Meals:")
@@ -428,6 +460,61 @@ struct TemplateCard: View {
                         .lineLimit(2)
                 }
             }
+            
+            // Expanded preview section
+            if isExpanded {
+                Divider()
+                
+                if isLoadingDetail {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading preview...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                } else if let detail = templateDetail {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Full Week Preview")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        // Group meals by day
+                        let mealsByDay = Dictionary(grouping: detail.meals) { $0.dayOfWeek }
+                        let sortedDays = mealsByDay.keys.sorted()
+                        
+                        ForEach(sortedDays, id: \.self) { dayIndex in
+                            if let dayMeals = mealsByDay[dayIndex], !dayMeals.isEmpty {
+                                let dayName = Calendar.current.weekdaySymbols[dayIndex]
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(dayName)
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.secondary)
+                                    
+                                    ForEach(dayMeals, id: \.id) { meal in
+                                        HStack {
+                                            Text(meal.mealType.capitalized)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                                .frame(width: 60, alignment: .leading)
+                                            
+                                            Text(meal.recipe?.name ?? "Unknown Recipe")
+                                                .font(.caption2)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
         }
         .padding()
         .background(
@@ -435,6 +522,24 @@ struct TemplateCard: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
         )
+    }
+    
+    private func loadTemplateDetail() {
+        isLoadingDetail = true
+        Task {
+            do {
+                let detail = try await MealPlanTemplateService().getTemplate(id: template.id)
+                await MainActor.run {
+                    templateDetail = detail
+                    isLoadingDetail = false
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingDetail = false
+                }
+                print("Failed to load template detail: \(error)")
+            }
+        }
     }
 }
 
@@ -463,12 +568,19 @@ extension MealPlanTemplateSheet {
                 print("      Preview meals: \(template.previewMeals?.joined(separator: ", ") ?? "None")")
             }
             
-            availableTemplates = templates
+            // Sort templates by creation date (newest first)
+            availableTemplates = templates.sorted { template1, template2 in
+                guard let date1 = template1.createdAt, let date2 = template2.createdAt else {
+                    // If dates are missing, fall back to name sorting
+                    return template1.name > template2.name
+                }
+                return date1 > date2
+            }
             
             if templates.isEmpty {
                 print("⚠️ [LoadTemplate] No templates found for current user")
             } else {
-                print("🎉 [LoadTemplate] Templates loaded successfully and set to UI")
+                print("🎉 [LoadTemplate] Templates loaded successfully and sorted by name (newest first)")
             }
             
         } catch {
@@ -503,9 +615,9 @@ extension MealPlanTemplateSheet {
             print("   📖 Description: \(templateDetail.description ?? "No description")")
             print("   🍽️ Total meals: \(templateDetail.meals.count)")
             
-            // Create new weekly grid based on template
+            // Create new weekly grid with the correct week start date
             var newGrid = WeeklyMealGrid(weekStartDate: mealPlanStore.selectedWeekStartDate)
-            print("📅 [ApplyTemplate] Creating new meal plan for week starting: \(mealPlanStore.selectedWeekStartDate)")
+            print("📅 [ApplyTemplate] Creating new meal plan for selected week starting: \(mealPlanStore.selectedWeekStartDate)")
             
             var appliedMealsCount = 0
             // Apply template meals to new grid
@@ -538,9 +650,12 @@ extension MealPlanTemplateSheet {
             
             print("📊 [ApplyTemplate] Applied \(appliedMealsCount) out of \(templateDetail.meals.count) meals")
             
-            // Update meal plan store
+            // Update meal plan store and save to local storage
             mealPlanStore.weeklyGrid = newGrid
             mealPlanStore.saveLocalMealPlan()
+            
+            print("✅ [ApplyTemplate] Updated meal plan store for week: \(mealPlanStore.selectedWeekStartDate)")
+            print("💾 [ApplyTemplate] Meal plan persisted to local storage with key for week: \(mealPlanStore.selectedWeekStartDate)")
             
             print("💾 [ApplyTemplate] Meal plan saved to local storage")
             print("🎉 [ApplyTemplate] Template applied successfully!")

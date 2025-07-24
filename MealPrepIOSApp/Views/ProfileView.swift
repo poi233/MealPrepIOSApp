@@ -9,24 +9,97 @@ struct ProfileView: View {
             List {
                 // User Info Section
                 Section {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(Color(red: 77/255, green: 182/255, blue: 172/255))
-                        
-                        VStack(alignment: .leading) {
-                            if let user = authStore.currentUser {
+                    if let user = authStore.currentUser {
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(Color(red: 77/255, green: 182/255, blue: 172/255))
+                            
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text(user.fullDisplayName)
                                     .font(.headline)
+                                    .fontWeight(.semibold)
+                                
                                 Text(user.email)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("@\(user.username)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                
+                                Text("Member since \(user.createdAt, style: .date)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
                             }
+                            
+                            Spacer()
                         }
+                        .padding(.vertical, 12)
                         
-                        Spacer()
+                        // Display dietary preferences if available
+                        if let dietaryPrefs = user.dietaryPreferences {
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let dietType = dietaryPrefs.dietType {
+                                    HStack {
+                                        Image(systemName: "leaf.fill")
+                                            .foregroundColor(.green)
+                                        Text("Diet: \(dietType.capitalized)")
+                                            .font(.subheadline)
+                                    }
+                                }
+                                
+                                if let calorieTarget = dietaryPrefs.calorieTarget {
+                                    HStack {
+                                        Image(systemName: "flame.fill")
+                                            .foregroundColor(.orange)
+                                        Text("Daily Calories: \(calorieTarget)")
+                                            .font(.subheadline)
+                                    }
+                                }
+                                
+                                if let allergies = dietaryPrefs.allergies, !allergies.isEmpty {
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(.red)
+                                        VStack(alignment: .leading) {
+                                            Text("Allergies:")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                            Text(allergies.joined(separator: ", "))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                if let dislikes = dietaryPrefs.dislikes, !dislikes.isEmpty {
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "hand.raised.fill")
+                                            .foregroundColor(.yellow)
+                                        VStack(alignment: .leading) {
+                                            Text("Avoids:")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                            Text(dislikes.joined(separator: ", "))
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.top, 8)
+                        }
+                    } else {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading profile...")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 20)
                     }
-                    .padding(.vertical, 8)
                 }
                 
                 // Profile Settings

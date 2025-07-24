@@ -19,26 +19,21 @@ class MealPlanTemplateService {
         print("   Template name: '\(request.name)'")
         print("   Total meals: \(request.meals.count)")
         
-        // Get the next Monday as week_start_date (backend requires Monday and YYYY-MM-DD format)
-        let nextMonday = getNextMonday()
-        print("   📅 Using week start date: \(formatDateForBackend(nextMonday)) (next Monday)")
-        
-        // Convert template request to meal plan creation request with correct backend format
+        // Convert template request to meal plan creation request matching backend API spec
+        // week_start_date is required by backend - use current week's Monday
+        let weekStartDate = getMondayOfCurrentWeek()
         let mealPlanRequest = BackendCreateMealPlanRequest(
-            name: request.name, // Use original name (no "Template:" prefix)
+            name: request.name,
             description: request.description ?? "Saved as template",
-            weekStartDate: formatDateForBackend(nextMonday), // Backend expects YYYY-MM-DD string
+            weekStartDate: weekStartDate,
             items: request.meals.map { templateMeal in
                 BackendCreateMealPlanItemRequest(
                     recipeId: templateMeal.recipeId,
                     dayOfWeek: templateMeal.dayOfWeek,
-                    mealType: templateMeal.mealType
-                    // Note: removed serving_size (not implemented in backend)
-                    // Note: meal_plan field will be auto-populated by backend
+                    mealType: templateMeal.mealType,
+                    servingSize: templateMeal.servingSize
                 )
             }
-            // Note: removed end_date (not used by backend)
-            // Note: removed preferences (not needed for templates)
         )
         
         // Create meal plan using standard endpoint
@@ -116,7 +111,9 @@ class MealPlanTemplateService {
                 name: mealPlan.name, // Use original name (no prefix removal)
                 description: mealPlan.description,
                 category: .healthy, // Default category
-                previewMeals: extractPreviewMeals(from: mealPlan.items ?? [])
+                previewMeals: extractPreviewMeals(from: mealPlan.items ?? []),
+                createdAt: mealPlan.createdAt,
+                updatedAt: mealPlan.updatedAt
             )
             
             print("   ✅ Converted: '\(mealPlan.name)' → Template ID: \(template.id)")
@@ -238,43 +235,36 @@ class MealPlanTemplateService {
     
     // MARK: - Helper Methods
     
-    /// Get the next Monday date (backend requires week_start_date to be Monday)
-    private func getNextMonday() -> Date {
+    /// Calculate the Monday of the current week
+    private func getMondayOfCurrentWeek() -> String {
         let calendar = Calendar.current
         let today = Date()
         
-        // If today is Monday, use today. Otherwise find next Monday
-        let weekday = calendar.component(.weekday, from: today)
-        if weekday == 1 { // Sunday = 1, so Monday = 2
-            // Today is Sunday, next Monday is tomorrow
-            return calendar.date(byAdding: .day, value: 1, to: today) ?? today
-        } else if weekday == 2 {
-            // Today is Monday, use today
-            return today
-        } else {
-            // Find next Monday
-            let daysUntilMonday = (9 - weekday) % 7
-            return calendar.date(byAdding: .day, value: daysUntilMonday, to: today) ?? today
+        // Find the Monday of the current week
+        // Calendar weekday: Sunday = 1, Monday = 2, ..., Saturday = 7
+        let dayOfWeek = calendar.component(.weekday, from: today)
+        let daysFromMonday = (dayOfWeek + 5) % 7  // Convert to days from Monday (0=Monday, 6=Sunday)
+        
+        guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else {
+            // Fallback to today if calculation fails
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: today)
         }
-    }
-    
-    /// Format date as YYYY-MM-DD string for backend API
-    private func formatDateForBackend(_ date: Date) -> String {
+        
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: date)
+        return formatter.string(from: monday)
     }
 }
 
 // MARK: - Backend-Specific Request Models (for correct API format)
 
-/// Backend meal plan creation request with correct field types and names
+/// Backend meal plan creation request matching API specification
 struct BackendCreateMealPlanRequest: Codable {
     let name: String
     let description: String?
-    let weekStartDate: String // Backend expects YYYY-MM-DD string, not Date
+    let weekStartDate: String
     let items: [BackendCreateMealPlanItemRequest]
     
     enum CodingKeys: String, CodingKey {
@@ -290,13 +280,14 @@ struct BackendCreateMealPlanItemRequest: Codable {
     let recipeId: String
     let dayOfWeek: Int
     let mealType: String
+    let servingSize: Double
     // Note: meal_plan field is auto-populated by backend
-    // Note: serving_size not implemented in backend yet
     
     enum CodingKeys: String, CodingKey {
         case recipeId = "recipe_id"
         case dayOfWeek = "day_of_week"
         case mealType = "meal_type"
+        case servingSize = "serving_size"
     }
 }
 
@@ -308,6 +299,8 @@ struct MealPlanTemplate: Codable, Identifiable {
     let description: String?
     let category: TemplateCategory
     let previewMeals: [String]?
+    let createdAt: Date?
+    let updatedAt: Date?
     
     enum TemplateCategory: String, Codable, CaseIterable {
         case healthy = "healthy"
@@ -315,6 +308,12 @@ struct MealPlanTemplate: Codable, Identifiable {
         case family = "family"
         case vegetarian = "vegetarian"
         case budget = "budget"
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, description, category, previewMeals
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }
 
