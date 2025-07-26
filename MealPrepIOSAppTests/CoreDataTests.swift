@@ -24,7 +24,7 @@ struct CoreDataTests {
             ingredients: [
                 Ingredient(name: "Test ingredient", amount: "1", unit: "cup", notes: nil)
             ],
-            instructions: "Test instructions",
+            instructions: ["Test instructions"],
             nutritionInfo: nil,
             cuisine: "Test",
             prepTime: 10,
@@ -100,7 +100,7 @@ struct CoreDataTests {
             name: "Easy Recipe",
             description: "An easy recipe",
             ingredients: [],
-            instructions: "Easy instructions",
+            instructions: ["Easy instructions"],
             nutritionInfo: nil,
             cuisine: "Italian",
             prepTime: 5,
@@ -121,7 +121,7 @@ struct CoreDataTests {
             name: "Hard Recipe",
             description: "A hard recipe",
             ingredients: [],
-            instructions: "Complex instructions",
+            instructions: ["Complex instructions"],
             nutritionInfo: nil,
             cuisine: "French",
             prepTime: 30,

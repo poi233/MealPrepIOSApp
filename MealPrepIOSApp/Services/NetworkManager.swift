@@ -86,6 +86,7 @@ class NetworkManager: ObservableObject {
     @Published var isConnected = true
     private var accessToken: String?
     private var refreshToken: String?
+    private var sessionExpiry: Date?
     private var reachability: Reachability?
     
     private init() {
@@ -259,19 +260,28 @@ class NetworkManager: ObservableObject {
     func setTokens(accessToken: String, refreshToken: String) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
+        
+        // Set session expiry to 7 days from now
+        self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+        
         Task { @MainActor in
             self.isAuthenticated = true
         }
         storeTokens()
+        
+        print("🔐 [NetworkManager] Session set for 7 days, expires: \(sessionExpiry?.description ?? "unknown")")
     }
     
     func clearTokens() {
         self.accessToken = nil
         self.refreshToken = nil
+        self.sessionExpiry = nil
         Task { @MainActor in
             self.isAuthenticated = false
         }
         clearStoredTokens()
+        
+        print("🔐 [NetworkManager] Session cleared")
     }
     
     func isTokenExpired() -> Bool {
@@ -297,14 +307,26 @@ class NetworkManager: ObservableObject {
             return true
         }
         
-        let expirationDate = Date(timeIntervalSince1970: exp)
+        let tokenExpirationDate = Date(timeIntervalSince1970: exp)
         let currentDate = Date()
-        let isExpired = currentDate >= expirationDate
+        let isTokenExpired = currentDate >= tokenExpirationDate
         
-        print("🔍 [NetworkManager] Token expired: \(isExpired)")
+        // Also check session expiry (7-day limit)
+        let isSessionExpired = if let sessionExpiry = sessionExpiry {
+            currentDate >= sessionExpiry
+        } else {
+            true // No session expiry set, assume expired
+        }
         
-        if isExpired {
+        let isExpired = isTokenExpired || isSessionExpired
+        
+        print("🔍 [NetworkManager] Token expired: \(isTokenExpired), Session expired: \(isSessionExpired), Overall expired: \(isExpired)")
+        
+        if isTokenExpired {
             print("⚠️ [NetworkManager] Access token has expired")
+        }
+        if isSessionExpired {
+            print("⚠️ [NetworkManager] 7-day session has expired")
         }
         
         return isExpired
@@ -325,7 +347,13 @@ class NetworkManager: ObservableObject {
         do {
             let response: TokenRefreshResponse = try await self.request(refreshEndpoint, responseType: TokenRefreshResponse.self)
             self.accessToken = response.access
+            
+            // Renew session for another 7 days on token refresh
+            self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+            
             storeTokens()
+            
+            print("🔄 [NetworkManager] Token refreshed and session renewed for 7 days")
         } catch {
             // If refresh fails, clear tokens and require re-authentication
             clearTokens()
@@ -379,14 +407,26 @@ class NetworkManager: ObservableObject {
         self.accessToken = keychain.get("MealPrepApp_access_token")
         self.refreshToken = keychain.get("MealPrepApp_refresh_token")
         
-        // Only set authenticated if we have both tokens
+        // Load session expiry
+        if let expiryString = keychain.get("MealPrepApp_session_expiry"),
+           let expiryInterval = TimeInterval(expiryString) {
+            self.sessionExpiry = Date(timeIntervalSince1970: expiryInterval)
+        }
+        
+        // Only set authenticated if we have both tokens and session hasn't expired
         let hasTokens = accessToken != nil && refreshToken != nil
+        let sessionValid = sessionExpiry == nil || Date() < sessionExpiry!
+        let isAuthenticated = hasTokens && sessionValid
+        
         Task { @MainActor in
-            self.isAuthenticated = hasTokens
+            self.isAuthenticated = isAuthenticated
         }
         
         // Debug logging
-        print("NetworkManager: Tokens loaded, authenticated: \(hasTokens)")
+        print("NetworkManager: Tokens loaded, authenticated: \(isAuthenticated), session valid: \(sessionValid)")
+        if let expiry = sessionExpiry {
+            print("NetworkManager: Session expires at: \(expiry)")
+        }
     }
     
     private func storeTokens() {
@@ -397,11 +437,18 @@ class NetworkManager: ObservableObject {
         if let refreshToken = refreshToken {
             keychain.set(refreshToken, forKey: "MealPrepApp_refresh_token")
         }
+        
+        // Store session expiry
+        if let sessionExpiry = sessionExpiry {
+            let expiryString = String(sessionExpiry.timeIntervalSince1970)
+            keychain.set(expiryString, forKey: "MealPrepApp_session_expiry")
+        }
     }
     
     private func clearStoredTokens() {
         keychain.delete("MealPrepApp_access_token")
         keychain.delete("MealPrepApp_refresh_token")
+        keychain.delete("MealPrepApp_session_expiry")
     }
     
     private func setupReachability() {
@@ -433,12 +480,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-//        return "https://meal-prep-app-backend.vercel.app/api"
-        #if DEBUG
-        return "http://127.0.0.1:8000/api"
-        #else
         return "https://meal-prep-app-backend.vercel.app/api"
-        #endif
+//        #if DEBUG
+//        return "http://127.0.0.1:8000/api"
+//        #else
+//        return "https://meal-prep-app-backend.vercel.app/api"
+//        #endif
     }
 }
 

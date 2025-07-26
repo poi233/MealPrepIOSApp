@@ -149,7 +149,7 @@ extension AIGeneratedRecipe {
             name: name,
             description: description,
             ingredients: standardIngredients,
-            instructions: instructions.joined(separator: "\n"), // Join instruction array
+            instructions: instructions, // Keep as array
             nutritionInfo: nutrition,
             cuisine: cuisine,
             prepTime: prepTime,

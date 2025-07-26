@@ -15,7 +15,6 @@ struct RecipeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var isFavorite = false
-    @State private var servingMultiplier: Double = 1.0
     
     var body: some View {
         mainContent
@@ -49,7 +48,7 @@ struct RecipeDetailView: View {
                             HStack(spacing: 20) {
                                 StatView(icon: "clock", value: "\(recipe.totalTime) min", label: "Total Time")
                                 StatView(icon: "star.fill", value: String(format: "%.1f", recipe.avgRating), label: "Rating")
-                                StatView(icon: "person.2", value: "\(recipe.nutritionInfo?.servings ?? 4)", label: "Servings")
+                                StatView(icon: "flame", value: recipe.nutritionInfo?.calories ?? "N/A", label: "Calories")
                             }
                             
                             // Tags
@@ -105,43 +104,6 @@ struct RecipeDetailView: View {
                         
                         Divider()
                         
-                        // Serving Size Adjuster
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Servings")
-                                .font(.headline)
-                            
-                            HStack {
-                                Button(action: { adjustServings(-0.5) }) {
-                                    Image(systemName: "minus.circle")
-                                        .font(.title2)
-                                }
-                                .disabled(servingMultiplier <= 0.5)
-                                
-                                Text("\(Int(servingMultiplier * Double(recipe.nutritionInfo?.servings ?? 4)))")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .frame(minWidth: 40)
-                                
-                                Button(action: { adjustServings(0.5) }) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.title2)
-                                }
-                                .disabled(servingMultiplier >= 4.0)
-                                
-                                Spacer()
-                                
-                                if servingMultiplier != 1.0 {
-                                    Button("Reset") {
-                                        servingMultiplier = 1.0
-                                    }
-                                    .font(.caption)
-                                    .foregroundColor(.primaryGreen)
-                                }
-                            }
-                        }
-                        
-                        Divider()
-                        
                         // Ingredients
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Ingredients")
@@ -149,7 +111,7 @@ struct RecipeDetailView: View {
                             
                             LazyVStack(alignment: .leading, spacing: 8) {
                                 ForEach(recipe.ingredients, id: \.id) { ingredient in
-                                    IngredientView(ingredient: ingredient, multiplier: servingMultiplier)
+                                    IngredientView(ingredient: ingredient)
                                 }
                             }
                         }
@@ -161,7 +123,20 @@ struct RecipeDetailView: View {
                             Text("Instructions")
                                 .font(.headline)
                             
-                            MarkdownText(recipe.instructions, font: .body, lineSpacing: 6)
+                            ForEach(Array(instructionLines.enumerated()), id: \.offset) { index, instruction in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("\(index + 1).")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primaryGreen)
+                                        .frame(minWidth: 20, alignment: .leading)
+                                    
+                                    Text(instruction)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    
+                                    Spacer()
+                                }
+                                .padding(.bottom, 4)
+                            }
                         }
                         
                         // Nutrition Information
@@ -172,7 +147,7 @@ struct RecipeDetailView: View {
                                 Text("Nutrition Information")
                                     .font(.headline)
                                 
-                                NutritionView(nutrition: nutrition, multiplier: servingMultiplier)
+                                NutritionView(nutrition: nutrition)
                             }
                         }
                         
@@ -216,6 +191,15 @@ struct RecipeDetailView: View {
         }
     }
     
+    private var instructionLines: [String] {
+        // Instructions are now stored as an array, so we can use them directly
+        return recipe.instructions.map { instruction in
+            // Remove existing numbering if present (e.g., "1. " or "1) ")
+            let trimmed = instruction.replacingOccurrences(of: "^\\d+[.)\\s]+", with: "", options: .regularExpression)
+            return trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+    
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
@@ -237,11 +221,7 @@ struct RecipeDetailView: View {
     }
     
 
-    
-    private func adjustServings(_ change: Double) {
-        let newMultiplier = servingMultiplier + change
-        servingMultiplier = max(0.5, min(4.0, newMultiplier))
-    }
+
     
     
     private func toggleFavorite() {
@@ -281,20 +261,13 @@ struct RecipeDetailView: View {
 
 struct IngredientView: View {
     let ingredient: Ingredient
-    let multiplier: Double
-    @State private var isChecked = false
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Button(action: { isChecked.toggle() }) {
-                Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isChecked ? .primaryGreen : .secondary)
-            }
-            
+        HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     if !ingredient.amount.isEmpty {
-                        Text(adjustedAmount)
+                        Text(ingredient.amount)
                             .fontWeight(.medium)
                         
                         if !ingredient.unit.isEmpty {
@@ -304,8 +277,6 @@ struct IngredientView: View {
                     }
                     
                     Text(ingredient.name)
-                        .strikethrough(isChecked)
-                        .foregroundColor(isChecked ? .secondary : .primary)
                 }
                 
                 if let notes = ingredient.notes, !notes.isEmpty {
@@ -319,28 +290,10 @@ struct IngredientView: View {
             Spacer()
         }
     }
-    
-    private var adjustedAmount: String {
-        guard let amount = Double(ingredient.amount) else {
-            return ingredient.amount
-        }
-        
-        let adjusted = amount * multiplier
-        
-        // Format nicely
-        if adjusted == floor(adjusted) {
-            return String(format: "%.0f", adjusted)
-        } else if adjusted * 2 == floor(adjusted * 2) {
-            return String(format: "%.1f", adjusted)
-        } else {
-            return String(format: "%.2f", adjusted)
-        }
-    }
 }
 
 struct NutritionView: View {
     let nutrition: NutritionInfo
-    let multiplier: Double
     
     var body: some View {
         LazyVGrid(columns: [
@@ -349,39 +302,28 @@ struct NutritionView: View {
             GridItem(.flexible())
         ], spacing: 12) {
             if let calories = nutrition.calories {
-                NutritionItem(label: "Calories", value: adjustValue(calories), unit: "")
+                NutritionItem(label: "Calories", value: calories, unit: "")
             }
             
             if let protein = nutrition.protein {
-                NutritionItem(label: "Protein", value: adjustValue(protein), unit: "g")
+                NutritionItem(label: "Protein", value: protein, unit: "g")
             }
             
             if let carbs = nutrition.carbohydrates {
-                NutritionItem(label: "Carbs", value: adjustValue(carbs), unit: "g")
+                NutritionItem(label: "Carbs", value: carbs, unit: "g")
             }
             
             if let fat = nutrition.fat {
-                NutritionItem(label: "Fat", value: adjustValue(fat), unit: "g")
+                NutritionItem(label: "Fat", value: fat, unit: "g")
             }
             
             if let fiber = nutrition.fiber {
-                NutritionItem(label: "Fiber", value: adjustValue(fiber), unit: "g")
+                NutritionItem(label: "Fiber", value: fiber, unit: "g")
             }
             
             if let sodium = nutrition.sodium {
-                NutritionItem(label: "Sodium", value: adjustValue(sodium), unit: "mg")
+                NutritionItem(label: "Sodium", value: sodium, unit: "mg")
             }
-        }
-    }
-    
-    private func adjustValue(_ value: String) -> String {
-        guard let numValue = Double(value) else { return value }
-        let adjusted = numValue * multiplier
-        
-        if adjusted == floor(adjusted) {
-            return String(format: "%.0f", adjusted)
-        } else {
-            return String(format: "%.1f", adjusted)
         }
     }
 }
@@ -420,7 +362,13 @@ struct NutritionItem: View {
             Ingredient(name: "Eggs", amount: "4", unit: "large", notes: "room temperature"),
             Ingredient(name: "Pancetta", amount: "150", unit: "g", notes: "diced")
         ],
-        instructions: "1. Cook pasta according to package directions.\n2. While pasta cooks, whisk eggs with cheese.\n3. Cook pancetta until crispy.\n4. Combine hot pasta with egg mixture and pancetta.\n5. Serve immediately.",
+        instructions: [
+            "Cook pasta according to package directions.",
+            "While pasta cooks, whisk eggs with cheese.",
+            "Cook pancetta until crispy.",
+            "Combine hot pasta with egg mixture and pancetta.",
+            "Serve immediately."
+        ],
         nutritionInfo: NutritionInfo(calories: "520", protein: "22", carbohydrates: "65", fat: "18", fiber: "3", sodium: "890", sugar: "3", servings: 4),
         cuisine: "Italian",
         prepTime: 10,

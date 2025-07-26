@@ -42,9 +42,32 @@ class FavoritesStore: ObservableObject {
     
     init() {
         setupSearchDebouncing()
+        setupNotificationObservers()
     }
     
-    // MARK: - Search and Filter Setup
+    // MARK: - Setup Methods
+    
+    private func setupNotificationObservers() {
+        // Listen for recipe deletion notifications
+        NotificationCenter.default.addObserver(
+            forName: .recipeDeleted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let recipeId = notification.userInfo?[RecipeDeletionNotificationKeys.recipeId] as? String {
+                self?.removeDeletedRecipeFromFavorites(recipeId: recipeId)
+            }
+        }
+        
+        // Listen for user logout to clear data
+        NotificationCenter.default.addObserver(
+            forName: .userLoggedOut,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.clearAllData()
+        }
+    }
     
     private func setupSearchDebouncing() {
         // Debounce search queries to avoid too many API calls
@@ -363,9 +386,59 @@ class FavoritesStore: ObservableObject {
         }
     }
     
+    // MARK: - Recipe Cleanup
+    
+    /// Remove a deleted recipe from favorites
+    private func removeDeletedRecipeFromFavorites(recipeId: String) {
+        print("🧹 [FavoritesStore] Cleaning up deleted recipe: \(recipeId)")
+        
+        let originalCount = favorites.count
+        
+        // Remove from favorites list
+        favorites.removeAll { $0.recipe.id == recipeId }
+        
+        // Remove from cache
+        favoriteStatusCache.removeValue(forKey: recipeId)
+        
+        // Update total count
+        let removedCount = originalCount - favorites.count
+        if removedCount > 0 {
+            totalCount = max(0, totalCount - removedCount)
+            print("✅ [FavoritesStore] Removed \(removedCount) favorite(s) for deleted recipe")
+        } else {
+            print("📝 [FavoritesStore] No favorites found for deleted recipe")
+        }
+    }
+    
+    /// Clear all data when user logs out
+    private func clearAllData() {
+        favorites = []
+        favoriteStatusCache.removeAll()
+        searchQuery = ""
+        filters = FavoriteFilters()
+        selectedRating = nil
+        selectedCuisine = nil
+        selectedDifficulty = nil
+        sortOrder = .addedAtDesc
+        currentPage = 1
+        totalPages = 1
+        hasMorePages = false
+        totalCount = 0
+        errorMessage = nil
+        
+        print("🧹 [FavoritesStore] Cleared all data after user logout")
+    }
+    
+    /// Cleanup method for deinit
+    deinit {
+        // Remove observers to prevent memory leaks
+        NotificationCenter.default.removeObserver(self)
+    }
+    
     // MARK: - Error Handling
     
     func clearError() {
+        errorMessage = nil
     }
     
     func handleError(_ error: Error) {

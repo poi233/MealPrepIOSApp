@@ -164,7 +164,7 @@ struct EditFavoriteView: View {
             name: "Spaghetti Carbonara",
             description: "Classic Italian pasta dish",
             ingredients: [],
-            instructions: "Cook pasta...",
+            instructions: ["Cook pasta..."],
             nutritionInfo: nil,
             cuisine: "Italian",
             prepTime: 10,

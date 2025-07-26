@@ -2,7 +2,7 @@
 //  MealPlanService.swift
 //  MealPrepIOSApp
 //
-//  Created by AI Assistant on 7/20/25.
+//  Cleaned up and refactored by AI Assistant on 7/26/25.
 //
 
 import Foundation
@@ -88,7 +88,7 @@ class MealPlanService {
         )
     }
     
-    /// Remove a meal plan item
+    /// Remove a meal plan item by day/mealType (removes ALL items for that combination)
     func removeMealPlanItem(
         mealPlanId: String,
         dayOfWeek: Int,
@@ -96,6 +96,17 @@ class MealPlanService {
     ) async throws {
         try await networkManager.delete(
             "/meal-plans/\(mealPlanId)/items/\(dayOfWeek)/\(mealType.rawValue)/",
+            requiresAuth: true
+        )
+    }
+    
+    /// Remove a specific meal plan item by ID (preserves other items in same day/mealType)
+    func removeMealPlanItem(
+        mealPlanId: String,
+        itemId: String
+    ) async throws {
+        try await networkManager.delete(
+            "/meal-plans/\(mealPlanId)/items/\(itemId)/",
             requiresAuth: true
         )
     }
@@ -116,39 +127,6 @@ class MealPlanService {
         )
     }
     
-    /// Get active meal plan
-    func getActiveMealPlan() async throws -> MealPlan? {
-        do {
-            return try await networkManager.get(
-                "/meal-plans/active/",
-                responseType: MealPlan.self,
-                requiresAuth: true
-            )
-        } catch {
-            // Return nil if no active meal plan found
-            return nil
-        }
-    }
-    
-    /// Activate a meal plan
-    func activateMealPlan(id: String) async throws -> MealPlan {
-        return try await networkManager.post(
-            "/meal-plans/\(id)/activate/",
-            body: EmptyActivateRequest(),
-            responseType: MealPlan.self,
-            requiresAuth: true
-        )
-    }
-    
-    /// Deactivate a meal plan
-    func deactivateMealPlan(id: String) async throws -> MealPlan {
-        return try await networkManager.post(
-            "/meal-plans/\(id)/deactivate/",
-            body: EmptyActivateRequest(),
-            responseType: MealPlan.self,
-            requiresAuth: true
-        )
-    }
     
     // MARK: - AI-Powered Meal Plan Generation
     
@@ -220,40 +198,33 @@ class MealPlanService {
     
     /// Generate shopping list from meal plan
     func generateShoppingList(mealPlan: MealPlan) async throws -> [ShoppingListItem] {
-        var ingredientMap: [String: ShoppingListItem] = [:]
+        guard let items = mealPlan.items else { return [] }
         
-        // Process all meal plan items
-        guard let items = mealPlan.items else {
-            return []
-        }
+        var ingredientMap: [String: ShoppingListItem] = [:]
         
         for item in items {
             guard let recipe = item.recipe else { continue }
             
             for ingredient in recipe.ingredients {
-                let ingredientName = ingredient.name
-                let amount = ingredient.amount
-                let unit = ingredient.unit
+                let key = ingredient.name
                 
-                if let existingItem = ingredientMap[ingredientName] {
-                    // Combine with existing item
+                if let existingItem = ingredientMap[key] {
                     var recipes = existingItem.recipes
                     if !recipes.contains(recipe.name) {
                         recipes.append(recipe.name)
                     }
                     
-                    ingredientMap[ingredientName] = ShoppingListItem(
-                        ingredient: ingredientName,
-                        amount: combineAmounts(existingItem.amount, amount),
-                        unit: unit,
+                    ingredientMap[key] = ShoppingListItem(
+                        ingredient: key,
+                        amount: combineAmounts(existingItem.amount, ingredient.amount),
+                        unit: ingredient.unit,
                         recipes: recipes
                     )
                 } else {
-                    // Create new item
-                    ingredientMap[ingredientName] = ShoppingListItem(
-                        ingredient: ingredientName,
-                        amount: amount,
-                        unit: unit,
+                    ingredientMap[key] = ShoppingListItem(
+                        ingredient: key,
+                        amount: ingredient.amount,
+                        unit: ingredient.unit,
                         recipes: [recipe.name]
                     )
                 }
@@ -263,20 +234,6 @@ class MealPlanService {
         return Array(ingredientMap.values).sorted { $0.ingredient < $1.ingredient }
     }
     
-    // MARK: - Meal Plan Templates
-    
-    /// Get available meal plan templates
-    func getMealPlanTemplates() async -> [MealPlanServiceTemplate] {
-        // For now, return static templates
-        // In the future, these could come from the backend
-        return MealPlanServiceTemplate.allTemplates
-    }
-    
-    /// Apply a template to create a meal plan
-    func createMealPlanFromTemplate(_ template: MealPlanServiceTemplate, preferences: MealPlanPreferences) async throws -> MealPlan {
-        let description = "\(template.description). Preferences: \(template.tags.joined(separator: ", "))"
-        return try await generateMealPlan(preferences: preferences, description: description)
-    }
     
     // MARK: - Convenience Methods
     
@@ -297,14 +254,6 @@ class MealPlanService {
         return allMealPlans
     }
     
-    /// Get current week's meal plan
-    func getCurrentWeekMealPlan() async throws -> MealPlan? {
-        let calendar = Calendar.current
-        let now = Date()
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
-        
-        return try await getMealPlanForWeek(startDate: weekStart)
-    }
     
     /// Get meal plan for a specific week
     func getMealPlanForWeek(startDate: Date) async throws -> MealPlan? {
@@ -321,13 +270,14 @@ class MealPlanService {
     /// Duplicate a meal plan for a new week
     func duplicateMealPlan(id: String, newWeekStartDate: Date) async throws -> MealPlan {
         let originalPlan = try await getMealPlan(id: id)
+        let endDate = Calendar.current.date(byAdding: .day, value: 6, to: newWeekStartDate) ?? newWeekStartDate
         
         let request = CreateMealPlanRequest(
             name: "\(originalPlan.name) (Copy)",
             description: originalPlan.description,
             startDate: newWeekStartDate,
-            endDate: Calendar.current.date(byAdding: .day, value: 6, to: newWeekStartDate) ?? newWeekStartDate,
-            items: nil, // No items initially, will be copied separately
+            endDate: endDate,
+            items: nil,
             preferences: MealPlanPreferences(
                 targetCalories: nil,
                 dietaryRestrictions: nil,
@@ -342,12 +292,53 @@ class MealPlanService {
         return try await createMealPlan(request)
     }
     
+    /// Sync weekly meal grid to backend meal plan (preserves multiple recipes per meal type)
+    func syncWeeklyGridToBackend(mealPlanId: String, weeklyGrid: WeeklyMealGrid) async throws -> MealPlan {
+        let currentPlan = try await getMealPlan(id: mealPlanId)
+        
+        // Clear existing items
+        if let existingItems = currentPlan.items {
+            for item in existingItems {
+                if let itemId = item.id {
+                    try await removeMealPlanItem(mealPlanId: mealPlanId, itemId: String(itemId))
+                }
+            }
+        }
+        
+        // Add all recipes from weekly grid
+        for (dayIndex, dailyMeal) in weeklyGrid.dailyMeals.enumerated() {
+            try await addMealsForDay(mealPlanId: mealPlanId, dayIndex: dayIndex, meals: [
+                (.breakfast, dailyMeal.breakfast),
+                (.lunch, dailyMeal.lunch),
+                (.dinner, dailyMeal.dinner)
+            ])
+        }
+        
+        return try await getMealPlan(id: mealPlanId)
+    }
+    
     // MARK: - Private Helper Methods
     
+    /// Add multiple meals for a specific day
+    private func addMealsForDay(mealPlanId: String, dayIndex: Int, meals: [(MealType, [Recipe])]) async throws {
+        for (mealType, recipes) in meals {
+            for recipe in recipes {
+                _ = try await addMealPlanItem(
+                    mealPlanId: mealPlanId,
+                    recipeId: recipe.id,
+                    dayOfWeek: dayIndex,
+                    mealType: mealType,
+                    servingSize: 1.0
+                )
+            }
+        }
+    }
+    
+    /// Combine ingredient amounts with improved logic
     private func combineAmounts(_ amount1: String, _ amount2: String) -> String {
-        // Simple amount combination - in a real app, this would be more sophisticated
         if let num1 = Double(amount1), let num2 = Double(amount2) {
-            return String(num1 + num2)
+            let combined = num1 + num2
+            return combined.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(combined)) : String(combined)
         }
         return "\(amount1) + \(amount2)"
     }
@@ -389,70 +380,3 @@ struct UpdateMealPlanItemRequest: Codable {
     }
 }
 
-// MARK: - Empty Request for activation endpoints
-private struct EmptyActivateRequest: Codable {}
-
-// MARK: - Response Models
-
-struct ActivateMealPlanResponse: Codable {
-    let message: String
-    let mealPlan: MealPlan
-    
-    enum CodingKeys: String, CodingKey {
-        case message
-        case mealPlan = "meal_plan"
-    }
-}
-
-// MARK: - Meal Plan Template (Service Model)
-struct MealPlanServiceTemplate: Identifiable {
-    let id: String
-    let name: String
-    let description: String
-    let tags: [String]
-    let mealPatterns: [MealPattern]
-    
-    static let allTemplates: [MealPlanServiceTemplate] = [
-        MealPlanServiceTemplate(
-            id: "balanced-week",
-            name: "Balanced Week",
-            description: "A well-rounded meal plan with variety in proteins, vegetables, and grains",
-            tags: ["Balanced", "Nutritious", "Family-Friendly"],
-            mealPatterns: []
-        ),
-        MealPlanServiceTemplate(
-            id: "mediterranean",
-            name: "Mediterranean Style",
-            description: "Fresh, healthy meals inspired by Mediterranean cuisine",
-            tags: ["Mediterranean", "Heart-Healthy", "Fish", "Vegetables"],
-            mealPatterns: []
-        ),
-        MealPlanServiceTemplate(
-            id: "quick-easy",
-            name: "Quick & Easy",
-            description: "Simple meals that can be prepared in 30 minutes or less",
-            tags: ["Quick", "Simple", "30-min", "Busy Schedule"],
-            mealPatterns: []
-        ),
-        MealPlanServiceTemplate(
-            id: "vegetarian",
-            name: "Vegetarian Focus",
-            description: "Plant-based meals with complete proteins and nutrients",
-            tags: ["Vegetarian", "Plant-Based", "Protein-Rich"],
-            mealPatterns: []
-        ),
-        MealPlanServiceTemplate(
-            id: "keto-friendly",
-            name: "Keto Friendly",
-            description: "Low-carb, high-fat meals perfect for ketogenic diet",
-            tags: ["Keto", "Low-Carb", "High-Fat"],
-            mealPatterns: []
-        )
-    ]
-}
-
-struct MealPattern: Codable {
-    let mealType: MealType
-    let recipeTypes: [String]
-    let nutritionTargets: [String: Double]
-}

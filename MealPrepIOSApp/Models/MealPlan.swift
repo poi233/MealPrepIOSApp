@@ -162,7 +162,7 @@ struct MealItem: Codable, Identifiable {
     let id = UUID()
     let recipeName: String
     let ingredients: [String]
-    let instructions: String
+    let instructions: [String]
     
     enum CodingKeys: String, CodingKey {
         case recipeName

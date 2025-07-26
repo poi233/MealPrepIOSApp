@@ -13,7 +13,7 @@ struct Recipe: Codable, Identifiable {
     let name: String
     let description: String
     let ingredients: [Ingredient]
-    let instructions: String
+    let instructions: [String]
     let nutritionInfo: NutritionInfo?
     let cuisine: String?
     let prepTime: Int
@@ -55,7 +55,7 @@ struct Recipe: Codable, Identifiable {
         name: String,
         description: String,
         ingredients: [Ingredient],
-        instructions: String,
+        instructions: [String],
         nutritionInfo: NutritionInfo? = nil,
         cuisine: String? = nil,
         prepTime: Int,
@@ -129,11 +129,26 @@ struct Recipe: Codable, Identifiable {
         }
         
         // Handle instructions as either string or array of strings (from AI generation)
-        if let instructionString = try? container.decode(String.self, forKey: .instructions) {
-            instructions = instructionString
-        } else if let instructionArray = try? container.decode([String].self, forKey: .instructions) {
-            // Join array of instructions with newlines
-            instructions = instructionArray.joined(separator: "\n")
+        if let instructionArray = try? container.decode([String].self, forKey: .instructions) {
+            // Check if the array contains a single string that looks like a stringified array
+            if instructionArray.count == 1 && instructionArray[0].hasPrefix("[") && instructionArray[0].hasSuffix("]") {
+                // Parse the stringified array
+                let stringifiedArray = instructionArray[0]
+                instructions = Recipe.parseStringifiedArray(stringifiedArray)
+            } else {
+                instructions = instructionArray
+            }
+        } else if let instructionString = try? container.decode(String.self, forKey: .instructions) {
+            // Check if it's a stringified array
+            if instructionString.hasPrefix("[") && instructionString.hasSuffix("]") {
+                instructions = Recipe.parseStringifiedArray(instructionString)
+            } else {
+                // Split string instructions into array by newlines
+                instructions = instructionString
+                    .components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
         } else {
             throw DecodingError.dataCorruptedError(forKey: .instructions, in: container, debugDescription: "Instructions must be either string or array of strings")
         }
@@ -164,6 +179,24 @@ struct Recipe: Codable, Identifiable {
     
     var totalTime: Int {
         return prepTime + cookTime
+    }
+    
+    // Helper function to parse stringified array format like "['item1', 'item2', 'item3']"
+    private static func parseStringifiedArray(_ stringifiedArray: String) -> [String] {
+        // Remove the outer brackets
+        let content = String(stringifiedArray.dropFirst().dropLast())
+        
+        // Split by comma and clean up each item
+        let items = content.components(separatedBy: "', '")
+        return items.map { item in
+            // Remove leading/trailing quotes and escape characters
+            let cleaned = item
+                .replacingOccurrences(of: "^['\"]", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "['\"]$", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "\\'", with: "'")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleaned
+        }.filter { !$0.isEmpty }
     }
 }
 
@@ -294,7 +327,7 @@ struct CreateRecipeRequest: Codable {
     let name: String
     let description: String
     let ingredients: [Ingredient]
-    let instructions: String
+    let instructions: [String]
     let nutritionInfo: NutritionInfo?
     let cuisine: String?
     let prepTime: Int
@@ -322,7 +355,7 @@ struct UpdateRecipeRequest: Codable {
     let name: String?
     let description: String?
     let ingredients: [Ingredient]?
-    let instructions: String?
+    let instructions: [String]?
     let nutritionInfo: NutritionInfo?
     let cuisine: String?
     let prepTime: Int?
@@ -398,7 +431,11 @@ extension Recipe {
             Ingredient(name: "Salt", amount: "1", unit: "tsp"),
             Ingredient(name: "Black pepper", amount: "1/2", unit: "tsp")
         ],
-        instructions: "1. Season chicken with salt and pepper\n2. Heat grill to medium-high\n3. Grill 6-7 minutes per side",
+        instructions: [
+            "Season chicken with salt and pepper",
+            "Heat grill to medium-high", 
+            "Grill 6-7 minutes per side"
+        ],
         nutritionInfo: NutritionInfo(
             calories: "320",
             protein: "45",

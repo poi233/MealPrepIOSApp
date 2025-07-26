@@ -11,6 +11,12 @@ import Foundation
 /// 统一的Recipe缓存管理类
 /// 用于MealPlan添加Recipe功能，实现智能缓存和分页策略
 class UnifiedRecipeCache: ObservableObject {
+    
+    // MARK: - Initialization
+    
+    init() {
+        setupNotificationObservers()
+    }
     // MARK: - Cache Properties
     private var cachedRecipes: [Recipe] = []
     private var nextPageToken: String?
@@ -104,6 +110,41 @@ class UnifiedRecipeCache: ObservableObject {
         return nextPageToken
     }
     
+    // MARK: - Setup Methods
+    
+    private func setupNotificationObservers() {
+        // Listen for recipe deletion notifications
+        NotificationCenter.default.addObserver(
+            forName: .recipeDeleted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let recipeId = notification.userInfo?[RecipeDeletionNotificationKeys.recipeId] as? String {
+                self?.removeDeletedRecipe(recipeId: recipeId)
+            }
+        }
+        
+        // Listen for user logout to clear cache
+        NotificationCenter.default.addObserver(
+            forName: .userLoggedOut,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.clearCache()
+        }
+    }
+    
+    /// Remove a deleted recipe from cache
+    private func removeDeletedRecipe(recipeId: String) {
+        let originalCount = cachedRecipes.count
+        cachedRecipes.removeAll { $0.id == recipeId }
+        
+        let removedCount = originalCount - cachedRecipes.count
+        if removedCount > 0 {
+            print("🧹 [UnifiedRecipeCache] Removed \(removedCount) deleted recipe(s) from cache")
+        }
+    }
+    
     /// 清空缓存
     func clearCache() {
         cachedRecipes.removeAll()
@@ -111,6 +152,12 @@ class UnifiedRecipeCache: ObservableObject {
         lastRefreshTime = nil
         currentSearchQuery = ""
         print("🗑️ [UnifiedRecipeCache] Cache cleared")
+    }
+    
+    /// Cleanup method for deinit
+    deinit {
+        // Remove observers to prevent memory leaks
+        NotificationCenter.default.removeObserver(self)
     }
     
     /// 获取缓存统计信息

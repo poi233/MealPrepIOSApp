@@ -35,7 +35,7 @@ struct EditRecipeView: View {
         // Initialize state variables with recipe data
         _name = State(initialValue: recipe.name)
         _description = State(initialValue: recipe.description)
-        _instructions = State(initialValue: recipe.instructions)
+        _instructions = State(initialValue: recipe.instructions.joined(separator: "\n"))
         _cuisine = State(initialValue: recipe.cuisine ?? "")
         _prepTime = State(initialValue: recipe.prepTime)
         _cookTime = State(initialValue: recipe.cookTime)
@@ -208,7 +208,10 @@ struct EditRecipeView: View {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             ingredients: validIngredients,
-            instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines),
+            instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty },
             nutritionInfo: nutrition,
             cuisine: cuisine.trimmingCharacters(in: .whitespacesAndNewlines),
             prepTime: prepTime,
@@ -244,7 +247,7 @@ struct EditRecipeView: View {
             Ingredient(name: "Ingredient 1", amount: "1", unit: "cup", notes: nil),
             Ingredient(name: "Ingredient 2", amount: "2", unit: "tbsp", notes: "chopped")
         ],
-        instructions: "1. Step one\n2. Step two\n3. Enjoy!",
+        instructions: ["Step one", "Step two", "Enjoy!"],
         nutritionInfo: NutritionInfo(calories: "200", protein: "5g", carbohydrates: "30g", fat: "10g", fiber: "2g", sodium: "200mg", sugar: "5g", servings: 4),
         cuisine: "Italian",
         prepTime: 15,

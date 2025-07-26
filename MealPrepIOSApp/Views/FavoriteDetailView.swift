@@ -192,9 +192,20 @@ struct FavoriteDetailView: View {
                         Text("Instructions")
                             .font(.headline)
                         
-                        Text(favorite.recipe.instructions)
-                            .font(.body)
-                            .lineSpacing(4)
+                        ForEach(Array(favorite.recipe.instructions.enumerated()), id: \.offset) { index, instruction in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("\(index + 1).")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primaryGreen)
+                                    .frame(minWidth: 20, alignment: .leading)
+                                
+                                Text(instruction.replacingOccurrences(of: "^\\d+[.)\\s]+", with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                Spacer()
+                            }
+                            .padding(.bottom, 4)
+                        }
                     }
                     
                     // Favorite-specific Meta Information
@@ -260,7 +271,13 @@ struct FavoriteDetailView: View {
                 Ingredient(name: "Eggs", amount: "4", unit: "large", notes: "room temperature"),
                 Ingredient(name: "Pancetta", amount: "150", unit: "g", notes: "diced")
             ],
-            instructions: "1. Cook pasta according to package directions.\n2. While pasta cooks, whisk eggs with cheese.\n3. Cook pancetta until crispy.\n4. Combine hot pasta with egg mixture and pancetta.\n5. Serve immediately.",
+            instructions: [
+                "Cook pasta according to package directions.",
+                "While pasta cooks, whisk eggs with cheese.",
+                "Cook pancetta until crispy.",
+                "Combine hot pasta with egg mixture and pancetta.",
+                "Serve immediately."
+            ],
             nutritionInfo: NutritionInfo(calories: "520", protein: "22", carbohydrates: "65", fat: "18", fiber: "3", sodium: "890", sugar: "3", servings: 4),
             cuisine: "Italian",
             prepTime: 10,

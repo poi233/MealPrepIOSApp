@@ -47,15 +47,16 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 - `MealPlanTemplateService`: Template creation and management with duplicate filtering
 - `FavoritesService`: User favorites handling
 - `LocalMealPlanStorage`: File-based meal plan persistence with multi-week support
+- `UnifiedRecipeCache`: **🚧 In Development** - Advanced recipe caching system with intelligent cache management, pagination support, and search optimization for meal plan recipe selection
 - `NetworkManager`: Centralized HTTP client with JWT handling
 
 #### Utilities Layer
 - `UserCacheManager`: Local user data caching and session persistence
-- `RecipeCacheManager`: ⚠️ Not implemented - Recipe caching temporarily disabled
+- `RecipeCacheManager`: ⚠️ Not implemented - Recipe caching temporarily disabled (being replaced by `UnifiedRecipeCache`)
 
 #### Data Models
 - `User`: User profile with flexible ID parsing
-- `Recipe`: Recipe data with ingredients and nutrition
+- `Recipe`: Recipe data with ingredients and nutrition (instructions stored as `[String]` array with robust parsing for multiple backend formats)
 - `MealPlan`: Weekly meal plan structure
 - `Favorite`: User favorite recipes
 
@@ -98,6 +99,12 @@ if let idString = try? container.decode(String.self, forKey: .id) {
 - Handles backend variations in numeric data formats
 - **AI Integration v2.0 Support**: Parses new AI-generated ingredient format `{name: "鸡胸肉", amount: "150克"}` and stores the complete amount string with unit field left empty for simplified handling
 - **Multi-Format Support**: Handles structured objects, AI format, and legacy string arrays seamlessly
+
+#### Instructions Parsing
+- **Enhanced Robustness**: Handles multiple instruction formats from backend API
+- **Stringified Array Support**: Automatically parses stringified JSON arrays (`"[\"step 1\", \"step 2\"]"`)
+- **Mixed Format Handling**: Supports both array and string formats with automatic detection
+- **Backward Compatibility**: Maintains support for legacy newline-separated instruction strings
 
 #### Nutrition Data Parsing
 - Optimized flexible parsing prioritizing numeric types (Double, Int) over String
@@ -192,6 +199,7 @@ MealPrepIOSApp/
 │   │   ├── MealPlanService.swift
 │   │   ├── MealPlanTemplateService.swift  # Template management with duplicate filtering
 │   │   ├── LocalMealPlanStorage.swift     # File-based meal plan persistence
+│   │   ├── UnifiedRecipeCache.swift       # 🚧 Advanced recipe caching (in development)
 │   │   └── FavoritesService.swift
 │   ├── Stores/              # ViewModels
 │   │   ├── AuthStore.swift
@@ -377,7 +385,7 @@ Documents/
 ```
 
 #### Core Data Integration (Planned)
-- ⚠️ **Recipe Caching**: Temporarily disabled due to implementation issues
+- ⚠️ **Recipe Caching**: Being replaced by `UnifiedRecipeCache` service with memory-based caching
 - Offline recipe caching (planned)
 - User preference storage
 - Favorites management
@@ -387,12 +395,44 @@ Documents/
 - Online-first approach with intelligent local caching
 - **User Data**: UserDefaults-based caching for session persistence
 - **Meal Plans**: File-based storage with UserDefaults backup
-- **Recipes**: ⚠️ No caching currently - always fetches from server (Core Data integration planned)
+- **Recipes**: ⚠️ Limited caching currently - `UnifiedRecipeCache` in development to provide smart caching with pagination and search optimization
 - Background sync when connectivity restored
 - Conflict resolution for concurrent edits
 - Automatic data migration between storage tiers
 
 ## Storage Implementation Details
+
+### UnifiedRecipeCache System (In Development)
+
+The `UnifiedRecipeCache` service provides intelligent recipe caching specifically designed for meal plan recipe selection workflows:
+
+#### Key Features
+- **Smart Cache Validation**: 5-minute cache validity with automatic expiration detection
+- **Search-Aware Caching**: Invalidates cache when search queries change
+- **Pagination Support**: Handles paginated recipe loading with next-page tokens
+- **Memory Efficient**: In-memory caching with automatic cleanup on user logout
+- **Notification Integration**: Automatically removes deleted recipes from cache
+- **Performance Optimized**: Reduces API calls through intelligent cache hit detection
+
+#### Cache Management Methods
+```swift
+// Check if data needs to be loaded
+func shouldLoadData(searchQuery: String, forceRefresh: Bool) -> Bool
+
+// Update cache with new data
+func updateCache(recipes: [Recipe], nextToken: String?, searchQuery: String, isRefresh: Bool)
+
+// Get next page token for pagination
+func getNextPageToken() -> String?
+
+// Validate recipes for meal selection
+func validateRecipesForMealSelection() -> Bool
+```
+
+#### Integration Status
+- **🚧 Development Phase**: Service implemented but not yet integrated into UI components
+- **Target Use Case**: Optimizing recipe selection in meal plan creation workflows
+- **Future Integration**: Will replace current always-fetch approach for recipe browsing
 
 ### File-Based Meal Plan Storage
 The `LocalMealPlanStorage` service implements a robust file-based storage system for meal plans:
@@ -501,7 +541,7 @@ func clearMealPlan(for weekStartDate: Date)
 - **Authentication failures**: Verify JWT token handling
 - **Data parsing errors**: Check API contract compatibility
 - **Build errors**: Ensure Xcode version compatibility
-- **Recipe loading issues**: ⚠️ Recipe caching is disabled - requires network connection
+- **Recipe loading issues**: ⚠️ Limited recipe caching - `UnifiedRecipeCache` in development to improve performance
 - **Image loading problems**: 
   - Images not displaying: Check network connectivity and Unsplash API availability
   - Slow image loading: Normal behavior with shimmer animation, fallback images shown on failure

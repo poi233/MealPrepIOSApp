@@ -16,7 +16,6 @@ struct MealActionSheet: View {
     
     @State private var showingRecipeDetail = false
     @State private var showingSwapMeal = false
-    @State private var showingServingAdjustment = false
     @State private var showingMoveMeal = false
     @State private var showingDeleteConfirmation = false
     @State private var newServingSize: Double = 1.0
@@ -52,18 +51,7 @@ struct MealActionSheet: View {
                             showingSwapMeal = true
                         }
                     )
-                    
-                    actionButton(
-                        title: "Adjust Serving",
-                        subtitle: "Change portion size",
-                        icon: "slider.horizontal.3",
-                        color: .green,
-                        action: {
-                            newServingSize = 1.0  // Default serving size
-                            showingServingAdjustment = true
-                        }
-                    )
-                    
+                                        
                     actionButton(
                         title: "Move to Another Meal",
                         subtitle: "Change day or meal type",
@@ -105,13 +93,6 @@ struct MealActionSheet: View {
                 dayOfWeek: mealPlanItem.dayOfWeek,
                 mealType: MealType(rawValue: mealPlanItem.mealType) ?? .breakfast,
                 date: dateForDayOfWeek(mealPlanItem.dayOfWeek)
-            )
-        }
-        .sheet(isPresented: $showingServingAdjustment) {
-            ServingAdjustmentSheet(
-                recipe: recipe,
-                servingSize: $newServingSize,
-                onConfirm: adjustServing
             )
         }
         .sheet(isPresented: $showingMoveMeal) {

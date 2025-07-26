@@ -169,7 +169,10 @@ struct ManualCreateRecipeView: View {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             ingredients: validIngredients,
-            instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines),
+            instructions: instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty },
             nutritionInfo: nutrition,
             cuisine: cuisine.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : cuisine.trimmingCharacters(in: .whitespacesAndNewlines),
             prepTime: prepTime,

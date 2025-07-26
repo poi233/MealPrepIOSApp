@@ -393,6 +393,9 @@ class RecipeStore: ObservableObject {
     func deleteRecipe(id: String) async -> Bool {
         isDeletingRecipe = true
         
+        // Store recipe name for notification before deletion
+        let recipeName = recipes.first(where: { $0.id == id })?.name ?? "Unknown Recipe"
+        
         do {
             try await recipeService.deleteRecipe(id: id)
             
@@ -404,6 +407,16 @@ class RecipeStore: ObservableObject {
             if currentRecipe?.id == id {
                 currentRecipe = nil
             }
+            
+            // Post notification for cleanup in other parts of the app
+            NotificationCenter.default.post(
+                name: .recipeDeleted,
+                object: nil,
+                userInfo: [
+                    RecipeDeletionNotificationKeys.recipeId: id,
+                    RecipeDeletionNotificationKeys.recipeName: recipeName
+                ]
+            )
             
             isDeletingRecipe = false
             return true

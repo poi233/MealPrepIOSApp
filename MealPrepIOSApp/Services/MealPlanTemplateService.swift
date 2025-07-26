@@ -19,19 +19,19 @@ class MealPlanTemplateService {
         print("   Template name: '\(request.name)'")
         print("   Total meals: \(request.meals.count)")
         
-        // Remove duplicate meals for same day/meal_type combination
-        // Keep only the first occurrence to avoid database constraint violation
+        // Remove only true duplicates (same recipe in same meal slot)
+        // Multiple different recipes in the same meal type for the same day are allowed
         var uniqueMeals: [CreateMealPlanTemplateMeal] = []
         var seenCombinations: Set<String> = []
         
         for meal in request.meals {
-            let key = "\(meal.dayOfWeek)-\(meal.mealType)"
+            let key = "\(meal.dayOfWeek)-\(meal.mealType)-\(meal.recipeId)"
             if !seenCombinations.contains(key) {
                 uniqueMeals.append(meal)
                 seenCombinations.insert(key)
-                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek), recipe: \(meal.recipeId)")
             } else {
-                print("⚠️ [MealPlanTemplateService] Skipped duplicate meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+                print("⚠️ [MealPlanTemplateService] Skipped true duplicate: \(meal.mealType) for day \(meal.dayOfWeek), recipe: \(meal.recipeId)")
             }
         }
         
@@ -246,18 +246,19 @@ class MealPlanTemplateService {
         print("   New description: \(description ?? "unchanged")")
         print("   Template meals to apply: \(templateMeals.count)")
         
-        // Remove duplicate meals for same day/meal_type combination
+        // Remove only true duplicates (same recipe in same meal slot)
+        // Multiple different recipes in the same meal type for the same day are allowed
         var uniqueMeals: [CreateMealPlanTemplateMeal] = []
         var seenCombinations: Set<String> = []
         
         for meal in templateMeals {
-            let key = "\(meal.dayOfWeek)-\(meal.mealType)"
+            let key = "\(meal.dayOfWeek)-\(meal.mealType)-\(meal.recipeId)"
             if !seenCombinations.contains(key) {
                 uniqueMeals.append(meal)
                 seenCombinations.insert(key)
-                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+                print("✅ [MealPlanTemplateService] Added meal: \(meal.mealType) for day \(meal.dayOfWeek), recipe: \(meal.recipeId)")
             } else {
-                print("⚠️ [MealPlanTemplateService] Skipped duplicate meal: \(meal.mealType) for day \(meal.dayOfWeek)")
+                print("⚠️ [MealPlanTemplateService] Skipped true duplicate: \(meal.mealType) for day \(meal.dayOfWeek), recipe: \(meal.recipeId)")
             }
         }
         

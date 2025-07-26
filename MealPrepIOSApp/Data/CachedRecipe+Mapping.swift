@@ -30,8 +30,11 @@ extension CachedRecipe {
             self.ingredients = ingredientsString
         }
         
-        // Store instructions directly as string
-        self.instructions = recipe.instructions
+        // Convert instructions array to JSON string
+        if let instructionsData = try? JSONEncoder().encode(recipe.instructions),
+           let instructionsString = String(data: instructionsData, encoding: .utf8) {
+            self.instructions = instructionsString
+        }
         
         // Convert tags array to JSON string
         if let tagsData = try? JSONEncoder().encode(recipe.tags),
@@ -62,8 +65,12 @@ extension CachedRecipe {
             ingredients = (try? JSONDecoder().decode([Ingredient].self, from: ingredientsData)) ?? []
         }
         
-        // Get instructions as string
-        let instructions = self.instructions ?? ""
+        // Parse instructions from JSON string
+        var instructions: [String] = []
+        if let instructionsString = self.instructions,
+           let instructionsData = instructionsString.data(using: .utf8) {
+            instructions = (try? JSONDecoder().decode([String].self, from: instructionsData)) ?? []
+        }
         
         // Parse tags from JSON string
         var tags: [String] = []
