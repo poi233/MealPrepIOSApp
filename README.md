@@ -21,6 +21,25 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 
 ### Key Components
 
+#### UI Components Layer
+
+- `AsyncImageView`: Enhanced async image loading component with sophisticated loading states, shimmer animations, and error handling
+  - **Loading States**: Animated shimmer effect with pulse animations during image loading
+  - **Error Handling**: Graceful fallback to `DefaultRecipeImageView_Elegant` when images fail to load
+  - **Performance Modes**: Full animation mode for detail views, compact mode for list performance
+  - **Customizable**: Configurable dimensions, corner radius, and content modes
+  - **Integration**: Seamless integration with recipe image URLs from backend Unsplash service
+- `DefaultRecipeImageView`: Elegant fallback images with multiple style variations (Default, Elegant, Warm)
+- `RecipeImageView`: Convenience wrapper combining AsyncImageView with Recipe model integration
+- `MagicUIComponents`: Magic UI component implementations for enhanced visual effects
+  - **StatItem**: Compact component for displaying recipe statistics with icon, value, and color (moved from SharedComponents for consistency)
+- `SharedComponents`: Reusable UI components used across multiple views
+  - **StatView**: Component for displaying statistics with icon, value, and label
+  - **FilterChip**: Enhanced filter chip with Magic UI styling and animations
+  - **SearchBar**: Enhanced search bar with focus states and animations
+  - **EmptyStateView**: Enhanced empty state view with Magic UI styling
+  - **LoadingView**: Standard loading view with progress indicator
+
 #### Services Layer
 - `AuthenticationService`: User authentication and profile management
 - `RecipeService`: Recipe CRUD operations
@@ -183,6 +202,7 @@ MealPrepIOSApp/
 │   │   ├── LoginView.swift
 │   │   ├── RecipesView.swift
 │   │   ├── MealPlanView.swift
+│   │   ├── AIRecipeGenerationView.swift  # AI recipe generation with image preview
 │   │   ├── MealPlan/        # Meal planning components
 │   │   │   ├── ServingAdjustmentSheet.swift  # Serving size adjustment UI (post-addition)
 │   │   │   ├── BatchOperationsSheet.swift
@@ -192,12 +212,87 @@ MealPrepIOSApp/
 │   │   ├── FavoriteDetailView.swift
 │   │   └── EditFavoriteView.swift
 │   ├── Components/          # Reusable UI components
+   │   ├── AsyncImageView.swift     # Enhanced async image loading with animations
+   │   ├── DefaultRecipeImageView.swift  # Fallback recipe image variations
+   │   ├── MagicUIComponents.swift  # Magic UI component implementations
+   │   ├── MarkdownText.swift       # Markdown text rendering
+   │   ├── NotificationComponents.swift  # Notification UI components
+   │   └── SharedComponents.swift   # Shared reusable components
 │   ├── Utils/               # Utilities and extensions
 │   │   └── UserCacheManager.swift  # User data caching
 │   └── Data/                # Core Data stack
 ├── MealPrepIOSAppTests/     # Unit tests
 └── MealPrepIOSAppUITests/   # UI tests
 ```
+
+## Image Loading System
+
+The iOS app features a sophisticated image loading system designed to provide an excellent user experience when displaying recipe images from the backend's Unsplash integration.
+
+### AsyncImageView Component
+
+The `AsyncImageView` is a comprehensive image loading component that enhances the standard SwiftUI `AsyncImage` with:
+
+#### Loading States & Animations
+- **Shimmer Loading Effect**: Animated shimmer overlay during image loading
+- **Pulse Animation**: Subtle pulsing icon animation to indicate active loading
+- **Loading Dots**: Three-dot animation sequence for visual feedback
+- **Smooth Transitions**: 0.3-second ease-in-out animations between states
+
+#### Error Handling & Fallbacks
+- **Graceful Degradation**: Automatic fallback to `DefaultRecipeImageView_Elegant` on load failures
+- **URL Validation**: Handles invalid or missing URLs gracefully
+- **Network Resilience**: Continues to show appropriate UI even when network requests fail
+
+#### Performance Optimization
+- **Dual Performance Modes**:
+  - **Full Animation Mode**: Rich loading animations for detail views
+  - **Compact Mode**: Simplified loading for better list performance
+- **Memory Efficient**: Proper cleanup of animations and loading states
+- **Lifecycle Management**: Automatic animation start/stop based on view appearance
+
+#### Usage Examples
+```swift
+// Basic usage with default settings
+AsyncImageView(url: recipe.imageUrl)
+
+// Customized dimensions and styling
+AsyncImageView(
+    url: recipe.imageUrl,
+    width: 200,
+    height: 150,
+    cornerRadius: 16
+)
+
+// AI Recipe Generation Preview (full-width display)
+AsyncImageView(
+    url: aiRecipe.imageUrl,
+    width: UIScreen.main.bounds.width - 32,
+    height: 200,
+    cornerRadius: 12
+)
+
+// Recipe-specific wrapper with performance options
+RecipeImageView(
+    recipe: recipe,
+    showLoadingAnimation: false  // For list performance
+)
+```
+
+### Default Image System
+
+When images fail to load or URLs are unavailable, the app uses elegant fallback images:
+
+- **DefaultRecipeImageView_Elegant**: Teal gradient with leaf icon for healthy recipes
+- **DefaultRecipeImageView**: Orange gradient with cooking utensils
+- **DefaultRecipeImageView_Warm**: Yellow gradient with chef theme
+
+### Integration with Backend
+
+The image loading system is designed to work seamlessly with the backend's Unsplash integration:
+- Handles Unsplash image URLs with proper sizing parameters
+- Graceful fallback when Unsplash API is unavailable
+- Supports both development and production image sources
 
 ## Key Features Implementation
 
@@ -233,7 +328,7 @@ MealPrepIOSApp/
 ### Recipe Management
 - Browse recipe catalog
 - Create custom recipes
-- AI-generated recipe details
+- **AI-generated recipe details with visual preview**: Enhanced AI recipe generation now displays recipe images in the preview view using AsyncImageView for better visual presentation
 - Recipe search and filtering
 
 ### Favorites System
@@ -333,13 +428,21 @@ func clearMealPlan(for weekStartDate: Date)
 
 ### Network Optimization
 - Request batching for efficiency
-- Image caching for recipes
+- **Enhanced Image Loading**: `AsyncImageView` provides sophisticated image loading with:
+  - Automatic retry logic for failed image loads
+  - Graceful fallback to default images
+  - Optimized loading states with shimmer animations
+  - Performance-optimized modes for different use cases
 - Pagination for large datasets
 - Background refresh for updated data
 
 ### Memory Management
 - Lazy loading for large lists
-- Image memory management
+- **Advanced Image Memory Management**: 
+  - `AsyncImageView` with automatic loading state cleanup
+  - Efficient animation lifecycle management
+  - Performance-optimized compact mode for list views
+  - Proper disposal of loading animations on view disappear
 - Proper view lifecycle handling
 - Store cleanup on logout
 
@@ -399,6 +502,10 @@ func clearMealPlan(for weekStartDate: Date)
 - **Data parsing errors**: Check API contract compatibility
 - **Build errors**: Ensure Xcode version compatibility
 - **Recipe loading issues**: ⚠️ Recipe caching is disabled - requires network connection
+- **Image loading problems**: 
+  - Images not displaying: Check network connectivity and Unsplash API availability
+  - Slow image loading: Normal behavior with shimmer animation, fallback images shown on failure
+  - Default images showing: Indicates backend image URLs are unavailable or invalid
 
 ### Debug Tools
 - Network request logging in NetworkManager

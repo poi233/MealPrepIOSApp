@@ -129,6 +129,17 @@ struct AIRecipeGenerationView: View {
     private func aiRecipePreviewView(_ aiRecipe: AIGeneratedRecipe) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                // Recipe Image
+                if let imageUrl = aiRecipe.imageUrl, !imageUrl.isEmpty {
+                    AsyncImageView(
+                        url: imageUrl,
+                        width: UIScreen.main.bounds.width - 32,
+                        height: 200,
+                        cornerRadius: 12
+                    )
+                    .padding(.horizontal)
+                }
+                
                 // Header
                 VStack(alignment: .leading, spacing: 8) {
                     Text(aiRecipe.name)

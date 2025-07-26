@@ -16,7 +16,7 @@ struct LoadingView: View {
             ProgressView()
                 .scaleEffect(1.2)
             Text(message)
-                .font(.subheadline)
+                .font(Font.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -64,7 +64,7 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.caption)
+                .font(Font.caption)
                 .fontWeight(.medium)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
@@ -125,12 +125,12 @@ struct SearchBar: View {
         HStack(spacing: 12) {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(Font.system(size: 16, weight: .medium))
                     .foregroundColor(isFocused ? .primaryGreen : .secondary)
                     .animation(.easeInOut(duration: 0.2), value: isFocused)
                 
                 TextField("Search recipes, ingredients...", text: $text)
-                    .font(.body)
+                    .font(Font.body)
                     .focused($isFocused)
                     .textFieldStyle(PlainTextFieldStyle())
                     .onTapGesture {
@@ -144,7 +144,7 @@ struct SearchBar: View {
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
+                            .font(Font.system(size: 16))
                             .foregroundColor(.secondary)
                     }
                     .transition(.scale.combined(with: .opacity))
@@ -178,7 +178,7 @@ struct SearchBar: View {
                         isFocused = false
                     }
                 }
-                .font(.body)
+                .font(Font.body)
                 .fontWeight(.medium)
                 .foregroundColor(.primaryGreen)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -192,6 +192,9 @@ struct SearchBar: View {
         }
     }
 }
+
+// MARK: - Stat Item (for recipe cards) - Using the one from MagicUIComponents
+// StatItem is defined in MagicUIComponents.swift to avoid duplication
 
 // MARK: - Stat View
 struct StatView: View {
@@ -207,10 +210,10 @@ struct StatView: View {
                 Text(value)
                     .fontWeight(.semibold)
             }
-            .font(.subheadline)
+            .font(Font.subheadline)
             
             Text(label)
-                .font(.caption)
+                .font(Font.caption)
                 .foregroundColor(.secondary)
         }
     }
@@ -228,7 +231,7 @@ struct EmptyStateView: View {
         VStack(spacing: 24) {
                 // Static icon with gradient
                 Image(systemName: icon)
-                    .font(.system(size: 60, weight: .light))
+                    .font(Font.system(size: 60, weight: .light))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.secondary, .secondary.opacity(0.6)],
@@ -239,7 +242,7 @@ struct EmptyStateView: View {
                 
                 VStack(spacing: 12) {
                     Text(title)
-                        .font(.title2)
+                        .font(Font.title2)
                         .fontWeight(.bold)
                         .foregroundStyle(
                             LinearGradient(
@@ -250,7 +253,7 @@ struct EmptyStateView: View {
                         )
                     
                     Text(message)
-                        .font(.body)
+                        .font(Font.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
@@ -265,6 +268,9 @@ struct EmptyStateView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+// MARK: - Static Button Component - Using the one from MagicUIComponents
+// StaticButton is defined in MagicUIComponents.swift to avoid duplication
 
 
 

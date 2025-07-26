@@ -2,10 +2,11 @@
 //  FavoritesView.swift
 //  MealPrepIOSApp
 //
-//  Updated by AI Assistant on 7/20/25.
+//  Updated by AI Assistant on 7/26/25.
 //
 
 import SwiftUI
+import Foundation
 
 struct FavoritesView: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
@@ -104,7 +105,7 @@ struct FavoritesView: View {
                         Image(systemName: "list.bullet").tag(FavoriteViewMode.list)
                         Image(systemName: "square.grid.2x2").tag(FavoriteViewMode.grid)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
+                    .pickerStyle(.segmented)
                     .frame(width: 100)
                 }
                 .padding(.horizontal)
@@ -112,7 +113,7 @@ struct FavoritesView: View {
                 
                 // Content
                 if favoritesStore.isLoading && favoritesStore.favorites.isEmpty {
-                    LoadingView(message: "Loading favorites...")
+                    EnhancedLoadingView(message: "Loading your favorite recipes...")
                 } else if favoritesStore.isEmpty {
                     EmptyFavoritesView()
                 } else {
@@ -247,12 +248,25 @@ struct FavoriteListView: View {
                 // Load More Indicator
                 if hasMorePages {
                     if isLoadingMore {
-                        ProgressView()
+                        LoadMoreIndicator()
                             .padding()
                     } else {
                         Button("Load More") {
                             onLoadMore()
                         }
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primaryGreen)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color.primaryGreen.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(Color.primaryGreen.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                         .padding()
                         .onAppear {
                             onLoadMore()
@@ -295,18 +309,17 @@ struct FavoriteCard: View {
                 )
             
             VStack(alignment: .leading, spacing: 12) {
-                // Recipe Image with enhanced styling - matching RecipeCard
+                // Recipe Image with enhanced styling and loading animation
                 ZStack {
-                    AsyncImage(url: URL(string: favorite.recipe.imageUrl ?? "")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        DefaultRecipeImageView_Elegant(width: 200, height: 150)
-                    }
+                    RecipeImageView(
+                        recipe: favorite.recipe,
+                        width: 200,
+                        height: imageHeight,
+                        cornerRadius: 12,
+                        showLoadingAnimation: true
+                    )
                     .frame(maxWidth: .infinity, maxHeight: imageHeight)
                     .clipped()
-                    .cornerRadius(12)
                     
                     // Gradient overlay for better text readability
                     LinearGradient(
@@ -456,30 +469,270 @@ struct FavoriteCard: View {
     }
 }
 
-struct EmptyFavoritesView: View {
+// MARK: - Enhanced Loading View
+
+struct EnhancedLoadingView: View {
+    let message: String
+    
+    @State private var isAnimating = false
+    @State private var currentDotIndex = 0
+    @State private var timer: Timer?
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "heart")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
-            
-            Text("No Favorites Yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text("Start exploring recipes and tap the heart icon to save your favorites!")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            Button("Browse Recipes") {
-                // TODO: Navigate to recipes tab
+        VStack(spacing: 24) {
+            // Animated heart icon
+            ZStack {
+                // Background circle with pulse
+                Circle()
+                    .fill(Color.primaryGreen.opacity(0.1))
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(isAnimating ? 1.2 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 1.5)
+                            .repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
+                
+                // Heart icon with beat animation
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 32, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .scaleEffect(isAnimating ? 1.1 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 0.8)
+                            .repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
             }
-            .buttonStyle(.borderedProminent)
+            
+            VStack(spacing: 12) {
+                Text(message)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                
+                // Animated loading dots
+                HStack(spacing: 8) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .fill(Color.primaryGreen)
+                            .frame(width: 8, height: 8)
+                            .scaleEffect(currentDotIndex == index ? 1.3 : 1.0)
+                            .opacity(currentDotIndex == index ? 1.0 : 0.5)
+                            .animation(.easeInOut(duration: 0.3), value: currentDotIndex)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            isAnimating = true
+            startDotAnimation()
+        }
+        .onDisappear {
+            isAnimating = false
+            timer?.invalidate()
+            timer = nil
+        }
+    }
+    
+    private func startDotAnimation() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+            withAnimation {
+                currentDotIndex = (currentDotIndex + 1) % 3
+            }
+        }
+    }
+}
+
+// MARK: - Enhanced Empty Favorites View
+
+struct EmptyFavoritesView: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        VStack(spacing: 32) {
+            // Animated illustration
+            ZStack {
+                // Background circles
+                Circle()
+                    .fill(Color.primaryGreen.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(isAnimating ? 1.1 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 2.0)
+                            .repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
+                
+                Circle()
+                    .fill(Color.primaryGreen.opacity(0.05))
+                    .frame(width: 160, height: 160)
+                    .scaleEffect(isAnimating ? 0.9 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 2.5)
+                            .repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
+                
+                // Heart icon
+                Image(systemName: "heart")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.secondary, .secondary.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .scaleEffect(isAnimating ? 1.05 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 1.8)
+                            .repeatForever(autoreverses: true),
+                        value: isAnimating
+                    )
+            }
+            
+            VStack(spacing: 16) {
+                Text("No Favorites Yet")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.primary, .primary.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                
+                Text("Start exploring recipes and tap the heart icon to save your favorites!")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .lineSpacing(2)
+                
+                // Tips
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "heart.circle.fill")
+                            .foregroundColor(.primaryGreen)
+                        Text("Tap the heart icon on any recipe")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Image(systemName: "star.circle.fill")
+                            .foregroundColor(.yellow)
+                        Text("Rate and add personal notes")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass.circle.fill")
+                            .foregroundColor(.blue)
+                        Text("Search and filter your collection")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+            }
+            
+            // Action button
+            Button {
+                // TODO: Navigate to recipes tab
+                // This could be implemented with a TabView selection binding
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                    Text("Browse Recipes")
+                }
+                .font(.body)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(25)
+                .shadow(
+                    color: .primaryGreen.opacity(0.3),
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                )
+            }
+            .scaleEffect(isAnimating ? 1.02 : 1.0)
+            .animation(
+                Animation.easeInOut(duration: 2.2)
+                    .repeatForever(autoreverses: true),
+                value: isAnimating
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+        .onAppear {
+            isAnimating = true
+        }
+        .onDisappear {
+            isAnimating = false
+        }
+    }
+}
+
+// MARK: - Load More Indicator
+
+struct LoadMoreIndicator: View {
+    @State private var isAnimating = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Animated loading dots
+            HStack(spacing: 6) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.primaryGreen)
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(isAnimating ? 1.0 : 0.5)
+                        .animation(
+                            Animation.easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.2),
+                            value: isAnimating
+                        )
+                }
+            }
+            
+            Text("Loading more favorites...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .onAppear {
+            isAnimating = true
+        }
+        .onDisappear {
+            isAnimating = false
+        }
     }
 }
 
