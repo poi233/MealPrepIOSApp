@@ -44,7 +44,7 @@ struct FavoriteDetailView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("My Rating")
                                     .font(.headline)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primaryGreen)
                                 
                                 HStack(spacing: 4) {
                                     ForEach(1...5, id: \.self) { star in
@@ -72,7 +72,7 @@ struct FavoriteDetailView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("My Notes")
                                     .font(.headline)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primaryGreen)
                                 
                                 Text(notes)
                                     .font(.body)
@@ -152,7 +152,7 @@ struct FavoriteDetailView: View {
                             ForEach(favorite.recipe.ingredients, id: \.id) { ingredient in
                                 HStack(alignment: .top, spacing: 12) {
                                     Circle()
-                                        .fill(Color.accentColor.opacity(0.2))
+                                        .fill(Color.primaryGreen.opacity(0.2))
                                         .frame(width: 8, height: 8)
                                         .padding(.top, 6)
                                     
@@ -203,7 +203,7 @@ struct FavoriteDetailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Favorite Info")
                             .font(.headline)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primaryGreen)
                         
                         HStack {
                             Text("Added to favorites:")

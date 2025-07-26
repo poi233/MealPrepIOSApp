@@ -14,126 +14,120 @@ struct RegisterView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 32) {
-                    // Header
-                    BlurFade(delay: 0.1) {
-                        VStack(spacing: 16) {
-                            Image(systemName: "person.crop.circle.badge.plus")
-                                .font(.system(size: 80))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.accentColor, .green, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                    // Header - static, no animations
+                    VStack(spacing: 16) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.system(size: 80))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.primaryGreen, .secondaryGreen, .tertiaryGreen],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
-                                .shadow(color: .accentColor.opacity(0.3), radius: 10)
-                            
-                            Text("Join MealPrep AI")
-                                .font(.title)
-                                .fontWeight(.bold)
-                            
-                            Text("Start your culinary journey today")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
+                            )
+                            .shadow(color: .primaryGreen.opacity(0.3), radius: 10)
+                        
+                        Text("Join MealPrep AI")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text("Start your culinary journey today")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                     
-                    // Registration Form in Magic Card
-                    BlurFade(delay: 0.3) {
-                        MagicCard {
-                            VStack(spacing: 24) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Create your account")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                    Text("Fill in your details to get started")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                    // Registration Form in Magic Card - static, no animations
+                    MagicCard {
+                        VStack(spacing: 24) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Create your account")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                Text("Fill in your details to get started")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            VStack(spacing: 20) {
+                                HStack(spacing: 12) {
+                                    StaticTextField("First name", text: $firstName)
+                                    StaticTextField("Last name", text: $lastName)
+                                }
+                                
+                                StaticTextField("Email", text: $email, keyboardType: .emailAddress)
+                                    .textInputAutocapitalization(.never)
+                                
+                                StaticTextField("Password", text: $password, isSecure: true)
+                                
+                                StaticTextField("Confirm password", text: $confirmPassword, isSecure: true)
+                                
+                                // Error messages
+                                VStack(alignment: .leading, spacing: 8) {
+                                    if let errorMessage = authStore.errorMessage {
+                                        HStack {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                            Text(errorMessage)
+                                                .font(.caption)
+                                        }
+                                        .foregroundColor(.red)
+                                    }
+                                    
+                                    if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
+                                        HStack {
+                                            Image(systemName: "xmark.circle.fill")
+                                            Text("Passwords don't match")
+                                                .font(.caption)
+                                        }
+                                        .foregroundColor(.red)
+                                    }
+                                    
+                                    if !password.isEmpty && password.count < 6 {
+                                        HStack {
+                                            Image(systemName: "info.circle.fill")
+                                            Text("Password must be at least 6 characters")
+                                                .font(.caption)
+                                        }
+                                        .foregroundColor(.orange)
+                                    }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                VStack(spacing: 20) {
-                                    HStack(spacing: 12) {
-                                        AnimatedTextField("First name", text: $firstName)
-                                        AnimatedTextField("Last name", text: $lastName)
-                                    }
-                                    
-                                    AnimatedTextField("Email", text: $email, keyboardType: .emailAddress)
-                                        .textInputAutocapitalization(.never)
-                                    
-                                    AnimatedTextField("Password", text: $password, isSecure: true)
-                                    
-                                    AnimatedTextField("Confirm password", text: $confirmPassword, isSecure: true)
-                                    
-                                    // Error messages
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        if let errorMessage = authStore.errorMessage {
-                                            HStack {
-                                                Image(systemName: "exclamationmark.triangle.fill")
-                                                Text(errorMessage)
-                                                    .font(.caption)
-                                            }
-                                            .foregroundColor(.red)
-                                        }
-                                        
-                                        if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
-                                            HStack {
-                                                Image(systemName: "xmark.circle.fill")
-                                                Text("Passwords don't match")
-                                                    .font(.caption)
-                                            }
-                                            .foregroundColor(.red)
-                                        }
-                                        
-                                        if !password.isEmpty && password.count < 6 {
-                                            HStack {
-                                                Image(systemName: "info.circle.fill")
-                                                Text("Password must be at least 6 characters")
-                                                    .font(.caption)
-                                            }
-                                            .foregroundColor(.orange)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            
+                            VStack(spacing: 16) {
+                                StaticButton(
+                                    "Create Account",
+                                    isLoading: authStore.isLoading,
+                                    disabled: !isFormValid
+                                ) {
+                                    register()
                                 }
                                 
-                                VStack(spacing: 16) {
-                                    ShimmerButton(
-                                        "Create Account",
-                                        isLoading: authStore.isLoading,
-                                        disabled: !isFormValid
-                                    ) {
-                                        register()
-                                    }
-                                    
-                                    Text("By signing up, you agree to our Terms of Service and Privacy Policy")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                }
+                                Text("By signing up, you agree to our Terms of Service and Privacy Policy")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
                             }
                         }
                     }
                     
-                    // Back to login
-                    BlurFade(delay: 0.5) {
-                        VStack(spacing: 16) {
-                            HStack {
-                                Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundColor(.secondary.opacity(0.3))
-                                Text("or")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Rectangle()
-                                    .frame(height: 1)
-                                    .foregroundColor(.secondary.opacity(0.3))
-                            }
-                            
-                            RippleButton("Already have an account?", style: .secondary) {
-                                presentationMode.wrappedValue.dismiss()
-                            }
+                    // Back to login - static, no animations
+                    VStack(spacing: 16) {
+                        HStack {
+                            Rectangle()
+                                .frame(height: 1)
+                                .foregroundColor(.secondary.opacity(0.3))
+                            Text("or")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Rectangle()
+                                .frame(height: 1)
+                                .foregroundColor(.secondary.opacity(0.3))
+                        }
+                        
+                        StaticOutlineButton("Already have an account?", style: .secondary) {
+                            presentationMode.wrappedValue.dismiss()
                         }
                     }
                 }
@@ -146,7 +140,7 @@ struct RegisterView: View {
                 LinearGradient(
                     colors: [
                         Color(.systemBackground),
-                        Color.green.opacity(0.05)
+                        Color.primaryGreen.opacity(0.05)
                     ],
                     startPoint: .top,
                     endPoint: .bottom

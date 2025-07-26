@@ -23,7 +23,7 @@ struct CreateRecipeSelectionView: View {
                         .font(.system(size: 80))
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.accentColor, .blue],
+                                colors: [.primaryGreen, .blue],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )

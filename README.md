@@ -27,6 +27,7 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 - `MealPlanService`: Meal plan management
 - `MealPlanTemplateService`: Template creation and management with duplicate filtering
 - `FavoritesService`: User favorites handling
+- `LocalMealPlanStorage`: File-based meal plan persistence with multi-week support
 - `NetworkManager`: Centralized HTTP client with JWT handling
 
 #### Utilities Layer
@@ -37,6 +38,13 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 - `Recipe`: Recipe data with ingredients and nutrition
 - `MealPlan`: Weekly meal plan structure
 - `Favorite`: User favorite recipes
+
+#### Shared Enums
+- `MealType`: Breakfast, lunch, dinner meal categories
+- `Difficulty`: Recipe difficulty levels (easy, medium, hard)
+- `AnalysisType`: Meal plan analysis types (nutrition, variety, balance, full)
+- `BudgetLevel`: Budget categories for meal planning
+- `WeekDirection`: Week navigation directions (previous, current, next)
 
 #### Stores (ViewModels)
 - `AuthStore`: Authentication state management
@@ -151,13 +159,15 @@ MealPrepIOSApp/
 │   │   ├── User.swift       # User model with flexible parsing
 │   │   ├── Recipe.swift     # Recipe data structure
 │   │   ├── MealPlan.swift   # Meal plan models
-│   │   └── Favorite.swift   # Favorites model
+│   │   ├── Favorite.swift   # Favorites model
+│   │   └── SharedEnums.swift # Shared enums and types
 │   ├── Services/            # API services
 │   │   ├── NetworkManager.swift      # HTTP client
 │   │   ├── AuthenticationService.swift
 │   │   ├── RecipeService.swift
 │   │   ├── MealPlanService.swift
 │   │   ├── MealPlanTemplateService.swift  # Template management with duplicate filtering
+│   │   ├── LocalMealPlanStorage.swift     # File-based meal plan persistence
 │   │   └── FavoritesService.swift
 │   ├── Stores/              # ViewModels
 │   │   ├── AuthStore.swift
@@ -234,7 +244,10 @@ MealPrepIOSApp/
 
 ## Data Persistence
 
-### User Session Caching
+### Multi-Tier Storage Architecture
+The iOS app implements a sophisticated multi-tier storage system optimized for different data types:
+
+#### User Session Caching
 - `UserCacheManager`: Local user data persistence using UserDefaults
 - Automatic session restoration across app launches
 - Consistent date parsing matching NetworkManager
@@ -243,17 +256,72 @@ MealPrepIOSApp/
 - Seamless integration with AuthStore for state management
 - Proper cache cleanup during logout operations
 
-### Core Data Integration (Planned)
+#### Meal Plan File-Based Storage
+- `LocalMealPlanStorage`: Hybrid file-based + UserDefaults storage system
+- **Primary Storage**: JSON files in Documents/MealPlans directory
+- **Backup Storage**: UserDefaults for redundancy and migration
+- **Multi-Week Support**: Independent storage for up to 6 weeks of meal plans
+- **Automatic Cleanup**: Intelligent storage management prevents unlimited growth
+- **File Protection**: Uses `.completeFileProtection` for enhanced security
+- **Atomic Operations**: Ensures data integrity during save operations
+- **Legacy Migration**: Seamless migration from UserDefaults-only storage
+- **Error Recovery**: Robust retry logic with fallback mechanisms
+
+#### Storage Directory Structure
+```
+Documents/
+└── MealPlans/
+    ├── 2025-07-14.json    # Week starting July 14, 2025
+    ├── 2025-07-21.json    # Week starting July 21, 2025
+    └── 2025-07-28.json    # Week starting July 28, 2025
+```
+
+#### Core Data Integration (Planned)
 - Offline recipe caching
 - User preference storage
-- Meal plan synchronization
 - Favorites management
+- Advanced search indexing
 
 ### Sync Strategy
-- Online-first approach with local user caching
-- Offline fallback for cached user data
+- Online-first approach with intelligent local caching
+- **User Data**: UserDefaults-based caching for session persistence
+- **Meal Plans**: File-based storage with UserDefaults backup
+- **Recipes**: Planned Core Data integration for offline access
 - Background sync when connectivity restored
 - Conflict resolution for concurrent edits
+- Automatic data migration between storage tiers
+
+## Storage Implementation Details
+
+### File-Based Meal Plan Storage
+The `LocalMealPlanStorage` service implements a robust file-based storage system for meal plans:
+
+#### Key Features
+- **Week-Specific Storage**: Each week's meal plan is stored in a separate JSON file
+- **Atomic Operations**: File writes use atomic operations to prevent data corruption
+- **Retry Logic**: Automatic retry with exponential backoff for failed operations
+- **Enhanced Data Verification**: Comprehensive integrity checks with proper date handling consistency
+- **Automatic Cleanup**: Maintains only the most recent 6 weeks of data
+- **Backward Compatibility**: Seamless migration from legacy UserDefaults storage
+
+#### Storage Methods
+```swift
+// Save meal plan for specific week
+func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError>
+
+// Load meal plan for specific week
+func loadWeeklyMealPlan(for weekStartDate: Date) -> WeeklyMealGrid?
+
+// Clear meal plan for specific week
+func clearMealPlan(for weekStartDate: Date)
+```
+
+#### Error Handling
+- Custom `LocalStorageError` enum for specific error types
+- Comprehensive logging for debugging and monitoring
+- Graceful fallback to UserDefaults backup when file operations fail
+- Automatic recovery from corrupted data
+- Enhanced verification with consistent date handling between encoding and decoding
 
 ## Performance Considerations
 
@@ -268,6 +336,12 @@ MealPrepIOSApp/
 - Image memory management
 - Proper view lifecycle handling
 - Store cleanup on logout
+
+### Storage Optimization
+- JSON file compression for reduced disk usage
+- Intelligent caching with automatic cleanup
+- File protection for enhanced security
+- Optimized read/write operations with retry logic
 
 ## Security
 
@@ -324,6 +398,11 @@ MealPrepIOSApp/
 - Core Data debugging
 - Console logging for API responses
 - Xcode debugging tools
+- **StorageDebugHelper**: Enhanced debugging utilities including:
+  - Week storage analysis and validation (`debugStoredWeeksAndDates()`)
+  - Invalid week cleanup functionality (`cleanupInvalidWeeks()`)
+  - Date calculation debugging
+  - Storage integrity verification
 
 ## License
 

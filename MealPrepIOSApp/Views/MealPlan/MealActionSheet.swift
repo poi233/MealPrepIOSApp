@@ -407,7 +407,7 @@ struct MoveMealSheet: View {
             .frame(width: 50, height: 60)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(selectedDayOfWeek == dayIndex ? Color.accentColor : Color(.systemGray6))
+                    .fill(selectedDayOfWeek == dayIndex ? Color.primaryGreen : Color(.systemGray6))
             )
         }
     }
@@ -439,15 +439,15 @@ struct MoveMealSheet: View {
                 
                 if selectedMealType == mealType {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.primaryGreen)
                 }
             }
-            .foregroundColor(selectedMealType == mealType ? .accentColor : .primary)
+            .foregroundColor(selectedMealType == mealType ? .primaryGreen : .primary)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(selectedMealType == mealType ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+                    .fill(selectedMealType == mealType ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
             )
         }
     }
@@ -476,7 +476,7 @@ struct MoveMealSheet: View {
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(
                     LinearGradient(
-                        colors: [.accentColor, .accentColor.opacity(0.8)],
+                        colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

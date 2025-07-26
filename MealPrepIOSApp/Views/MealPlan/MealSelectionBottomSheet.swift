@@ -114,17 +114,17 @@ extension MealSelectionBottomSheet {
             VStack(spacing: 6) {
                 Image(systemName: tab.iconName)
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(selectedTab == tab ? .accentColor : .secondary)
+                    .foregroundColor(selectedTab == tab ? .primaryGreen : .secondary)
                 
                 Text(tab.title)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(selectedTab == tab ? .accentColor : .secondary)
+                    .foregroundColor(selectedTab == tab ? .primaryGreen : .secondary)
             }
             .frame(width: 80, height: 60)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(selectedTab == tab ? Color.accentColor.opacity(0.1) : Color.clear)
+                    .fill(selectedTab == tab ? Color.primaryGreen.opacity(0.1) : Color.clear)
             )
             .scaleEffect(selectedTab == tab ? 1.05 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedTab)
@@ -199,26 +199,27 @@ extension MealSelectionBottomSheet {
                             }
                         }
                         
-                        // Load more button/indicator
+                        // Infinite scroll loading indicator
                         if recipeStore.hasMorePages {
-                            if recipeStore.isLoadingMore {
-                                HStack {
+                            HStack {
+                                if recipeStore.isLoadingMore {
                                     ProgressView()
                                         .scaleEffect(0.8)
                                     Text("Loading more recipes...")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                } else {
+                                    // Invisible trigger for infinite scroll
+                                    Color.clear
+                                        .frame(height: 1)
+                                        .onAppear {
+                                            Task {
+                                                await recipeStore.loadMoreRecipesForMealSelection()
+                                            }
+                                        }
                                 }
-                                .padding()
-                            } else {
-                                Button("Load More Recipes") {
-                                    Task {
-                                        await recipeStore.loadMoreRecipesForMealSelection()
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .padding()
                             }
+                            .padding()
                         }
                     }
                     .padding(.horizontal, 20)
@@ -438,7 +439,7 @@ extension MealSelectionBottomSheet {
                             .frame(maxWidth: .infinity, minHeight: 50)
                             .background(
                                 LinearGradient(
-                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -537,7 +538,7 @@ struct RecipeSelectionCard: View {
                 Button(action: onTap) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.primaryGreen)
                         .scaleEffect(isHovered ? 1.1 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHovered)
                 }

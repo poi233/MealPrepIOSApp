@@ -33,6 +33,28 @@ struct MealPrepIOSAppApp: App {
                         }
                     }
                 }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                    // Save meal plan data when app goes to background
+                    print("📱 [App] App will resign active - saving meal plan data")
+                    let saveResult = mealPlanStore.saveLocalMealPlan()
+                    switch saveResult {
+                    case .success():
+                        print("✅ [App] Meal plan saved on background")
+                    case .failure(let error):
+                        print("❌ [App] Failed to save meal plan on background: \(error.localizedDescription)")
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                    // Save meal plan data when app is about to terminate
+                    print("📱 [App] App will terminate - saving meal plan data")
+                    let saveResult = mealPlanStore.saveLocalMealPlan()
+                    switch saveResult {
+                    case .success():
+                        print("✅ [App] Meal plan saved on termination")
+                    case .failure(let error):
+                        print("❌ [App] Failed to save meal plan on termination: \(error.localizedDescription)")
+                    }
+                }
         }
     }
 }

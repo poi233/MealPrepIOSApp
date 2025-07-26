@@ -134,7 +134,7 @@ class MealPlanTemplateService {
                 updatedAt: mealPlan.updatedAt
             )
             
-            print("   ✅ Converted: '\(mealPlan.name)' → Template ID: \(template.id)")
+            print("   ✅ Converted: \(mealPlan.name)")
             if let previewMeals = template.previewMeals, !previewMeals.isEmpty {
                 print("      Preview meals: \(previewMeals.joined(separator: ", "))")
             } else {
@@ -162,12 +162,9 @@ class MealPlanTemplateService {
         print("   Name: '\(mealPlan.name)'")
         print("   Items: \(mealPlan.items?.count ?? 0)")
         
-        // Debug: Print original meal plan items
+        // Debug: Print original meal plan summary
         if let items = mealPlan.items {
-            print("🔍 [MealPlanTemplateService] Original MealPlan items:")
-            for item in items {
-                print("   Item ID: \(item.id ?? 0), Day: \(item.dayOfWeek), MealType: '\(item.mealType)', Recipe: \(item.recipe?.name ?? "Unknown")")
-            }
+            print("🔍 [MealPlanTemplateService] Original MealPlan has \(items.count) items")
         }
         
         let templateName = mealPlan.name // Use original name (no prefix removal)
@@ -186,7 +183,7 @@ class MealPlanTemplateService {
             )
             
             // Debug: Print conversion
-            print("🔄 [MealPlanTemplateService] Converting item: Day \(item.dayOfWeek), '\(item.mealType)' -> '\(templateMeal.mealType)' (ID: \(uniqueId))")
+            print("🔄 [MealPlanTemplateService] Converting: \(templateMeal.recipe?.name ?? "Unknown")")
             
             return templateMeal
         }

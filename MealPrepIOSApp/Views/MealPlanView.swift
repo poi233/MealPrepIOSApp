@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MealPlanView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    @State private var showingMealPlanList = false
+
     @State private var showingAnalysisView = false
     @State private var showingShoppingList = false
     @State private var showingBatchOperations = false
@@ -21,10 +21,6 @@ struct MealPlanView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
-                        Button("All Meal Plans") {
-                            showingMealPlanList = true
-                        }
-                        
                         if mealPlanStore.currentMealPlan != nil {
                             Button("Analyze Plan") {
                                 showingAnalysisView = true
@@ -61,7 +57,7 @@ struct MealPlanView: View {
                             .font(.title2)
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -73,10 +69,7 @@ struct MealPlanView: View {
                 MealPlanTemplateSheet()
                     .environmentObject(mealPlanStore)
             }
-            .sheet(isPresented: $showingMealPlanList) {
-                MealPlanListSheet()
-                    .environmentObject(mealPlanStore)
-            }
+
             .sheet(isPresented: $showingAnalysisView) {
                 MealPlanAnalysisView()
                     .environmentObject(mealPlanStore)
@@ -318,7 +311,7 @@ struct MealSlotView: View {
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.primaryGreen)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 32, height: 32)

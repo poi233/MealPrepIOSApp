@@ -20,12 +20,12 @@ struct LoginView: View {
                             .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [.accentColor, .blue, .purple],
+                                    colors: [.primaryGreen, .secondaryGreen, .tertiaryGreen],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .shadow(color: .accentColor.opacity(0.3), radius: 10)
+                            .shadow(color: .primaryGreen.opacity(0.3), radius: 10)
                         
                         Text("MealPrep AI")
                             .font(.title2)
@@ -54,10 +54,10 @@ struct LoginView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         
                         VStack(spacing: 16) {
-                            AnimatedTextField("Email", text: $email, keyboardType: .emailAddress)
+                            StaticTextField("Email", text: $email, keyboardType: .emailAddress)
                                 .textInputAutocapitalization(.never)
                             
-                            AnimatedTextField("Password", text: $password, isSecure: true)
+                            StaticTextField("Password", text: $password, isSecure: true)
                             
                             if let errorMessage = authStore.errorMessage {
                                 HStack {
@@ -71,7 +71,7 @@ struct LoginView: View {
                         }
                         
                         VStack(spacing: 12) {
-                            ShimmerButton(
+                            StaticButton(
                                 "Sign In",
                                 isLoading: authStore.isLoading,
                                 disabled: email.isEmpty || password.isEmpty || loginTask != nil
@@ -89,7 +89,7 @@ struct LoginView: View {
                                 // TODO: Implement forgot password
                             }
                             .font(.caption)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.primaryGreen)
                         }
                     }
                     .frame(width: 350, height: 380)
@@ -121,7 +121,7 @@ struct LoginView: View {
                                 .foregroundColor(.secondary.opacity(0.3))
                         }
                         
-                        RippleButton("Create new account", style: .outline) {
+                        StaticOutlineButton("Create new account", style: .outline) {
                             showingRegister = true
                         }
                         .frame(width: 350)
@@ -139,7 +139,7 @@ struct LoginView: View {
                 LinearGradient(
                     colors: [
                         Color(.systemBackground),
-                        Color.accentColor.opacity(0.05)
+                        Color.primaryGreen.opacity(0.05)
                     ],
                     startPoint: .top,
                     endPoint: .bottom

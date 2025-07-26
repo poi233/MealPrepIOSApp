@@ -168,7 +168,7 @@ struct MealPlanGenerationView: View {
                     Button("Choose from Templates") {
                         showingTemplates = true
                     }
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                     
                     if let template = selectedTemplate {
                         HStack {
@@ -334,8 +334,8 @@ struct TemplateRow: View {
                                     .font(.caption)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(Color.accentColor.opacity(0.1))
-                                    .foregroundColor(.accentColor)
+                                    .background(Color.primaryGreen.opacity(0.1))
+                                    .foregroundColor(.primaryGreen)
                                     .cornerRadius(4)
                             }
                         }
@@ -346,7 +346,7 @@ struct TemplateRow: View {
                 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.primaryGreen)
                         .font(.title2)
                 }
             }

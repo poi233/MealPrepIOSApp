@@ -121,7 +121,7 @@ struct EditRecipeView: View {
                     Button("Add Ingredient") {
                         ingredients.append(IngredientInput())
                     }
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                 }
                 
                 Section("Instructions") {

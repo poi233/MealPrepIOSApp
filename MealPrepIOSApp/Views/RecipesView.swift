@@ -174,12 +174,12 @@ struct RecipesView: View {
                     }
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(recipeStore.hasFilters ? .accentColor : .primary)
+                    .foregroundColor(recipeStore.hasFilters ? .primaryGreen : .primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(recipeStore.hasFilters ? Color.accentColor.opacity(0.1) : Color.clear)
+                            .fill(recipeStore.hasFilters ? Color.primaryGreen.opacity(0.1) : Color.clear)
                     )
                 }
                 
@@ -207,7 +207,7 @@ struct RecipesView: View {
                             .font(.title2)
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [.accentColor, .accentColor.opacity(0.8)],
+                                    colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -370,7 +370,7 @@ struct RecipeCard: View {
                 )
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.accentColor.opacity(0.1))
+                        .fill(Color.primaryGreen.opacity(0.1))
                         .blur(radius: isHovered ? 20 : 0)
                 )
                 .shadow(
@@ -385,7 +385,7 @@ struct RecipeCard: View {
                 .stroke(
                     LinearGradient(
                         colors: isHovered ? 
-                            [Color.accentColor.opacity(0.3), Color.blue.opacity(0.3)] : 
+                            [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] : 
                             [Color.clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -490,13 +490,7 @@ struct RecipeCard: View {
                     Text(recipe.name)
                         .font(style == .compact ? .headline : .title3)
                         .fontWeight(.bold)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.primary, .accentColor],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .foregroundColor(.primary)
                         .lineLimit(2)
                     
                     if style != .compact {

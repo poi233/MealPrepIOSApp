@@ -241,7 +241,7 @@ struct ShoppingProgressView: View {
             }
             
             ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
+                .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
         }
         .padding()
         .background(Color(.systemGray6))
@@ -259,7 +259,7 @@ struct ShoppingListItemRow: View {
             // Checkbox
             Button(action: onToggle) {
                 Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(item.isCompleted ? .accentColor : .secondary)
+                    .foregroundColor(item.isCompleted ? .primaryGreen : .secondary)
                     .font(.title2)
             }
             .buttonStyle(PlainButtonStyle())

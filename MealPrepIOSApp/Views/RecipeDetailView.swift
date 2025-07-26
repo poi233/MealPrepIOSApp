@@ -61,8 +61,8 @@ struct RecipeDetailView: View {
                                                 .font(.caption)
                                                 .padding(.horizontal, 8)
                                                 .padding(.vertical, 4)
-                                                .background(Color.accentColor.opacity(0.1))
-                                                .foregroundColor(.accentColor)
+                                                .background(Color.primaryGreen.opacity(0.1))
+                                                .foregroundColor(.primaryGreen)
                                                 .cornerRadius(8)
                                         }
                                     }
@@ -135,7 +135,7 @@ struct RecipeDetailView: View {
                                         servingMultiplier = 1.0
                                     }
                                     .font(.caption)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(.primaryGreen)
                                 }
                             }
                         }
@@ -288,7 +288,7 @@ struct IngredientView: View {
         HStack(alignment: .top, spacing: 12) {
             Button(action: { isChecked.toggle() }) {
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isChecked ? .accentColor : .secondary)
+                    .foregroundColor(isChecked ? .primaryGreen : .secondary)
             }
             
             VStack(alignment: .leading, spacing: 2) {

@@ -73,7 +73,7 @@ struct FilterChip: View {
                         if isSelected {
                             // Selected state with gradient
                             LinearGradient(
-                                colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                                colors: [Color.primaryGreen, Color.primaryGreen.opacity(0.8)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -87,13 +87,13 @@ struct FilterChip: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
                         .stroke(
-                            isSelected ? Color.clear : Color.accentColor.opacity(0.3),
+                            isSelected ? Color.clear : Color.primaryGreen.opacity(0.3),
                             lineWidth: 1
                         )
                 )
                 .cornerRadius(20)
                 .shadow(
-                    color: isSelected ? Color.accentColor.opacity(0.3) : Color.black.opacity(0.1),
+                    color: isSelected ? Color.primaryGreen.opacity(0.3) : Color.black.opacity(0.1),
                     radius: isSelected ? 8 : 2,
                     x: 0,
                     y: isSelected ? 4 : 1
@@ -126,7 +126,7 @@ struct SearchBar: View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(isFocused ? .accentColor : .secondary)
+                    .foregroundColor(isFocused ? .primaryGreen : .secondary)
                     .animation(.easeInOut(duration: 0.2), value: isFocused)
                 
                 TextField("Search recipes, ingredients...", text: $text)
@@ -158,13 +158,13 @@ struct SearchBar: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(
-                                isFocused ? Color.accentColor : Color.clear,
+                                isFocused ? Color.primaryGreen : Color.clear,
                                 lineWidth: 2
                             )
                     )
             )
             .shadow(
-                color: isFocused ? Color.accentColor.opacity(0.2) : Color.black.opacity(0.05),
+                color: isFocused ? Color.primaryGreen.opacity(0.2) : Color.black.opacity(0.05),
                 radius: isFocused ? 8 : 2,
                 x: 0,
                 y: isFocused ? 4 : 1
@@ -180,7 +180,7 @@ struct SearchBar: View {
                 }
                 .font(.body)
                 .fontWeight(.medium)
-                .foregroundColor(.accentColor)
+                .foregroundColor(.primaryGreen)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -203,7 +203,7 @@ struct StatView: View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                 Text(value)
                     .fontWeight(.semibold)
             }
@@ -225,9 +225,8 @@ struct EmptyStateView: View {
     let action: (() -> Void)?
     
     var body: some View {
-        BlurFade(delay: 0.2) {
-            VStack(spacing: 24) {
-                // Enhanced icon with gradient
+        VStack(spacing: 24) {
+                // Static icon with gradient
                 Image(systemName: icon)
                     .font(.system(size: 60, weight: .light))
                     .foregroundStyle(
@@ -237,7 +236,6 @@ struct EmptyStateView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .symbolEffect(.pulse.wholeSymbol, options: .repeating)
                 
                 VStack(spacing: 12) {
                     Text(title)
@@ -259,13 +257,12 @@ struct EmptyStateView: View {
                 }
                 
                 if let actionTitle = actionTitle, let action = action {
-                    ShimmerButton(actionTitle, action: action)
+                    StaticButton(actionTitle, action: action)
                         .padding(.top, 8)
                 }
-            }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

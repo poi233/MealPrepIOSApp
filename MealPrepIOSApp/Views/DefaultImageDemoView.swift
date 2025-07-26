@@ -122,7 +122,7 @@ struct FeatureRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(.accentColor)
+                .foregroundColor(.primaryGreen)
                 .frame(width: 20)
             
             Text(text)

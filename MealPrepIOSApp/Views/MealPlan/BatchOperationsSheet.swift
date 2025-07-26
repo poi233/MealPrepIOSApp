@@ -249,7 +249,7 @@ extension BatchOperationsSheet {
                 .fontWeight(.medium)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .background(Color.accentColor)
+                .background(Color.primaryGreen)
                 .cornerRadius(12)
                 .padding(.horizontal, 20)
             }
@@ -320,8 +320,6 @@ extension BatchOperationsSheet {
         switch operation {
         case .copyFromLastWeek:
             return await copyFromLastWeek()
-        case .applyTemplate:
-            return await applyTemplate()
         case .autoFillWithAI:
             return await autoFillWithAI()
         case .clearAllMeals:
@@ -344,14 +342,7 @@ extension BatchOperationsSheet {
         )
     }
     
-    private func applyTemplate() async -> BatchOperationResult {
-        // This would open a template selection in a real implementation
-        return BatchOperationResult(
-            isSuccess: true,
-            title: "Template Applied",
-            message: "Meal plan template has been applied to this week"
-        )
-    }
+
     
     private func autoFillWithAI() async -> BatchOperationResult {
         // Implementation would generate AI meals
@@ -376,10 +367,7 @@ extension BatchOperationsSheet {
     }
     
     private func duplicateToNextWeek() async -> BatchOperationResult {
-        let calendar = Calendar.current
-        let nextWeekStart = calendar.date(byAdding: .weekOfYear, value: 1, to: mealPlanStore.selectedWeekStartDate)!
-        
-        guard let currentPlan = mealPlanStore.activeMealPlan else {
+        guard mealPlanStore.activeMealPlan != nil else {
             return BatchOperationResult(
                 isSuccess: false,
                 title: "No Active Plan",
@@ -413,16 +401,14 @@ extension BatchOperationsSheet {
 
 enum BatchOperation: CaseIterable, Identifiable {
     case copyFromLastWeek
-    case applyTemplate
-    case autoFillWithAI
-    case clearAllMeals
     case duplicateToNextWeek
+    case clearAllMeals
+    case autoFillWithAI
     case generateShoppingList
     
     var id: String {
         switch self {
         case .copyFromLastWeek: return "copy-last-week"
-        case .applyTemplate: return "apply-template"
         case .autoFillWithAI: return "auto-fill-ai"
         case .clearAllMeals: return "clear-all"
         case .duplicateToNextWeek: return "duplicate-next"
@@ -433,7 +419,6 @@ enum BatchOperation: CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .copyFromLastWeek: return "Copy from Last Week"
-        case .applyTemplate: return "Apply Template"
         case .autoFillWithAI: return "Auto-fill with AI"
         case .clearAllMeals: return "Clear All Meals"
         case .duplicateToNextWeek: return "Duplicate to Next Week"
@@ -444,7 +429,6 @@ enum BatchOperation: CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .copyFromLastWeek: return "Copy all meals from the previous week"
-        case .applyTemplate: return "Apply a meal plan template to this week"
         case .autoFillWithAI: return "Let AI fill empty meal slots intelligently"
         case .clearAllMeals: return "Remove all meals from this week"
         case .duplicateToNextWeek: return "Copy this week's meals to next week"
@@ -455,7 +439,6 @@ enum BatchOperation: CaseIterable, Identifiable {
     var iconName: String {
         switch self {
         case .copyFromLastWeek: return "arrow.uturn.backward"
-        case .applyTemplate: return "doc.on.clipboard"
         case .autoFillWithAI: return "brain.head.profile"
         case .clearAllMeals: return "trash"
         case .duplicateToNextWeek: return "arrow.uturn.forward"
@@ -466,7 +449,6 @@ enum BatchOperation: CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .copyFromLastWeek: return .blue
-        case .applyTemplate: return .purple
         case .autoFillWithAI: return .green
         case .clearAllMeals: return .red
         case .duplicateToNextWeek: return .orange

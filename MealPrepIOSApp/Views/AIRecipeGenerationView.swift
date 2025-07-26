@@ -85,7 +85,7 @@ struct AIRecipeGenerationView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(isFormValid ? Color.accentColor : Color.gray)
+                    .background(isFormValid ? Color.primaryGreen : Color.gray)
                     .cornerRadius(12)
                 }
                 .disabled(!isFormValid)
@@ -186,7 +186,7 @@ struct AIRecipeGenerationView: View {
                     ForEach(Array(aiRecipe.ingredients.enumerated()), id: \.offset) { index, ingredient in
                         HStack(alignment: .top) {
                             Text("•")
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(.primaryGreen)
                                 .fontWeight(.bold)
                             Text(ingredient)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -220,8 +220,8 @@ struct AIRecipeGenerationView: View {
                             Text(tag)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color.accentColor.opacity(0.1))
-                                .foregroundColor(.accentColor)
+                                .background(Color.primaryGreen.opacity(0.1))
+                                .foregroundColor(.primaryGreen)
                                 .cornerRadius(16)
                                 .font(.caption)
                         }

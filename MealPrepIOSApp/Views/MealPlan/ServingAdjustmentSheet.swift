@@ -190,7 +190,7 @@ extension ServingAdjustmentSheet {
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(servingSize == option.value && !useCustomServing ? 
-                          LinearGradient(colors: [.accentColor, .accentColor.opacity(0.8)], 
+                          LinearGradient(colors: [.primaryGreen, .primaryGreen.opacity(0.8)], 
                                        startPoint: .topLeading, endPoint: .bottomTrailing) :
                           LinearGradient(colors: [Color(.systemGray6), Color(.systemGray6)], 
                                        startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -335,7 +335,7 @@ extension ServingAdjustmentSheet {
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(
                     LinearGradient(
-                        colors: [.accentColor, .accentColor.opacity(0.8)],
+                        colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )

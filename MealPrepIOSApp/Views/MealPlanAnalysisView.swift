@@ -66,7 +66,7 @@ struct AnalysisSetupView: View {
             VStack(spacing: 12) {
                 Image(systemName: "chart.bar.doc.horizontal")
                     .font(.system(size: 48))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                 
                 Text("Analyze Your Meal Plan")
                     .font(.title2)
@@ -138,10 +138,10 @@ struct AnalysisTypeCard: View {
                 Spacer()
                 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                    .foregroundColor(isSelected ? .primaryGreen : .secondary)
             }
             .padding()
-            .background(isSelected ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+            .background(isSelected ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
             .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
@@ -169,19 +169,19 @@ struct AnalyzingView: View {
             // Animated Analysis Icon
             ZStack {
                 Circle()
-                    .stroke(Color.accentColor.opacity(0.3), lineWidth: 4)
+                    .stroke(Color.primaryGreen.opacity(0.3), lineWidth: 4)
                     .frame(width: 80, height: 80)
                 
                 Circle()
                     .trim(from: 0, to: 0.7)
-                    .stroke(Color.accentColor, lineWidth: 4)
+                    .stroke(Color.primaryGreen, lineWidth: 4)
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: UUID())
                 
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 32))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
             }
             
             VStack(spacing: 8) {
@@ -285,7 +285,7 @@ struct StatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(.accentColor)
+                .foregroundColor(.primaryGreen)
             
             Text(value)
                 .font(.headline)

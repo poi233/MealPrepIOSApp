@@ -7,168 +7,225 @@
 
 import Foundation
 
+// MARK: - Local Storage Errors
+enum LocalStorageError: LocalizedError {
+    case encodingFailed(Error)
+    case decodingFailed(Error)
+    case saveVerificationFailed
+    
+    var errorDescription: String? {
+        switch self {
+        case .encodingFailed(let error):
+            return "Failed to encode meal plan data: \(error.localizedDescription)"
+        case .decodingFailed(let error):
+            return "Failed to decode meal plan data: \(error.localizedDescription)"
+        case .saveVerificationFailed:
+            return "Data was not saved properly - verification failed"
+        }
+    }
+}
+
 class LocalMealPlanStorage {
     static let shared = LocalMealPlanStorage()
     private let userDefaults = UserDefaults.standard
+    private let fileManager = FileManager.default
     
-    private init() {}
+    private init() {
+        createStorageDirectoryIfNeeded()
+        migrateLegacyDataIfNeeded()
+    }
     
     // MARK: - Constants
-    private let weeklyMealPlanKey = "weeklyMealPlan" // Legacy key for backward compatibility
+    private let weeklyMealPlanKey = "weeklyMealPlan" // Legacy key
     private let multiWeekKeyPrefix = "weeklyMealPlan_"
-    private let maxStoredWeeks = 6 // Keep last 6 weeks to prevent unlimited storage growth
+    private let maxStoredWeeks = 6
+    private let storageDirectoryName = "MealPlans"
     
-    // MARK: - Multi-Week Storage Methods
+    // MARK: - Storage Directory Management
+    
+    private var documentsDirectory: URL {
+        fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+    }
+    
+    private var storageDirectory: URL {
+        documentsDirectory.appendingPathComponent(storageDirectoryName)
+    }
+    
+    private func createStorageDirectoryIfNeeded() {
+        if !fileManager.fileExists(atPath: storageDirectory.path) {
+            try? fileManager.createDirectory(at: storageDirectory, withIntermediateDirectories: true, attributes: nil)
+        }
+    }
+    
+    private func fileURL(for weekStartDate: Date) -> URL {
+        let fileName = "\(formatWeekDate(weekStartDate)).json"
+        return storageDirectory.appendingPathComponent(fileName)
+    }
+    
+    // MARK: - Storage Methods
     
     /// Save weekly meal plan for a specific week
-    func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) {
-        let key = generateWeekKey(for: weekStartDate)
+    func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError> {
+        let normalizedDate = normalizeWeekStartDate(weekStartDate)
+        let fileURL = fileURL(for: normalizedDate)
         
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(weeklyGrid)
-            userDefaults.set(data, forKey: key)
             
-            print("✅ Saved meal plan for week \(formatWeekDate(weekStartDate)) with key: \(key)")
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
             
-            // Clean up old weeks to prevent storage growth
+            // Verify save
+            guard let savedData = try? Data(contentsOf: fileURL) else {
+                return .failure(.saveVerificationFailed)
+            }
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            guard let _ = try? decoder.decode(WeeklyMealGrid.self, from: savedData) else {
+                return .failure(.saveVerificationFailed)
+            }
+            
+            // Backup to UserDefaults
+            saveToUserDefaultsBackup(for: normalizedDate, weeklyGrid)
             cleanupOldWeeks()
             
+            return .success(())
         } catch {
-            print("❌ Failed to save meal plan for week \(formatWeekDate(weekStartDate)): \(error)")
+            return .failure(.encodingFailed(error))
         }
+    }
+    
+    /// Save to UserDefaults as backup
+    private func saveToUserDefaultsBackup(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(weeklyGrid) else { return }
+        let key = generateWeekKey(for: weekStartDate)
+        userDefaults.set(data, forKey: key)
     }
     
     /// Load weekly meal plan for a specific week
     func loadWeeklyMealPlan(for weekStartDate: Date) -> WeeklyMealGrid? {
-        let key = generateWeekKey(for: weekStartDate)
+        let normalizedDate = normalizeWeekStartDate(weekStartDate)
+        let fileURL = fileURL(for: normalizedDate)
         
-        guard let data = userDefaults.data(forKey: key) else {
-            print("📝 No stored meal plan found for week \(formatWeekDate(weekStartDate))")
-            return nil
-        }
-        
-        do {
+        // Try to load from file first
+        if let data = try? Data(contentsOf: fileURL) {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let weeklyGrid = try decoder.decode(WeeklyMealGrid.self, from: data)
-            print("✅ Loaded meal plan for week \(formatWeekDate(weekStartDate))")
-            return weeklyGrid
-        } catch {
-            print("❌ Failed to load meal plan for week \(formatWeekDate(weekStartDate)): \(error)")
+            if let weeklyGrid = try? decoder.decode(WeeklyMealGrid.self, from: data) {
+                return weeklyGrid
+            }
+        }
+        
+        // Fallback to UserDefaults backup
+        let key = generateWeekKey(for: normalizedDate)
+        guard let data = userDefaults.data(forKey: key) else {
             return nil
         }
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let weeklyGrid = try? decoder.decode(WeeklyMealGrid.self, from: data) else {
+            return nil
+        }
+        
+        // Save to file for future use
+        _ = saveWeeklyMealPlan(for: normalizedDate, weeklyGrid)
+        return weeklyGrid
     }
     
     /// Clear meal plan for a specific week
     func clearMealPlan(for weekStartDate: Date) {
-        let key = generateWeekKey(for: weekStartDate)
+        let normalizedDate = normalizeWeekStartDate(weekStartDate)
+        let fileURL = fileURL(for: normalizedDate)
+        let key = generateWeekKey(for: normalizedDate)
+        
+        try? fileManager.removeItem(at: fileURL)
         userDefaults.removeObject(forKey: key)
-        print("✅ Cleared meal plan for week \(formatWeekDate(weekStartDate))")
     }
     
     /// Get all stored week start dates
     func getAllStoredWeeks() -> [Date] {
+        var dates: [Date] = []
+        
+        // Get dates from files
+        if let fileURLs = try? fileManager.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil) {
+            let jsonFiles = fileURLs.filter { $0.pathExtension == "json" }
+            dates.append(contentsOf: jsonFiles.compactMap { fileURL in
+                let fileName = fileURL.deletingPathExtension().lastPathComponent
+                return weekDateFormatter.date(from: fileName)
+            })
+        }
+        
+        // Check UserDefaults for backup data
         let allKeys = Array(userDefaults.dictionaryRepresentation().keys)
         let weekKeys = allKeys.filter { $0.hasPrefix(multiWeekKeyPrefix) }
-        
-        let dates = weekKeys.compactMap { key -> Date? in
+        let userDefaultsDates = weekKeys.compactMap { key -> Date? in
             let dateString = String(key.dropFirst(multiWeekKeyPrefix.count))
             return weekDateFormatter.date(from: dateString)
         }
         
-        return dates.sorted()
+        dates.append(contentsOf: userDefaultsDates)
+        return Array(Set(dates)).sorted()
     }
     
-    // MARK: - Legacy Methods (Deprecated but kept for backward compatibility)
+    // MARK: - Cleanup Methods
     
-    /// Save weekly meal plan to local storage (Legacy method - uses current week)
-    @available(*, deprecated, message: "Use saveWeeklyMealPlan(for:_:) instead")
-    func saveWeeklyMealPlan(_ weeklyGrid: WeeklyMealGrid) {
-        saveWeeklyMealPlan(for: weeklyGrid.weekStartDate, weeklyGrid)
-    }
-    
-    /// Load weekly meal plan from local storage (Legacy method - tries to load current week)
-    @available(*, deprecated, message: "Use loadWeeklyMealPlan(for:) instead")
-    func loadWeeklyMealPlan() -> WeeklyMealGrid? {
-        // Try to migrate legacy data first
-        migrateLegacyDataIfNeeded()
+    /// Force cleanup of invalid weeks (outside ±4 weeks from current)
+    func forceCleanupInvalidWeeks() {
+        let calendar = Calendar.current
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
         
-        // Return the most recent stored week
-        let storedWeeks = getAllStoredWeeks()
-        guard let mostRecentWeek = storedWeeks.last else {
-            return nil
-        }
-        
-        return loadWeeklyMealPlan(for: mostRecentWeek)
-    }
-    
-    /// Clear local meal plan (Legacy method)
-    @available(*, deprecated, message: "Use clearMealPlan(for:) instead")
-    func clearLocalMealPlan() {
-        // Clear legacy storage
-        userDefaults.removeObject(forKey: weeklyMealPlanKey)
-        
-        // Clear all multi-week storage
         let storedWeeks = getAllStoredWeeks()
         for week in storedWeeks {
-            clearMealPlan(for: week)
+            let weekDifference = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: week).weekOfYear ?? 0
+            if abs(weekDifference) > 4 {
+                clearMealPlan(for: week)
+            }
         }
-        
-        print("✅ Cleared all local meal plans")
     }
     
     // MARK: - Private Helper Methods
     
     private func generateWeekKey(for weekStartDate: Date) -> String {
-        let dateString = weekDateFormatter.string(from: weekStartDate)
-        return "\(multiWeekKeyPrefix)\(dateString)"
+        "\(multiWeekKeyPrefix)\(formatWeekDate(weekStartDate))"
     }
     
     private func formatWeekDate(_ date: Date) -> String {
-        return weekDateFormatter.string(from: date)
+        weekDateFormatter.string(from: date)
+    }
+    
+    /// Normalize week start date to remove time components and ensure consistency
+    private func normalizeWeekStartDate(_ date: Date) -> Date {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return calendar.date(from: components) ?? date
     }
     
     private func cleanupOldWeeks() {
         let storedWeeks = getAllStoredWeeks()
-        
         if storedWeeks.count > maxStoredWeeks {
             let weeksToRemove = storedWeeks.dropLast(maxStoredWeeks)
-            
-            for weekToRemove in weeksToRemove {
-                clearMealPlan(for: weekToRemove)
-                print("🧹 Cleaned up old meal plan for week \(formatWeekDate(weekToRemove))")
-            }
-            
-            if !weeksToRemove.isEmpty {
-                print("🧹 Cleanup completed: removed \(weeksToRemove.count) old week(s)")
-            }
+            weeksToRemove.forEach { clearMealPlan(for: $0) }
         }
     }
     
     private func migrateLegacyDataIfNeeded() {
-        // Check if legacy data exists and hasn't been migrated
         guard let legacyData = userDefaults.data(forKey: weeklyMealPlanKey) else {
             return
         }
         
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let legacyGrid = try decoder.decode(WeeklyMealGrid.self, from: legacyData)
-            
-            // Save to new multi-week system
-            saveWeeklyMealPlan(for: legacyGrid.weekStartDate, legacyGrid)
-            
-            // Remove legacy data
-            userDefaults.removeObject(forKey: weeklyMealPlanKey)
-            
-            print("🔄 Migrated legacy meal plan data to multi-week storage")
-            
-        } catch {
-            print("❌ Failed to migrate legacy meal plan data: \(error)")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let legacyGrid = try? decoder.decode(WeeklyMealGrid.self, from: legacyData) else {
+            return
         }
+        
+        _ = saveWeeklyMealPlan(for: legacyGrid.weekStartDate, legacyGrid)
+        userDefaults.removeObject(forKey: weeklyMealPlanKey)
     }
     
     // MARK: - Date Formatter

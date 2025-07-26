@@ -56,3 +56,20 @@ enum BudgetLevel: String, CaseIterable, Codable {
         }
     }
 }
+
+enum WeekDirection: String, CaseIterable {
+    case previous = "previous"
+    case current = "current"
+    case next = "next"
+    
+    var displayName: String {
+        switch self {
+        case .previous:
+            return "Previous Week"
+        case .current:
+            return "Current Week"
+        case .next:
+            return "Next Week"
+        }
+    }
+}

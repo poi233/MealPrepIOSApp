@@ -8,14 +8,12 @@
 
 import SwiftUI
 
-// MARK: - Shimmer Button
-struct ShimmerButton: View {
+// MARK: - Static Button (No Animations)
+struct StaticButton: View {
     let title: String
     let action: () -> Void
     let isLoading: Bool
     let disabled: Bool
-    
-    @State private var shimmerOffset: CGFloat = -200
     
     init(_ title: String, isLoading: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
         self.title = title
@@ -26,75 +24,61 @@ struct ShimmerButton: View {
     
     var body: some View {
         Button(action: disabled ? {} : action) {
-            ZStack {
-                // Background with gradient
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        LinearGradient(
-                            colors: disabled ? [Color.gray.opacity(0.3)] : [Color.accentColor, Color.accentColor.opacity(0.8)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 50)
-                
-                // Shimmer effect
-                if !disabled && !isLoading {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.clear, Color.white.opacity(0.3), Color.clear],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 100)
-                        .offset(x: shimmerOffset)
-                        .onAppear {
-                            withAnimation(
-                                Animation.linear(duration: 2.0)
-                                    .repeatForever(autoreverses: false)
-                            ) {
-                                shimmerOffset = 300
-                            }
-                        }
-                }
-                
-                // Content
-                HStack {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                    } else {
-                        Text(title)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                    }
+            HStack {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.8)
+                } else {
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(disabled ? Color.gray.opacity(0.3) : Color.primaryGreen)
+            )
         }
         .disabled(disabled || isLoading)
-        .animation(.easeInOut(duration: 0.2), value: disabled)
     }
 }
 
-// MARK: - Ripple Button
-struct RippleButton: View {
+// MARK: - Legacy Shimmer Button (Deprecated - Use StaticButton)
+@available(*, deprecated, message: "Use StaticButton instead")
+struct ShimmerButton: View {
     let title: String
     let action: () -> Void
-    let style: RippleButtonStyle
+    let isLoading: Bool
+    let disabled: Bool
     
-    @State private var ripples: [RippleEffect] = []
+    init(_ title: String, isLoading: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.action = action
+        self.isLoading = isLoading
+        self.disabled = disabled
+    }
     
-    enum RippleButtonStyle {
+    var body: some View {
+        StaticButton(title, isLoading: isLoading, disabled: disabled, action: action)
+    }
+}
+
+// MARK: - Static Outline Button (No Animations)
+struct StaticOutlineButton: View {
+    let title: String
+    let action: () -> Void
+    let style: StaticButtonStyle
+    
+    enum StaticButtonStyle {
         case primary, secondary, outline
         
         var backgroundColor: Color {
             switch self {
-            case .primary: return .accentColor
-            case .secondary: return Color(.secondarySystemBackground)
+            case .primary: return .primaryGreen
+            case .secondary: return .greenBackground
             case .outline: return .clear
             }
         }
@@ -103,7 +87,7 @@ struct RippleButton: View {
             switch self {
             case .primary: return .clear
             case .secondary: return .clear
-            case .outline: return .accentColor
+            case .outline: return .primaryGreen
             }
         }
         
@@ -111,15 +95,45 @@ struct RippleButton: View {
             switch self {
             case .primary: return .white
             case .secondary: return .primary
-            case .outline: return .accentColor
+            case .outline: return .primaryGreen
             }
         }
     }
     
-    struct RippleEffect: Identifiable {
-        let id = UUID()
-        let position: CGPoint
-        let startTime: Date
+    init(_ title: String, style: StaticButtonStyle = .primary, action: @escaping () -> Void) {
+        self.title = title
+        self.style = style
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline)
+                .fontWeight(.medium)
+                .foregroundColor(style.textColor)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(style.backgroundColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(style.borderColor, lineWidth: style == .outline ? 1 : 0)
+                        )
+                )
+        }
+    }
+}
+
+// MARK: - Legacy Ripple Button (Deprecated - Use StaticOutlineButton)
+@available(*, deprecated, message: "Use StaticOutlineButton instead")
+struct RippleButton: View {
+    let title: String
+    let action: () -> Void
+    let style: RippleButtonStyle
+    
+    enum RippleButtonStyle {
+        case primary, secondary, outline
     }
     
     init(_ title: String, style: RippleButtonStyle = .primary, action: @escaping () -> Void) {
@@ -129,49 +143,13 @@ struct RippleButton: View {
     }
     
     var body: some View {
-        Button(action: {}) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(style.backgroundColor)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(style.borderColor, lineWidth: style == .outline ? 1 : 0)
-                    )
-                    .frame(height: 44)
-                
-                // Ripple effects
-                ForEach(ripples) { ripple in
-                    Circle()
-                        .fill(Color.white.opacity(0.3))
-                        .frame(width: 20, height: 20)
-                        .position(ripple.position)
-                        .scaleEffect(CGSize(width: 3, height: 3))
-                        .opacity(0)
-                        .animation(.easeOut(duration: 0.6), value: ripples.count)
-                }
-                
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.medium)
-                    .foregroundColor(style.textColor)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onEnded { value in
-                    createRipple(at: value.location)
-                    action()
-                }
-        )
-    }
-    
-    private func createRipple(at location: CGPoint) {
-        let ripple = RippleEffect(position: location, startTime: Date())
-        ripples.append(ripple)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            ripples.removeAll { $0.id == ripple.id }
+        switch style {
+        case .primary:
+            StaticOutlineButton(title, style: .primary, action: action)
+        case .secondary:
+            StaticOutlineButton(title, style: .secondary, action: action)
+        case .outline:
+            StaticOutlineButton(title, style: .outline, action: action)
         }
     }
 }
@@ -204,7 +182,7 @@ struct MagicCard<Content: View>: View {
                 )
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(Color.accentColor.opacity(0.1))
+                        .fill(Color.primaryGreen.opacity(0.1))
                 )
                 .shadow(
                     color: Color.black.opacity(0.1),
@@ -219,15 +197,14 @@ struct MagicCard<Content: View>: View {
     }
 }
 
-// MARK: - Animated Text Field
-struct AnimatedTextField: View {
+// MARK: - Static Text Field (No Animations)
+struct StaticTextField: View {
     let placeholder: String
     @Binding var text: String
     let keyboardType: UIKeyboardType
     let isSecure: Bool
     
     @FocusState private var isFocused: Bool
-    @State private var animateLabel = false
     
     init(_ placeholder: String, text: Binding<String>, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) {
         self.placeholder = placeholder
@@ -237,60 +214,56 @@ struct AnimatedTextField: View {
     }
     
     var body: some View {
-        ZStack(alignment: .leading) {
-            // Expanded clickable background
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-                .stroke(
-                    isFocused ? Color.accentColor : Color.clear,
-                    lineWidth: isFocused ? 2 : 0
-                )
-                .frame(height: 60)
-                .animation(.easeInOut(duration: 0.2), value: isFocused)
-                .contentShape(Rectangle()) // Make entire area tappable
-                .onTapGesture {
-                    isFocused = true
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            // Static label - always visible
+            Text(placeholder)
+                .font(.caption)
+                .foregroundColor(isFocused ? .primaryGreen : .secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             
-            VStack(alignment: .leading, spacing: 4) {
-                // Animated label
-                Text(placeholder)
-                    .font(animateLabel ? .caption : .body)
-                    .foregroundColor(isFocused ? .accentColor : .secondary)
-                    .offset(y: animateLabel ? -8 : 0)
-                    .scaleEffect(animateLabel ? 0.9 : 1.0, anchor: .leading)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: animateLabel)
-                    .allowsHitTesting(false) // Allow taps to pass through to background
-                
-                // Text field with expanded hit area
-                Group {
-                    if isSecure {
-                        SecureField("", text: $text)
-                    } else {
-                        TextField("", text: $text)
-                            .keyboardType(keyboardType)
-                    }
+            // Text field container
+            Group {
+                if isSecure {
+                    SecureField("", text: $text)
+                } else {
+                    TextField("", text: $text)
+                        .keyboardType(keyboardType)
                 }
-                .font(.body)
-                .focused($isFocused)
-                .onChange(of: isFocused) { _, focused in
-                    animateLabel = focused || !text.isEmpty
-                }
-                .onChange(of: text) { _, newText in
-                    animateLabel = !newText.isEmpty || isFocused
-                }
-                .frame(minHeight: 24) // Ensure minimum tap target height
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, animateLabel ? 16 : 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle()) // Make entire content area tappable
-            .allowsHitTesting(false) // Allow background to handle taps
+            .font(.body)
+            .focused($isFocused)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+                    .stroke(
+                        isFocused ? Color.primaryGreen : Color.clear,
+                        lineWidth: isFocused ? 2 : 0
+                    )
+            )
         }
-        .frame(minHeight: 60) // Minimum recommended tap target size
-        .onAppear {
-            animateLabel = !text.isEmpty
-        }
+        .frame(minHeight: 60)
+    }
+}
+
+// MARK: - Legacy Animated Text Field (Deprecated - Use StaticTextField)
+@available(*, deprecated, message: "Use StaticTextField instead")
+struct AnimatedTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    let keyboardType: UIKeyboardType
+    let isSecure: Bool
+    
+    init(_ placeholder: String, text: Binding<String>, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) {
+        self.placeholder = placeholder
+        self._text = text
+        self.keyboardType = keyboardType
+        self.isSecure = isSecure
+    }
+    
+    var body: some View {
+        StaticTextField(placeholder, text: $text, keyboardType: keyboardType, isSecure: isSecure)
     }
 }
 
@@ -351,7 +324,7 @@ struct SparklesText: View {
                 .fontWeight(.bold)
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [.accentColor, .blue, .purple],
+                        colors: [.primaryGreen, .blue, .purple],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -431,7 +404,7 @@ struct EnhancedRecipeCard: View {
                         RoundedRectangle(cornerRadius: 20)
                             .fill(
                                 LinearGradient(
-                                    colors: [Color.accentColor.opacity(0.1), Color.clear],
+                                    colors: [Color.primaryGreen.opacity(0.1), Color.clear],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
@@ -450,7 +423,7 @@ struct EnhancedRecipeCard: View {
                     .stroke(
                         LinearGradient(
                             colors: isHovered ? 
-                                [Color.accentColor.opacity(0.3), Color.blue.opacity(0.3)] : 
+                                [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] : 
                                 [Color.clear],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -646,12 +619,12 @@ struct TagChip: View {
         Text(tag)
             .font(.caption2)
             .fontWeight(.medium)
-            .foregroundColor(.accentColor)
+            .foregroundColor(.primaryGreen)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
                 Capsule()
-                    .fill(Color.accentColor.opacity(0.1))
+                    .fill(Color.primaryGreen.opacity(0.1))
             )
     }
 }

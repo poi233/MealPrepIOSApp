@@ -177,17 +177,7 @@ class NetworkManager: ObservableObject {
         let request = try buildURLRequest(for: endpoint)
         
         // Log detailed request information
-        print("🌐 [NetworkManager] Making HTTP request:")
-        print("   URL: \(request.url?.absoluteString ?? "Unknown")")
-        print("   Method: \(request.httpMethod ?? "Unknown")")
-        print("   Headers: \(request.allHTTPHeaderFields ?? [:])")
-        if let body = request.httpBody {
-            print("   Body: \(String(data: body, encoding: .utf8) ?? "Unable to decode body")")
-        } else {
-            print("   Body: None")
-        }
-        print("   Expected Response Type: \(T.self)")
-        print("   Requires Auth: \(endpoint.requiresAuth)")
+        print("🌐 [NetworkManager] \(request.httpMethod ?? "Unknown") \(request.url?.absoluteString ?? "Unknown")")
         
         do {
             let (data, response) = try await session.data(for: request)
@@ -198,12 +188,8 @@ class NetworkManager: ObservableObject {
                 throw NetworkError.unknownError(NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response type"]))
             }
             
-            // Log response details
-            print("📥 [NetworkManager] HTTP response received:")
-            print("   Status Code: \(httpResponse.statusCode)")
-            print("   Headers: \(httpResponse.allHeaderFields)")
-            print("   Data Size: \(data.count) bytes")
-            print("   Raw Data: \(String(data: data, encoding: .utf8) ?? "Unable to decode data")")
+            // Log response summary
+            print("📥 [NetworkManager] Response: \(httpResponse.statusCode) (\(data.count) bytes)")
             
             // Check for authentication errors
             if httpResponse.statusCode == 401 {
@@ -237,12 +223,7 @@ class NetworkManager: ObservableObject {
                 let decodedResponse = try decoder.decode(T.self, from: data)
                 return decodedResponse
             } catch {
-                print("=== DECODING ERROR ===")
-                print("Error: \(error)")
-                print("Expected type: \(T.self)")
-                print("Response data: \(String(data: data, encoding: .utf8) ?? "Unable to convert to string")")
-                print("HTTP Status: \(httpResponse.statusCode)")
-                print("======================")
+                print("❌ [NetworkManager] Decoding failed for \(T.self): \(error)")
                 throw NetworkError.decodingError(error)
             }
             
@@ -320,10 +301,7 @@ class NetworkManager: ObservableObject {
         let currentDate = Date()
         let isExpired = currentDate >= expirationDate
         
-        print("🔍 [NetworkManager] Token expiration check:")
-        print("   Current time: \(currentDate)")
-        print("   Token expires: \(expirationDate)")
-        print("   Is expired: \(isExpired)")
+        print("🔍 [NetworkManager] Token expired: \(isExpired)")
         
         if isExpired {
             print("⚠️ [NetworkManager] Access token has expired")
@@ -383,25 +361,7 @@ class NetworkManager: ObservableObject {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
             
             // Debug JWT token information
-            print("🔐 [NetworkManager] JWT Token debugging:")
-            print("   Token exists: true")
-            print("   Token length: \(accessToken.count) characters")
-            print("   Token preview: \(String(accessToken.prefix(50)))...")
-            
-            // Try to decode JWT payload for user ID
-            if let userInfo = decodeJWTPayload(token: accessToken) {
-                print("   Decoded JWT payload:")
-                for (key, value) in userInfo {
-                    print("     \(key): \(value)")
-                }
-                if let userId = userInfo["user_id"] as? String {
-                    print("   🆔 User ID from JWT: \(userId)")
-                } else {
-                    print("   ⚠️ No user_id found in JWT payload")
-                }
-            } else {
-                print("   ❌ Failed to decode JWT payload")
-            }
+            print("🔐 [NetworkManager] Using auth token")
         } else if endpoint.requiresAuth {
             print("❌ [NetworkManager] Auth required but no access token available")
         }
@@ -426,7 +386,7 @@ class NetworkManager: ObservableObject {
         }
         
         // Debug logging
-        print("NetworkManager: Loaded tokens - Access: \(accessToken != nil), Refresh: \(refreshToken != nil), Authenticated: \(hasTokens)")
+        print("NetworkManager: Tokens loaded, authenticated: \(hasTokens)")
     }
     
     private func storeTokens() {
@@ -473,12 +433,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-//        return "https://meal-prep-app-backend.vercel.app/api"
-        #if DEBUG
-        return "http://127.0.0.1:8000/api"
-        #else
         return "https://meal-prep-app-backend.vercel.app/api"
-        #endif
+//        #if DEBUG
+//        return "http://127.0.0.1:8000/api"
+//        #else
+//        return "https://meal-prep-app-backend.vercel.app/api"
+//        #endif
     }
 }
 

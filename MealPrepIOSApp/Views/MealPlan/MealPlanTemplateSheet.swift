@@ -262,7 +262,7 @@ extension MealPlanTemplateSheet {
                         .foregroundColor(.white)
                         .background(
                             LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.8)],
+                                colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -298,7 +298,7 @@ extension MealPlanTemplateSheet {
             }) {
                 HStack {
                     Image(systemName: "calendar")
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(.primaryGreen)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Selected Week")
@@ -320,8 +320,8 @@ extension MealPlanTemplateSheet {
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
-                        .fill(Color.accentColor.opacity(0.05))
+                        .stroke(Color.primaryGreen.opacity(0.3), lineWidth: 1)
+                        .fill(Color.primaryGreen.opacity(0.05))
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -399,7 +399,7 @@ extension MealPlanTemplateSheet {
                                     
                                     if selectedExistingMealPlan?.id == mealPlan.id {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.accentColor)
+                                            .foregroundColor(.primaryGreen)
                                     } else {
                                         Image(systemName: "circle")
                                             .foregroundColor(.secondary)
@@ -408,10 +408,10 @@ extension MealPlanTemplateSheet {
                                 .padding()
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedExistingMealPlan?.id == mealPlan.id ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+                                        .fill(selectedExistingMealPlan?.id == mealPlan.id ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .stroke(selectedExistingMealPlan?.id == mealPlan.id ? Color.accentColor : Color.clear, lineWidth: 1)
+                                                .stroke(selectedExistingMealPlan?.id == mealPlan.id ? Color.primaryGreen : Color.clear, lineWidth: 1)
                                         )
                                 )
                             }
@@ -616,7 +616,7 @@ struct TemplateCard: View {
                         .fontWeight(.medium)
                     }
                     .buttonStyle(.borderless)
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                 }
             }
             
@@ -680,7 +680,7 @@ struct TemplateCard: View {
                                                 .foregroundColor(.secondary)
                                                 .frame(width: 60, alignment: .leading)
                                                 .onAppear {
-                                                    print("🎨 [UI] Displaying meal: Day \(meal.dayOfWeek), Type: '\(meal.mealType)', Recipe: '\(meal.recipe?.name ?? "Unknown")'")
+                                                    print("🎨 [UI] Displaying meal: \(meal.recipe?.name ?? "Unknown")")
                                                 }
                                             
                                             Text(meal.recipe?.name ?? "Unknown Recipe")
@@ -719,11 +719,8 @@ struct TemplateCard: View {
             do {
                 let detail = try await MealPlanTemplateService().getTemplate(id: template.id)
                 
-                // Debug: Print template detail meals
-                print("🔍 [TemplatePreview] Template '\(detail.name)' has \(detail.meals.count) meals:")
-                for meal in detail.meals {
-                    print("   Day \(meal.dayOfWeek), mealType: '\(meal.mealType)', recipe: \(meal.recipe?.name ?? "Unknown")")
-                }
+                // Debug: Print template summary
+                print("🔍 [TemplatePreview] Template '\(detail.name)' has \(detail.meals.count) meals")
                 
                 // Additional debug: Check meal type distribution
                 let mealTypeCount = Dictionary(grouping: detail.meals) { $0.mealType }
@@ -764,7 +761,7 @@ extension MealPlanTemplateSheet {
             print("✅ [LoadTemplate] Successfully received \(templates.count) templates from backend")
             print("📋 [LoadTemplate] Template details:")
             for (index, template) in templates.enumerated() {
-                print("   \(index + 1). ID: \(template.id)")
+                print("   \(index + 1). \(template.name)")
                 print("      Name: \(template.name)")
                 print("      Description: \(template.description ?? "No description")")
                 print("      Category: \(template.category.rawValue)")
@@ -825,7 +822,7 @@ extension MealPlanTemplateSheet {
             var appliedMealsCount = 0
             // Apply template meals to new grid
             for meal in templateDetail.meals {
-                print("🔄 [ApplyTemplate] Processing meal - Day: \(meal.dayOfWeek), Type: \(meal.mealType), Recipe: \(meal.recipe?.name ?? "Unknown")")
+                print("🔄 [ApplyTemplate] Processing: \(meal.recipe?.name ?? "Unknown")")
                 
                 if meal.dayOfWeek < newGrid.dailyMeals.count,
                    let recipe = meal.recipe {
@@ -855,15 +852,25 @@ extension MealPlanTemplateSheet {
             
             // Update meal plan store and save to local storage
             mealPlanStore.weeklyGrid = newGrid
-            mealPlanStore.saveLocalMealPlan()
             
-            print("✅ [ApplyTemplate] Updated meal plan store for week: \(mealPlanStore.selectedWeekStartDate)")
-            print("💾 [ApplyTemplate] Meal plan persisted to local storage with key for week: \(mealPlanStore.selectedWeekStartDate)")
+            // Use the new error-handling save method for better reliability on real devices
+            let saveResult = mealPlanStore.saveLocalMealPlan()
             
-            print("💾 [ApplyTemplate] Meal plan saved to local storage")
-            print("🎉 [ApplyTemplate] Template applied successfully!")
-            
-            showingApplyConfirmation = true
+            switch saveResult {
+            case .success():
+                print("✅ [ApplyTemplate] Updated meal plan store for week: \(mealPlanStore.selectedWeekStartDate)")
+                print("💾 [ApplyTemplate] Meal plan successfully persisted to local storage")
+                print("🎉 [ApplyTemplate] Template applied successfully!")
+                
+                showingApplyConfirmation = true
+                
+            case .failure(let error):
+                print("❌ [ApplyTemplate] Failed to save meal plan to local storage: \(error.localizedDescription)")
+                print("🚨 [ApplyTemplate] Template application failed due to storage error")
+                
+                // Show error to user instead of success confirmation
+                loadError = "Failed to apply template: \(error.localizedDescription). The template was loaded but could not be saved locally. This commonly happens on real devices under memory pressure. Please try again."
+            }
             
         } catch {
             print("❌ [ApplyTemplate] Failed to apply template")
@@ -931,7 +938,7 @@ extension MealPlanTemplateSheet {
         }
         
         print("🔄 [UpdateMealPlan] Starting to update existing meal plan...")
-        print("📝 [UpdateMealPlan] Target meal plan: '\(selectedMealPlan.name)' (ID: \(selectedMealPlan.id))")
+        print("📝 [UpdateMealPlan] Target meal plan: \(selectedMealPlan.name)")
         print("📅 [UpdateMealPlan] Selected week: \(formatWeekRange(from: selectedWeekForSave))")
         
         isSaving = true
@@ -1049,7 +1056,7 @@ extension MealPlanTemplateSheet {
                         servingSize: 1.0
                     )
                     meals.append(templateMeal)
-                    print("     🌅 Breakfast \(index + 1): \(recipe.name) (ID: \(recipe.id))")
+                    print("     🌅 Breakfast: \(recipe.name)")
                 }
                 
                 // Add lunch meals
@@ -1061,7 +1068,7 @@ extension MealPlanTemplateSheet {
                         servingSize: 1.0
                     )
                     meals.append(templateMeal)
-                    print("     🌞 Lunch \(index + 1): \(recipe.name) (ID: \(recipe.id))")
+                    print("     🌞 Lunch: \(recipe.name)")
                 }
                 
                 // Add dinner meals
@@ -1073,7 +1080,7 @@ extension MealPlanTemplateSheet {
                         servingSize: 1.0
                     )
                     meals.append(templateMeal)
-                    print("     🌙 Dinner \(index + 1): \(recipe.name) (ID: \(recipe.id))")
+                    print("     🌙 Dinner: \(recipe.name)")
                 }
             }
             
@@ -1257,15 +1264,15 @@ struct WeekRowView: View {
             
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.primaryGreen)
                     .font(.title3)
             }
         }
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
-                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
+                .fill(isSelected ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
+                .stroke(isSelected ? Color.primaryGreen : Color.clear, lineWidth: 1)
         )
     }
     

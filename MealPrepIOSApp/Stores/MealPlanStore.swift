@@ -57,15 +57,41 @@ class MealPlanStore: ObservableObject {
         let now = Date()
         // Get the start of the current week (Sunday)
         let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now)
-        selectedWeekStartDate = weekInterval?.start ?? now
+        selectedWeekStartDate = normalizeWeekStartDate(weekInterval?.start ?? now)
         
         // Always initialize with an empty weekly grid for the current week
         weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
     }
     
+    /// Normalize week start date to remove time components and ensure consistency
+    private func normalizeWeekStartDate(_ date: Date) -> Date {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return calendar.date(from: components) ?? date
+    }
+    
     private func loadInitialData() {
+        // Clean up any invalid stored weeks first
+        cleanupInvalidStoredWeeks()
+        
         // Load local stored meal plan instead of fetching from backend
         loadLocalMealPlan()
+    }
+    
+    /// Clean up stored weeks that are outside the allowed range
+    private func cleanupInvalidStoredWeeks() {
+        let calendar = Calendar.current
+        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        
+        let storage = LocalMealPlanStorage.shared
+        let storedWeeks = storage.getAllStoredWeeks()
+        
+        for week in storedWeeks {
+            let weekDifference = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: week).weekOfYear ?? 0
+            if abs(weekDifference) > 4 {
+                storage.clearMealPlan(for: week)
+            }
+        }
     }
     
     // MARK: - Local Storage Methods
@@ -74,18 +100,14 @@ class MealPlanStore: ObservableObject {
         // Load meal plan for the currently selected week
         if let storedGrid = LocalMealPlanStorage.shared.loadWeeklyMealPlan(for: selectedWeekStartDate) {
             weeklyGrid = storedGrid
-            print("✅ Loaded meal plan from local storage for week \(formatSelectedWeekDate())")
         } else {
             // No stored plan for this week, create empty grid
             weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
-            print("📱 Created new empty meal plan grid for week \(formatSelectedWeekDate())")
         }
     }
     
-    func saveLocalMealPlan() {
-        // Save meal plan for the currently selected week
-        LocalMealPlanStorage.shared.saveWeeklyMealPlan(for: selectedWeekStartDate, weeklyGrid)
-        print("💾 Saved meal plan for week \(formatSelectedWeekDate())")
+    func saveLocalMealPlan() -> Result<Void, LocalStorageError> {
+        return LocalMealPlanStorage.shared.saveWeeklyMealPlan(for: selectedWeekStartDate, weeklyGrid)
     }
     
     // MARK: - Helper Methods for Local Storage
@@ -312,29 +334,36 @@ class MealPlanStore: ObservableObject {
     }
     
     func navigateToWeek(_ direction: WeekDirection) async {
-        // First save current week's data
-        saveLocalMealPlan()
+        // First save current week's data with proper error handling
+        let saveResult = saveLocalMealPlan()
+        if case .failure(let error) = saveResult {
+            errorMessage = "Failed to save current week: \(error.localizedDescription)"
+        }
         
         let calendar = Calendar.current
-        let newDate: Date
+        let rawNewDate: Date
         
         switch direction {
         case .previous:
-            newDate = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedWeekStartDate) ?? selectedWeekStartDate
+            rawNewDate = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         case .next:
-            newDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
+            rawNewDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         case .current:
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-            newDate = calendar.date(from: components) ?? Date()
+            let now = Date()
+            let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now)
+            rawNewDate = weekInterval?.start ?? now
         }
+        
+        // Normalize the new date to ensure consistency
+        let newDate = normalizeWeekStartDate(rawNewDate)
         
         // Check if navigation is within allowed range (current +/- 4 weeks)
         if !isWithinAllowedWeekRange(newDate) {
-            print("⚠️ Navigation blocked: Week \(formatWeekDate(newDate)) is outside allowed range")
+            errorMessage = "Cannot navigate beyond 4 weeks from current week"
             return
         }
         
+        // Update selected week
         selectedWeekStartDate = newDate
         
         // Load meal plan for new week from local storage or create empty
@@ -500,7 +529,6 @@ class MealPlanStore: ObservableObject {
             
             // Check if recipe already exists in this meal slot
             if existingRecipes.contains(where: { $0.id == recipe.id }) {
-                print("⚠️ Recipe \(recipe.name) already exists in \(mealType.rawValue) for day \(dayOfWeek), skipping duplicate")
                 errorMessage = "This recipe is already added to \(mealType.rawValue) for this day"
                 return
             }
@@ -514,15 +542,41 @@ class MealPlanStore: ObservableObject {
             case .dinner:
                 weeklyGrid.dailyMeals[dayOfWeek].dinner.append(recipe)
             }
-            
-            print("✅ Added \(recipe.name) to \(mealType.rawValue) for day \(dayOfWeek)")
         }
         
-        // Save to local storage (this can be done off main thread)
-        saveLocalMealPlan()
+        // Save to local storage immediately (critical for data persistence)
+        let saveResult = saveLocalMealPlan()
+        if case .failure(let error) = saveResult {
+            errorMessage = "Failed to save meal plan: \(error.localizedDescription)"
+        }
         
         // Add to recent meals
         await addToRecentMeals(recipe)
+    }
+    
+    func removeMealFromWeek(recipe: Recipe, dayOfWeek: Int, mealType: MealType) async {
+        await MainActor.run {
+            guard dayOfWeek < weeklyGrid.dailyMeals.count else {
+                errorMessage = "Invalid day of week: \(dayOfWeek)"
+                return
+            }
+            
+            // Remove recipe from appropriate meal type
+            switch mealType {
+            case .breakfast:
+                weeklyGrid.dailyMeals[dayOfWeek].breakfast.removeAll { $0.id == recipe.id }
+            case .lunch:
+                weeklyGrid.dailyMeals[dayOfWeek].lunch.removeAll { $0.id == recipe.id }
+            case .dinner:
+                weeklyGrid.dailyMeals[dayOfWeek].dinner.removeAll { $0.id == recipe.id }
+            }
+        }
+        
+        // Save to local storage immediately
+        let saveResult = saveLocalMealPlan()
+        if case .failure(let error) = saveResult {
+            errorMessage = "Failed to save meal plan: \(error.localizedDescription)"
+        }
     }
     
     // MARK: - Create Meal Plan for Current Week
@@ -938,10 +992,7 @@ struct MealSlot {
 }
 
 // MARK: - Supporting Enums
-
-enum WeekDirection {
-    case previous, next, current
-}
+// WeekDirection is now defined in SharedEnums.swift
 
 // MARK: - Extensions
 
