@@ -141,7 +141,7 @@ struct CoreDataTests {
         try await cacheManager.save([easyRecipe, hardRecipe])
         
         // Test difficulty filtering
-        let easyRecipes = try await cacheManager.fetchRecipesByDifficulty("easy")
+        let easyRecipes = try await cacheManager.fetchRecipesByDifficulty(.easy)
         #expect(easyRecipes.contains { $0.id == "easy-1" })
         
         // Test cuisine filtering

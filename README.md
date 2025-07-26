@@ -8,7 +8,7 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 - **AI-Powered Meal Planning**: Generate personalized weekly meal plans (primary feature - default tab)
 - **Recipe Management**: Browse, create, and manage recipes
 - **Favorites System**: Save and organize favorite recipes
-- **Offline Support**: Core Data integration for offline functionality
+- **Offline Support**: ⚠️ Temporarily disabled - Core Data integration planned for future implementation
 - **Robust API Integration**: Flexible parsing with resilient ID handling for backend compatibility
 
 ## Architecture
@@ -32,6 +32,7 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 
 #### Utilities Layer
 - `UserCacheManager`: Local user data caching and session persistence
+- `RecipeCacheManager`: ⚠️ Not implemented - Recipe caching temporarily disabled
 
 #### Data Models
 - `User`: User profile with flexible ID parsing
@@ -76,6 +77,8 @@ if let idString = try? container.decode(String.self, forKey: .id) {
 - Flexible parsing for ingredient amounts (String, Double, or Int)
 - Consistent String representation for UI display
 - Handles backend variations in numeric data formats
+- **AI Integration v2.0 Support**: Parses new AI-generated ingredient format `{name: "鸡胸肉", amount: "150克"}` and stores the complete amount string with unit field left empty for simplified handling
+- **Multi-Format Support**: Handles structured objects, AI format, and legacy string arrays seamlessly
 
 #### Nutrition Data Parsing
 - Optimized flexible parsing prioritizing numeric types (Double, Int) over String
@@ -100,6 +103,8 @@ if let idString = try? container.decode(String.self, forKey: .id) {
 - **Production**: `meal-prep-app-backend.vercel.app`
 - **Authentication**: JWT tokens with automatic refresh
 - **Data Format**: JSON with UUID strings for IDs
+- **AI Integration**: Full compatibility with AI Integration v2.0 including structured ingredient parsing
+- **Recipe Generation**: Simplified request format using only recipe name for AI-powered recipe generation
 
 ## Development Setup
 
@@ -277,7 +282,8 @@ Documents/
 ```
 
 #### Core Data Integration (Planned)
-- Offline recipe caching
+- ⚠️ **Recipe Caching**: Temporarily disabled due to implementation issues
+- Offline recipe caching (planned)
 - User preference storage
 - Favorites management
 - Advanced search indexing
@@ -286,7 +292,7 @@ Documents/
 - Online-first approach with intelligent local caching
 - **User Data**: UserDefaults-based caching for session persistence
 - **Meal Plans**: File-based storage with UserDefaults backup
-- **Recipes**: Planned Core Data integration for offline access
+- **Recipes**: ⚠️ No caching currently - always fetches from server (Core Data integration planned)
 - Background sync when connectivity restored
 - Conflict resolution for concurrent edits
 - Automatic data migration between storage tiers
@@ -392,6 +398,7 @@ func clearMealPlan(for weekStartDate: Date)
 - **Authentication failures**: Verify JWT token handling
 - **Data parsing errors**: Check API contract compatibility
 - **Build errors**: Ensure Xcode version compatibility
+- **Recipe loading issues**: ⚠️ Recipe caching is disabled - requires network connection
 
 ### Debug Tools
 - Network request logging in NetworkManager

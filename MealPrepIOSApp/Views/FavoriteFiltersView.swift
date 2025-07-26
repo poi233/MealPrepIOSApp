@@ -22,6 +22,7 @@ struct FavoriteFiltersView: View {
     @State private var sortOrder: FavoriteOrdering = .addedAtDesc
     
     private let cuisines = ["Italian", "Asian", "Mexican", "American", "French", "Indian", "Mediterranean", "Thai", "Japanese", "Chinese"]
+    private let difficulties = Difficulty.allCases
     
     var body: some View {
         NavigationView {
@@ -89,7 +90,7 @@ struct FavoriteFiltersView: View {
                         }
                         .buttonStyle(FilterButtonStyle(isSelected: selectedDifficulty == nil))
                         
-                        ForEach(Difficulty.allCases, id: \.self) { difficulty in
+                        ForEach(difficulties, id: \.self) { difficulty in
                             Button(difficulty.displayName) {
                                 selectedDifficulty = selectedDifficulty == difficulty ? nil : difficulty
                             }

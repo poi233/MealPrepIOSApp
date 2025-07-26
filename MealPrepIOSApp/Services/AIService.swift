@@ -71,30 +71,6 @@ class AIService {
         return try await generateMealPlan(request)
     }
     
-    /// Generate recipe details with minimal information
-    func generateSimpleRecipe(
-        name: String,
-        cuisine: String? = nil,
-        difficulty: Difficulty = .medium,
-        mealType: MealType = .dinner
-    ) async throws -> Recipe {
-        
-        let request = GenerateRecipeDetailsRequest(
-            name: name,
-            description: nil,
-            cuisine: cuisine,
-            difficulty: difficulty,
-            prepTime: nil,
-            cookTime: nil,
-            mealType: mealType,
-            dietaryRestrictions: nil,
-            ingredients: nil,
-            additionalRequirements: nil
-        )
-        
-        return try await generateRecipeDetails(request)
-    }
-    
     /// Quick meal plan analysis
     func quickAnalyzeMealPlan(mealPlanId: String) async throws -> MealPlanAnalysis {
         let request = AnalyzeMealPlanRequest(
@@ -111,26 +87,4 @@ class AIService {
 // MARK: - Generate Recipe Details Request
 struct GenerateRecipeDetailsRequest: Codable {
     let name: String
-    let description: String?
-    let cuisine: String?
-    let difficulty: Difficulty?
-    let prepTime: Int?
-    let cookTime: Int?
-    let mealType: MealType?
-    let dietaryRestrictions: [String]?
-    let ingredients: [String]?
-    let additionalRequirements: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case name
-        case description
-        case cuisine
-        case difficulty
-        case prepTime = "prep_time"
-        case cookTime = "cook_time"
-        case mealType = "meal_type"
-        case dietaryRestrictions = "dietary_restrictions"
-        case ingredients
-        case additionalRequirements = "additional_requirements"
-    }
 }

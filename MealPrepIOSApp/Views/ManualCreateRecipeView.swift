@@ -57,8 +57,8 @@ struct ManualCreateRecipeView: View {
                     }
                     
                     Picker("Difficulty", selection: $difficulty) {
-                        ForEach(Difficulty.allCases, id: \.self) { difficulty in
-                            Text(difficulty.displayName).tag(difficulty)
+                        ForEach(Difficulty.allCases, id: \.self) { level in
+                            Text(level.displayName).tag(level)
                         }
                     }
                 }
@@ -160,6 +160,11 @@ struct ManualCreateRecipeView: View {
             servings: nutritionInfo.servings > 0 ? nutritionInfo.servings : nil
         ) : nil
         
+        let finalImageUrl = imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : imageUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        print("[DEBUG] ManualCreateRecipeView - Raw imageUrl: '\(imageUrl)'")
+        print("[DEBUG] ManualCreateRecipeView - Final imageUrl after trimming: '\(finalImageUrl ?? "nil")'")
+        
         let recipe = CreateRecipeRequest(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -170,11 +175,14 @@ struct ManualCreateRecipeView: View {
             prepTime: prepTime,
             cookTime: cookTime,
             difficulty: difficulty,
-            imageUrl: imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : imageUrl.trimmingCharacters(in: .whitespacesAndNewlines),
+            imageUrl: finalImageUrl,
             tags: tagArray
         )
         
+        print("[DEBUG] ManualCreateRecipeView - CreateRecipeRequest imageUrl: '\(recipe.imageUrl ?? "nil")'")
+        
         Task {
+            print("[DEBUG] ManualCreateRecipeView - About to call recipeStore.createRecipe")
             let success = await recipeStore.createRecipe(recipe)
             
             await MainActor.run {

@@ -36,9 +36,9 @@ class RecipeStore: ObservableObject {
     @Published var isDeletingRecipe = false
     
     private let recipeService = RecipeService()
-    private let cacheManager = RecipeCacheManager()
+    // private let cacheManager = RecipeCacheManager() // TODO: Implement cache manager
     private let networkManager = NetworkManager.shared
-    private let errorHandler = ErrorHandler.shared
+
     private var cancellables = Set<AnyCancellable>()
     private let pageSize = 20
     private let mealSelectionPageSize = 5 // Smaller page size for meal selection
@@ -69,17 +69,8 @@ class RecipeStore: ObservableObject {
     }
     
     private func loadCachedRecipes() {
-        Task {
-            do {
-                let cachedRecipes = try await cacheManager.fetch()
-                await MainActor.run {
-                    self.recipes = cachedRecipes
-                    self.totalCount = cachedRecipes.count
-                }
-            } catch {
-                print("Failed to load cached recipes: \(error)")
-            }
-        }
+        // TODO: Implement cache loading
+        print("Cache loading not implemented yet")
     }
     
     // MARK: - Search and Filter Setup
@@ -137,11 +128,12 @@ class RecipeStore: ObservableObject {
             totalCount = response.count
             hasMorePages = response.next != nil
             
-            // Cache the recipes
-            try await cacheManager.save(response.results)
+            // TODO: Cache the recipes (cache not implemented)
+            // try await cacheManager.save(response.results)
             
         } catch {
-            errorHandler.handle(error, context: "Loading recipes")
+            print("[Loading recipes] Error: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
             // Fallback to cache on error
             await loadFromCache()
         }
@@ -151,16 +143,11 @@ class RecipeStore: ObservableObject {
     }
     
     private func loadFromCache() async {
-        do {
-            let cachedRecipes = try await cacheManager.fetch()
-            let filteredRecipes = applyLocalFilters(to: cachedRecipes)
-            
-            self.recipes = filteredRecipes
-            self.totalCount = filteredRecipes.count
-            self.hasMorePages = false
-        } catch {
-            print("Failed to load from cache: \(error)")
-        }
+        // TODO: Implement cache loading
+        print("Cache loading not implemented - no cached recipes available")
+        self.recipes = []
+        self.totalCount = 0
+        self.hasMorePages = false
     }
     
     private func applyLocalFilters(to recipes: [Recipe]) -> [Recipe] {
@@ -254,13 +241,14 @@ class RecipeStore: ObservableObject {
             totalCount = response.count
             hasMorePages = response.next != nil
             
-            // Cache the recipes
-            try await cacheManager.save(response.results)
+            // TODO: Cache the recipes (cache not implemented)
+            // try await cacheManager.save(response.results)
             
             print("📱 Loaded \(response.results.count) recipes for meal selection (page \(currentPage))")
             
         } catch {
-            errorHandler.handle(error, context: "Loading recipes for meal selection")
+            print("[Loading recipes for meal selection] Error: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
             // Fallback to cache on error
             await loadFromCache()
         }
@@ -324,31 +312,8 @@ class RecipeStore: ObservableObject {
     func loadRecipe(id: String) async {
         isLoading = true
         
-        // Try cache first
-        do {
-            if let cachedRecipe = try await cacheManager.fetchById(id) {
-                currentRecipe = cachedRecipe
-                isLoading = false
-                
-                // If online, update in background
-                if !isOffline {
-                    Task {
-                        do {
-                            let freshRecipe = try await recipeService.getRecipe(id: id)
-                            await MainActor.run {
-                                self.currentRecipe = freshRecipe
-                            }
-                            try await cacheManager.update(freshRecipe)
-                        } catch {
-                            print("Background refresh failed: \(error)")
-                        }
-                    }
-                }
-                return
-            }
-        } catch {
-            print("Cache fetch failed: \(error)")
-        }
+        // TODO: Try cache first (cache not implemented)
+        // Skip cache for now
         
         // If not in cache or offline, try network
         if !isOffline {
@@ -356,8 +321,8 @@ class RecipeStore: ObservableObject {
                 let recipe = try await recipeService.getRecipe(id: id)
                 currentRecipe = recipe
                 
-                // Cache the recipe
-                try await cacheManager.update(recipe)
+                // TODO: Cache the recipe (cache not implemented)
+                // try await cacheManager.update(recipe)
             } catch {
                 }
         } else {
@@ -375,10 +340,18 @@ class RecipeStore: ObservableObject {
     }
     
     func createRecipe(_ recipe: CreateRecipeRequest) async -> Bool {
+        print("[DEBUG] RecipeStore.createRecipe - Received recipe with imageUrl: '\(recipe.imageUrl ?? "nil")'")
+        
         isCreatingRecipe = true
         
         do {
+            print("[DEBUG] RecipeStore.createRecipe - About to call recipeService.createRecipe")
             let newRecipe = try await recipeService.createRecipe(recipe)
+            
+            print("[DEBUG] RecipeStore.createRecipe - Received new recipe from service:")
+            print("[DEBUG] RecipeStore.createRecipe - New recipe ID: \(newRecipe.id)")
+            print("[DEBUG] RecipeStore.createRecipe - New recipe name: \(newRecipe.name)")
+            print("[DEBUG] RecipeStore.createRecipe - New recipe imageUrl: '\(newRecipe.imageUrl ?? "nil")'")
             
             // Add to the beginning of the list
             recipes.insert(newRecipe, at: 0)
@@ -387,6 +360,7 @@ class RecipeStore: ObservableObject {
             isCreatingRecipe = false
             return true
         } catch {
+            print("[DEBUG] RecipeStore.createRecipe - Error occurred: \(error)")
             isCreatingRecipe = false
             return false
         }

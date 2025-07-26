@@ -263,8 +263,8 @@ class RecipeCacheManager: CacheManager {
         return cachedRecipes.compactMap { $0.toRecipe() }
     }
     
-    func fetchRecipesByDifficulty(_ difficulty: String) async throws -> [Recipe] {
-        let predicate = NSPredicate(format: "difficulty == %@", difficulty)
+    func fetchRecipesByDifficulty(_ difficulty: Difficulty) async throws -> [Recipe] {
+        let predicate = NSPredicate(format: "difficulty == %@", difficulty.rawValue)
         let cachedRecipes: [CachedRecipe] = try await coreData.fetch(
             CachedRecipe.self,
             predicate: predicate,

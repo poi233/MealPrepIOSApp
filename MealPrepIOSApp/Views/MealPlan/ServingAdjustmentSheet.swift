@@ -105,7 +105,7 @@ extension ServingAdjustmentSheet {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Label(recipe.difficulty.rawValue.capitalized, systemImage: "chart.bar")
+                    Label(recipe.difficulty.displayName, systemImage: "chart.bar")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

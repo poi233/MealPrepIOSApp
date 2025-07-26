@@ -75,12 +75,21 @@ class RecipeService {
     
     /// Create a new recipe
     func createRecipe(_ recipe: CreateRecipeRequest) async throws -> Recipe {
-        return try await networkManager.post(
+        print("[DEBUG] RecipeService.createRecipe - About to send request with imageUrl: '\(recipe.imageUrl ?? "nil")'")
+        
+        let result = try await networkManager.post(
             "/recipes/",
             body: recipe,
             responseType: Recipe.self,
             requiresAuth: true
         )
+        
+        print("[DEBUG] RecipeService.createRecipe - Received response:")
+        print("[DEBUG] RecipeService.createRecipe - Response recipe ID: \(result.id)")
+        print("[DEBUG] RecipeService.createRecipe - Response recipe name: \(result.name)")
+        print("[DEBUG] RecipeService.createRecipe - Response recipe imageUrl: '\(result.imageUrl ?? "nil")'")
+        
+        return result
     }
     
     /// Update an existing recipe (full update)
@@ -178,21 +187,40 @@ class RecipeService {
     
     /// Generate recipe details using AI
     func generateRecipeWithAI(_ request: AIRecipeGenerationRequest) async throws -> AIGeneratedRecipe {
-        return try await networkManager.post(
+        print("[DEBUG] RecipeService.generateRecipeWithAI - About to request recipe generation for: '\(request.name)'")
+        
+        let result = try await networkManager.post(
             "/ai/generate-recipe-details/",
             body: request,
             responseType: AIGeneratedRecipe.self,
             requiresAuth: true
         )
+        
+        print("[DEBUG] RecipeService.generateRecipeWithAI - Received AIGeneratedRecipe:")
+        print("[DEBUG] RecipeService.generateRecipeWithAI - Recipe name: '\(result.name)'")
+        print("[DEBUG] RecipeService.generateRecipeWithAI - Recipe imageUrl: '\(result.imageUrl ?? "nil")'")
+        
+        return result
     }
     
     /// Create recipe from AI-generated data
     func createRecipeFromAI(_ request: CreateRecipeFromAIRequest) async throws -> Recipe {
-        return try await networkManager.post(
+        print("[DEBUG] RecipeService.createRecipeFromAI - About to send AI request")
+        print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data name: '\(request.aiRecipeData.name)'")
+        print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data imageUrl: '\(request.aiRecipeData.imageUrl ?? "nil")'")
+        
+        let result = try await networkManager.post(
             "/ai/create-recipe-from-ai/",
             body: request,
             responseType: Recipe.self,
             requiresAuth: true
         )
+        
+        print("[DEBUG] RecipeService.createRecipeFromAI - Received AI response:")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe ID: \(result.id)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe name: \(result.name)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe imageUrl: '\(result.imageUrl ?? "nil")'")
+        
+        return result
     }
 }

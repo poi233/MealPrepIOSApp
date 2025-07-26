@@ -524,7 +524,7 @@ struct RecipeSelectionCard: View {
                     HStack(spacing: 12) {
                         Label("\(recipe.totalTime)m", systemImage: "clock")
                         
-                        Label(recipe.difficulty.rawValue.capitalized, systemImage: "chart.bar")
+                        Label(recipe.difficulty.displayName, systemImage: "chart.bar")
                         
                         Spacer()
                     }

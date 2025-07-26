@@ -188,8 +188,13 @@ struct AIRecipeGenerationView: View {
                             Text("•")
                                 .foregroundColor(.primaryGreen)
                                 .fontWeight(.bold)
-                            Text(ingredient)
-                                .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ingredient.name)
+                                    .fontWeight(.medium)
+                                Text(ingredient.amount)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                             Spacer()
                         }
                     }
@@ -203,8 +208,20 @@ struct AIRecipeGenerationView: View {
                     Text("Instructions")
                         .font(.headline)
                     
-                    MarkdownText(aiRecipe.instructions, font: .body, lineSpacing: 4)
-                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(aiRecipe.instructions.enumerated()), id: \.offset) { index, instruction in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primaryGreen)
+                                .frame(minWidth: 20, alignment: .leading)
+                            
+                            Text(instruction)
+                                .fixedSize(horizontal: false, vertical: true)
+                            
+                            Spacer()
+                        }
+                        .padding(.bottom, 4)
+                    }
                 }
                 .padding(.horizontal)
                 
@@ -296,16 +313,7 @@ struct AIRecipeGenerationView: View {
     private func generateRecipe() {
         // Only send the recipe name, AI will figure out everything else
         let request = AIRecipeGenerationRequest(
-            name: recipeName.trimmingCharacters(in: .whitespacesAndNewlines),
-            description: nil,
-            cuisine: nil,
-            difficulty: nil,
-            prepTime: nil,
-            cookTime: nil,
-            mealType: nil,
-            dietaryRestrictions: nil,
-            ingredients: nil,
-            additionalRequirements: nil
+            name: recipeName.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         
         viewModel.generateRecipe(request)

@@ -105,27 +105,38 @@ struct Recipe: Codable, Identifiable {
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
         
-        // Handle ingredients as either structured objects or string array (from AI generation)
+        // Handle ingredients as either structured objects or AI-generated format
         if let structuredIngredients = try? container.decode([Ingredient].self, forKey: .ingredients) {
             ingredients = structuredIngredients
+        } else if let aiIngredients = try? container.decode([Ingredient].self, forKey: .ingredients) {
+            // Handle AI format: [{name: "鸡胸肉", amount: "150克"}, ...]
+            // The Ingredient decoder will automatically handle the AI format
+            ingredients = aiIngredients
         } else if let stringIngredients = try? container.decode([String].self, forKey: .ingredients) {
-            // Parse string ingredients into structured format
+            // Legacy format: parse string ingredients into structured format
             ingredients = stringIngredients.map { ingredientString in
-                // Split ingredient string to extract components
                 let components = ingredientString.components(separatedBy: " ")
                 if components.count >= 2 {
                     let name = components.dropLast().joined(separator: " ")
                     let amountUnit = components.last ?? ""
-                    return Ingredient(name: name, amount: "1", unit: amountUnit, notes: ingredientString)
+                    return Ingredient(name: name, amount: "1", unit: amountUnit, notes: nil)
                 } else {
                     return Ingredient(name: ingredientString, amount: "1", unit: "", notes: nil)
                 }
             }
         } else {
-            throw DecodingError.dataCorruptedError(forKey: .ingredients, in: container, debugDescription: "Ingredients must be either structured objects or string array")
+            throw DecodingError.dataCorruptedError(forKey: .ingredients, in: container, debugDescription: "Ingredients must be either structured objects, AI format, or string array")
         }
         
-        instructions = try container.decode(String.self, forKey: .instructions)
+        // Handle instructions as either string or array of strings (from AI generation)
+        if let instructionString = try? container.decode(String.self, forKey: .instructions) {
+            instructions = instructionString
+        } else if let instructionArray = try? container.decode([String].self, forKey: .instructions) {
+            // Join array of instructions with newlines
+            instructions = instructionArray.joined(separator: "\n")
+        } else {
+            throw DecodingError.dataCorruptedError(forKey: .instructions, in: container, debugDescription: "Instructions must be either string or array of strings")
+        }
         nutritionInfo = try container.decodeIfPresent(NutritionInfo.self, forKey: .nutritionInfo)
         cuisine = try container.decodeIfPresent(String.self, forKey: .cuisine)
         prepTime = try container.decode(Int.self, forKey: .prepTime)
@@ -175,18 +186,28 @@ struct Ingredient: Codable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         name = try container.decode(String.self, forKey: .name)
-        unit = try container.decode(String.self, forKey: .unit)
-        notes = try container.decodeIfPresent(String.self, forKey: .notes)
         
-        // Handle amount as either String or Number
-        if let amountString = try? container.decode(String.self, forKey: .amount) {
-            amount = amountString
-        } else if let amountDouble = try? container.decode(Double.self, forKey: .amount) {
-            amount = String(amountDouble)
-        } else if let amountInt = try? container.decode(Int.self, forKey: .amount) {
-            amount = String(amountInt)
+        // Handle different formats: full structured format vs AI format
+        if container.contains(.unit) {
+            // Full structured format with separate unit field
+            unit = try container.decode(String.self, forKey: .unit)
+            notes = try container.decodeIfPresent(String.self, forKey: .notes)
+            
+            // Handle amount as either String or Number
+            if let amountString = try? container.decode(String.self, forKey: .amount) {
+                amount = amountString
+            } else if let amountDouble = try? container.decode(Double.self, forKey: .amount) {
+                amount = String(amountDouble)
+            } else if let amountInt = try? container.decode(Int.self, forKey: .amount) {
+                amount = String(amountInt)
+            } else {
+                throw DecodingError.dataCorruptedError(forKey: .amount, in: container, debugDescription: "Amount must be either String or Number")
+            }
         } else {
-            throw DecodingError.dataCorruptedError(forKey: .amount, in: container, debugDescription: "Amount must be either String or Number")
+            // AI format with only name and amount (amount contains both quantity and unit)
+            amount = try container.decode(String.self, forKey: .amount)
+            unit = ""
+            notes = nil
         }
     }
     

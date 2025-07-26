@@ -11,28 +11,6 @@ import Foundation
 
 struct AIRecipeGenerationRequest: Codable {
     let name: String
-    let description: String?
-    let cuisine: String?
-    let difficulty: Difficulty?
-    let prepTime: Int?
-    let cookTime: Int?
-    let mealType: MealType?
-    let dietaryRestrictions: [String]?
-    let ingredients: [String]?
-    let additionalRequirements: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case name
-        case description
-        case cuisine
-        case difficulty
-        case prepTime = "prep_time"
-        case cookTime = "cook_time"
-        case mealType = "meal_type"
-        case dietaryRestrictions = "dietary_restrictions"
-        case ingredients
-        case additionalRequirements = "additional_requirements"
-    }
 }
 
 // MARK: - AI Generated Recipe Response
@@ -44,8 +22,9 @@ struct AIGeneratedRecipe: Codable {
     let difficulty: Difficulty
     let prepTime: Int
     let cookTime: Int
-    let ingredients: [String]  // AI returns ingredients as strings, we'll parse them
-    let instructions: String
+    let imageUrl: String?
+    let ingredients: [AIIngredient]  // Use AI-specific ingredient structure
+    let instructions: [String]  // New format: ["1. 准备工作...", "2. 开始烹饪..."]
     let nutritionInfo: AINutritionInfo
     let tags: [String]
     
@@ -56,10 +35,64 @@ struct AIGeneratedRecipe: Codable {
         case difficulty
         case prepTime = "prep_time"
         case cookTime = "cook_time"
+        case imageUrl = "image_url"
         case ingredients
         case instructions
         case nutritionInfo = "nutrition_info"
         case tags
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // DEBUG: Print all available keys in the container
+        print("[DEBUG] AIGeneratedRecipe - Available keys in decoder: \(container.allKeys.map { $0.stringValue })")
+        
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+        cuisine = try container.decode(String.self, forKey: .cuisine)
+        difficulty = try container.decode(Difficulty.self, forKey: .difficulty)
+        prepTime = try container.decode(Int.self, forKey: .prepTime)
+        cookTime = try container.decode(Int.self, forKey: .cookTime)
+        
+        // DEBUG: Check if image_url key exists and what its value is
+        if container.contains(.imageUrl) {
+            let imageUrlValue = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+            print("[DEBUG] AIGeneratedRecipe - image_url key exists, value: '\(imageUrlValue ?? "nil string"))'")
+            imageUrl = imageUrlValue
+        } else {
+            print("[DEBUG] AIGeneratedRecipe - image_url key does NOT exist in response")
+            imageUrl = nil
+        }
+        
+        ingredients = try container.decode([AIIngredient].self, forKey: .ingredients)
+        instructions = try container.decode([String].self, forKey: .instructions)
+        nutritionInfo = try container.decode(AINutritionInfo.self, forKey: .nutritionInfo)
+        tags = try container.decode([String].self, forKey: .tags)
+        
+        print("[DEBUG] AIGeneratedRecipe decoded - final imageUrl: '\(imageUrl ?? "nil")'")
+        print("[DEBUG] AIGeneratedRecipe decoded - name: '\(name)'")
+    }
+}
+
+struct AIIngredient: Codable {
+    let name: String
+    let amount: String
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        amount = try container.decode(String.self, forKey: .amount)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case amount
+    }
+    
+    /// Convert to standard Ingredient
+    func toIngredient() -> Ingredient {
+        return Ingredient(name: name, amount: amount, unit: "", notes: nil)
     }
 }
 
@@ -95,34 +128,6 @@ struct CreateRecipeFromAIRequest: Codable {
 // MARK: - Helper Extensions
 
 extension AIGeneratedRecipe {
-    /// Convert AI ingredients (strings) to structured Ingredient objects
-    var parsedIngredients: [Ingredient] {
-        return ingredients.compactMap { ingredientString in
-            // Parse ingredient strings like "2 cups flour" or "1 lb ground beef, lean"
-            let parts = ingredientString.components(separatedBy: CharacterSet.whitespaces)
-            guard parts.count >= 2 else {
-                // If parsing fails, create ingredient with name only
-                return Ingredient(name: ingredientString, amount: "", unit: "")
-            }
-            
-            let amount = parts[0]
-            let unit = parts.count > 2 ? parts[1] : ""
-            let name = parts.dropFirst(unit.isEmpty ? 1 : 2).joined(separator: " ")
-            
-            // Extract notes if there's a comma
-            let components = name.components(separatedBy: ",")
-            let ingredientName = components[0].trimmingCharacters(in: .whitespaces)
-            let notes = components.count > 1 ? components[1].trimmingCharacters(in: .whitespaces) : nil
-            
-            return Ingredient(
-                name: ingredientName,
-                amount: amount,
-                unit: unit,
-                notes: notes
-            )
-        }
-    }
-    
     /// Convert to Recipe model for display
     func toRecipe(id: String = UUID().uuidString, createdByUser: String = "AI Generated") -> Recipe {
         let nutrition = NutritionInfo(
@@ -136,12 +141,15 @@ extension AIGeneratedRecipe {
             servings: nutritionInfo.servings
         )
         
+        // Convert AI ingredients to standard ingredients
+        let standardIngredients = ingredients.map { $0.toIngredient() }
+        
         return Recipe(
             id: id,
             name: name,
             description: description,
-            ingredients: parsedIngredients,
-            instructions: instructions,
+            ingredients: standardIngredients,
+            instructions: instructions.joined(separator: "\n"), // Join instruction array
             nutritionInfo: nutrition,
             cuisine: cuisine,
             prepTime: prepTime,
@@ -149,7 +157,7 @@ extension AIGeneratedRecipe {
             difficulty: difficulty,
             avgRating: 0.0,
             ratingCount: 0,
-            imageUrl: nil,
+            imageUrl: imageUrl, // Use AI-generated image URL
             tags: tags,
             createdByUser: createdByUser,
             createdByUserId: "ai-generated"

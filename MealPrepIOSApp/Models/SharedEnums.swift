@@ -27,6 +27,36 @@ enum Difficulty: String, CaseIterable, Codable {
     var displayName: String {
         return rawValue.capitalized
     }
+    
+    // 支持中英文多种表示方式的初始化器
+    init?(from value: String) {
+        let lowercased = value.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        switch lowercased {
+        case "easy", "简单", "容易", "初级":
+            self = .easy
+        case "medium", "中等", "中级", "普通", "moderate":
+            self = .medium
+        case "hard", "困难", "难", "高级", "difficult", "challenging":
+            self = .hard
+        default:
+            return nil
+        }
+    }
+    
+    // 自定义解码器支持中英文
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let stringValue = try container.decode(String.self)
+        
+        if let difficulty = Difficulty(from: stringValue) {
+            self = difficulty
+        } else {
+            // 如果无法识别，默认为medium
+            print("⚠️ [Difficulty] Unknown difficulty value: '\(stringValue)', defaulting to medium")
+            self = .medium
+        }
+    }
 }
 
 enum AnalysisType: String, CaseIterable, Codable {

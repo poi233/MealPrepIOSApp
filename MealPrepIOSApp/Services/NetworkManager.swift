@@ -433,12 +433,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-        return "https://meal-prep-app-backend.vercel.app/api"
-//        #if DEBUG
-//        return "http://127.0.0.1:8000/api"
-//        #else
 //        return "https://meal-prep-app-backend.vercel.app/api"
-//        #endif
+        #if DEBUG
+        return "http://127.0.0.1:8000/api"
+        #else
+        return "https://meal-prep-app-backend.vercel.app/api"
+        #endif
     }
 }
 
@@ -465,8 +465,51 @@ extension NetworkManager {
     // POST request
     func post<T: Codable, U: Codable>(_ path: String, body: T, responseType: U.Type, requiresAuth: Bool = true) async throws -> U {
         let bodyData = try encoder.encode(body)
+        
+        // DEBUG: Special logging for recipe creation endpoints
+        if path.contains("/recipes") || path.contains("/ai/") {
+            print("[DEBUG] NetworkManager.post - Endpoint: \(path)")
+            
+            // Try to extract image_url from the request body if it's a recipe
+            if let bodyString = String(data: bodyData, encoding: .utf8) {
+                if let range = bodyString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
+                    let imageUrlPart = String(bodyString[range])
+                    print("[DEBUG] NetworkManager.post - Request body contains: \(imageUrlPart)")
+                } else if bodyString.contains("image_url") {
+                    print("[DEBUG] NetworkManager.post - Request body contains image_url field but could not extract value")
+                } else {
+                    print("[DEBUG] NetworkManager.post - Request body does NOT contain image_url field")
+                }
+                
+                // Show first 500 chars of body for debugging
+                let bodyPreview = String(bodyString.prefix(500))
+                print("[DEBUG] NetworkManager.post - Request body preview: \(bodyPreview)")
+            }
+        }
+        
         let endpoint = APIEndpoint(path: path, method: .POST, body: bodyData, requiresAuth: requiresAuth)
-        return try await request(endpoint, responseType: responseType)
+        let result = try await request(endpoint, responseType: responseType)
+        
+        // DEBUG: Special logging for recipe creation responses
+        if path.contains("/recipes") || path.contains("/ai/") {
+            do {
+                let responseData = try encoder.encode(result)
+                if let responseString = String(data: responseData, encoding: .utf8) {
+                    if let range = responseString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
+                        let imageUrlPart = String(responseString[range])
+                        print("[DEBUG] NetworkManager.post - Response contains: \(imageUrlPart)")
+                    } else if responseString.contains("image_url") {
+                        print("[DEBUG] NetworkManager.post - Response contains image_url field but could not extract value")
+                    } else {
+                        print("[DEBUG] NetworkManager.post - Response does NOT contain image_url field")
+                    }
+                }
+            } catch {
+                print("[DEBUG] NetworkManager.post - Could not encode response for debugging")
+            }
+        }
+        
+        return result
     }
     
     // PUT request

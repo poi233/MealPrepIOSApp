@@ -20,8 +20,8 @@ class AuthStore: ObservableObject {
     
     private let authService = AuthenticationService()
     private let networkManager = NetworkManager.shared
-    private let userCacheManager = UserCacheManager()
-    private let errorHandler = ErrorHandler.shared
+    // private let userCacheManager = UserCacheManager() // TODO: Implement cache manager
+
     private var cancellables = Set<AnyCancellable>()
     private var sessionCheckTimer: Timer?
     private var sessionRefreshTimer: Timer?
@@ -60,14 +60,8 @@ class AuthStore: ObservableObject {
         isInitializing = false // Ensure we're not stuck in loading state
         
         // Clear any cached user data
-        Task {
-            do {
-                try await userCacheManager.clearCurrentUser()
-                print("✅ [AuthStore] Cleared cached user data")
-            } catch {
-                print("⚠️ [AuthStore] Failed to clear cached user data: \(error)")
-            }
-        }
+        // TODO: Clear cached user data (cache not implemented)
+        print("✅ [AuthStore] User data cleared (cache not implemented)")
         
         // Don't set session error - just redirect silently
         // sessionError = "Your session has expired. Please log in again."
@@ -98,6 +92,9 @@ class AuthStore: ObservableObject {
     }
     
     private func loadCurrentUserFromCache() async {
+        // TODO: Implement cache loading
+        print("Cache loading not implemented yet")
+        /*
         do {
             if let cachedUser = try await userCacheManager.getCurrentUser() {
                 await MainActor.run {
@@ -108,6 +105,7 @@ class AuthStore: ObservableObject {
         } catch {
             print("Failed to load cached user: \(error)")
         }
+        */
     }
     
     private func loadCurrentUser() async {
@@ -116,8 +114,8 @@ class AuthStore: ObservableObject {
             self.currentUser = user
             self.isAuthenticated = true
             
-            // Cache the user
-            try await userCacheManager.saveCurrentUser(user)
+            // TODO: Cache the user (cache not implemented)
+            // try await userCacheManager.saveCurrentUser(user)
         } catch {
             print("Failed to load current user: \(error.localizedDescription)")
             self.isAuthenticated = false
@@ -167,7 +165,8 @@ class AuthStore: ObservableObject {
                 print("Login failed: \(error.localizedDescription)")
             }
             
-            errorHandler.handle(error, context: "Login")
+            print("[Login] Error: \(error.localizedDescription)")
+            self.errorMessage = error.localizedDescription
             self.isAuthenticated = false
             self.currentUser = nil
         }
@@ -213,7 +212,8 @@ class AuthStore: ObservableObject {
         
         // Clear cache
         do {
-            try await userCacheManager.clearCurrentUser()
+            // TODO: Clear cache (cache not implemented)
+            // try await userCacheManager.clearCurrentUser()
         } catch {
             print("Failed to clear user cache: \(error)")
         }
@@ -365,7 +365,8 @@ class AuthStore: ObservableObject {
         
         // Clear cached user data
         do {
-            try await userCacheManager.clearCurrentUser()
+            // TODO: Clear cache (cache not implemented)
+            // try await userCacheManager.clearCurrentUser()
         } catch {
             print("Failed to clear cached user: \(error)")
         }

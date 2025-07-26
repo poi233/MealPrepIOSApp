@@ -20,6 +20,7 @@ struct RecipeFiltersView: View {
     @State private var showMyRecipesOnly: Bool = false
     
     private let cuisines = ["Italian", "Asian", "Mexican", "American", "French", "Indian", "Mediterranean", "Thai", "Japanese", "Chinese"]
+    private let difficulties = Difficulty.allCases
     
     var body: some View {
         NavigationView {
@@ -42,7 +43,7 @@ struct RecipeFiltersView: View {
                 
                 Section("Difficulty") {
                     HStack(spacing: 12) {
-                        ForEach(Difficulty.allCases, id: \.self) { difficulty in
+                        ForEach(difficulties, id: \.self) { difficulty in
                             FilterButton(
                                 title: difficulty.displayName,
                                 isSelected: selectedDifficulty == difficulty
