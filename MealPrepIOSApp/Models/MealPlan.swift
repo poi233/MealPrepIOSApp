@@ -235,11 +235,15 @@ struct WeeklyMealGrid: Codable {
         self.weekStartDate = weekStartDate
         self.dailyMeals = []
         
-        // Initialize 7 days
-        let calendar = Calendar.current
+        // Initialize 7 days starting from Monday
+        let calendar = Calendar.mondayFirst
+        let actualWeekStart = weekStartDate.startOfWeek() // Ensure we start from Monday
+        
         for i in 0..<7 {
-            if let date = calendar.date(byAdding: .day, value: i, to: weekStartDate) {
-                let dayName = DateFormatter().weekdaySymbols[calendar.component(.weekday, from: date) - 1]
+            if let date = calendar.date(byAdding: .day, value: i, to: actualWeekStart) {
+                // Use custom day names array starting with Monday
+                let dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                let dayName = dayNames[i]
                 dailyMeals.append(DailyMealSlots(day: dayName, date: date))
             }
         }

@@ -11,6 +11,9 @@ extension Notification.Name {
     /// Posted when a recipe is deleted from the backend
     static let recipeDeleted = Notification.Name("recipeDeleted")
     
+    /// Posted when a user is logged in
+    static let userLoggedIn = Notification.Name("userLoggedIn")
+    
     /// Posted when a user is logged out
     static let userLoggedOut = Notification.Name("userLoggedOut")
     

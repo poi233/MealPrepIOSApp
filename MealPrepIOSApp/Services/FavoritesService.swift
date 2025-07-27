@@ -11,6 +11,88 @@ import Foundation
 @MainActor
 class FavoritesService {
     private let networkManager = NetworkManager.shared
+    private let userScopedStorage = UserScopedStorageManager.shared
+    
+    // Cache configuration
+    private let favoritesListCacheKey = "favorites_list"
+    private let favoriteStatusCachePrefix = "favorite_status_"
+    private let cacheExpirationInterval: TimeInterval = 300 // 5 minutes
+    private let favoritesListCacheTimestampKey = "favorites_list_timestamp"
+    
+    // MARK: - Cache Helper Methods
+    
+    /// Check if cached data is still valid
+    private func isCacheValid(for key: String) -> Bool {
+        let timestampKey = "\(key)_timestamp"
+        if let timestamp: TimeInterval = userScopedStorage.getUserDefaultsValue(forKey: timestampKey, type: TimeInterval.self) {
+            let now = Date().timeIntervalSince1970
+            return now - timestamp < cacheExpirationInterval
+        }
+        return false
+    }
+    
+    /// Cache favorites list with timestamp
+    private func cacheFavoritesList(_ favorites: [Favorite]) {
+        do {
+            try userScopedStorage.setFileSystemValue(favorites, forKey: favoritesListCacheKey)
+            userScopedStorage.setUserDefaultsValue(Date().timeIntervalSince1970, forKey: favoritesListCacheTimestampKey)
+            print("💾 [FavoritesService] Cached \(favorites.count) favorites")
+        } catch {
+            print("❌ [FavoritesService] Failed to cache favorites: \(error)")
+        }
+    }
+    
+    /// Get cached favorites list if valid
+    private func getCachedFavoritesList() -> [Favorite]? {
+        guard isCacheValid(for: favoritesListCacheKey) else {
+            print("📖 [FavoritesService] Favorites cache expired or invalid")
+            return nil
+        }
+        
+        let favorites: [Favorite]? = userScopedStorage.getFileSystemValue(forKey: favoritesListCacheKey, type: [Favorite].self)
+        if let favorites = favorites {
+            print("📖 [FavoritesService] Retrieved \(favorites.count) favorites from cache")
+        }
+        return favorites
+    }
+    
+    /// Cache favorite status with timestamp
+    private func cacheFavoriteStatus(_ status: FavoriteStatus, for recipeId: String) {
+        let statusKey = "\(favoriteStatusCachePrefix)\(recipeId)"
+        let timestampKey = "\(statusKey)_timestamp"
+        
+        userScopedStorage.setUserDefaultsValue(status.isFavorite, forKey: statusKey)
+        userScopedStorage.setUserDefaultsValue(Date().timeIntervalSince1970, forKey: timestampKey)
+        print("💾 [FavoritesService] Cached favorite status for recipe \(recipeId): \(status.isFavorite)")
+    }
+    
+    /// Get cached favorite status if valid
+    private func getCachedFavoriteStatus(for recipeId: String) -> FavoriteStatus? {
+        let statusKey = "\(favoriteStatusCachePrefix)\(recipeId)"
+        
+        guard isCacheValid(for: statusKey),
+              let isFavorite: Bool = userScopedStorage.getUserDefaultsValue(forKey: statusKey, type: Bool.self) else {
+            return nil
+        }
+        
+        print("📖 [FavoritesService] Retrieved cached favorite status for recipe \(recipeId): \(isFavorite)")
+        return FavoriteStatus(isFavorite: isFavorite, favorite: nil)
+    }
+    
+    /// Clear all cached favorites data
+    private func clearFavoritesCache() {
+        userScopedStorage.removeFileSystemValue(forKey: favoritesListCacheKey)
+        userScopedStorage.removeUserDefaultsValue(forKey: favoritesListCacheTimestampKey)
+        
+        // Clear individual favorite status cache
+        let userKeys = userScopedStorage.getCurrentUserKeys()
+        let statusKeys = userKeys.userDefaultsKeys.filter { $0.hasPrefix(favoriteStatusCachePrefix) }
+        for key in statusKeys {
+            userScopedStorage.removeUserDefaultsValue(forKey: key)
+        }
+        
+        print("🧹 [FavoritesService] Cleared favorites cache")
+    }
     
     // MARK: - Favorites Management
     
@@ -73,12 +155,22 @@ class FavoritesService {
         
         let request = AddToFavoritesRequest(personalRating: rating, personalNotes: notes)
         
-        return try await networkManager.post(
+        let favorite = try await networkManager.post(
             "/favorites/recipe/\(recipeId)/",
             body: request,
             responseType: Favorite.self,
             requiresAuth: true
         )
+        
+        // Update cache after successful addition
+        let status = FavoriteStatus(isFavorite: true, favorite: favorite)
+        cacheFavoriteStatus(status, for: recipeId)
+        
+        // Clear favorites list cache to force refresh
+        userScopedStorage.removeFileSystemValue(forKey: favoritesListCacheKey)
+        userScopedStorage.removeUserDefaultsValue(forKey: favoritesListCacheTimestampKey)
+        
+        return favorite
     }
     
     /// Remove a recipe from favorites
@@ -88,10 +180,22 @@ class FavoritesService {
                 "/favorites/recipe/\(recipeId)/",
                 requiresAuth: true
             )
+            
+            // Update cache after successful removal
+            let status = FavoriteStatus(isFavorite: false, favorite: nil)
+            cacheFavoriteStatus(status, for: recipeId)
+            
+            // Clear favorites list cache to force refresh
+            userScopedStorage.removeFileSystemValue(forKey: favoritesListCacheKey)
+            userScopedStorage.removeUserDefaultsValue(forKey: favoritesListCacheTimestampKey)
+            
         } catch let error as NetworkError {
             // Handle 404 errors gracefully - if the recipe is not in favorites, consider it a success
             if case .serverError(404, _) = error {
                 // Recipe was not in favorites, which is fine - it's already in the state we want
+                // Still update cache to reflect this
+                let status = FavoriteStatus(isFavorite: false, favorite: nil)
+                cacheFavoriteStatus(status, for: recipeId)
                 return
             }
             throw error
@@ -100,11 +204,22 @@ class FavoritesService {
     
     /// Check if a recipe is in favorites
     func checkFavoriteStatus(recipeId: String) async throws -> FavoriteStatus {
-        return try await networkManager.get(
+        // Check cache first
+        if let cachedStatus = getCachedFavoriteStatus(for: recipeId) {
+            return cachedStatus
+        }
+        
+        // Fetch from network
+        let status = try await networkManager.get(
             "/favorites/recipe/\(recipeId)/",
             responseType: FavoriteStatus.self,
             requiresAuth: true
         )
+        
+        // Cache the result
+        cacheFavoriteStatus(status, for: recipeId)
+        
+        return status
     }
     
     /// Update favorite rating and notes
@@ -126,8 +241,14 @@ class FavoritesService {
     
     // MARK: - Convenience Methods
     
-    /// Get all favorites (without pagination)
+    /// Get all favorites (without pagination) with caching support
     func getAllFavorites() async throws -> [Favorite] {
+        // Check cache first
+        if let cachedFavorites = getCachedFavoritesList() {
+            return cachedFavorites
+        }
+        
+        // Fetch from network if cache miss
         var allFavorites: [Favorite] = []
         var currentPage = 1
         var hasMore = true
@@ -139,6 +260,9 @@ class FavoritesService {
             hasMore = response.next != nil
             currentPage += 1
         }
+        
+        // Cache the results
+        cacheFavoritesList(allFavorites)
         
         return allFavorites
     }
@@ -258,5 +382,21 @@ class FavoritesService {
         }
         
         return results
+    }
+    
+    // MARK: - Cache Management
+    
+    /// Clear all favorites cache (call this on logout or user switch)
+    func clearCache() {
+        clearFavoritesCache()
+    }
+    
+    /// Force refresh favorites from network (bypassing cache)
+    func forceRefreshFavorites() async throws -> [Favorite] {
+        // Clear cache first
+        clearFavoritesCache()
+        
+        // Fetch fresh data
+        return try await getAllFavorites()
     }
 }

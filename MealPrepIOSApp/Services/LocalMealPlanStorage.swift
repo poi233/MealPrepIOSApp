@@ -2,7 +2,8 @@
 //  LocalMealPlanStorage.swift
 //  MealPrepIOSApp
 //
-//  Created by AI Assistant on 7/22/25.
+//  Updated by AI Assistant on 7/27/25.
+//  Updated to use user-scoped storage for data isolation
 //
 
 import Foundation
@@ -12,6 +13,7 @@ enum LocalStorageError: LocalizedError {
     case encodingFailed(Error)
     case decodingFailed(Error)
     case saveVerificationFailed
+    case userScopedStorageError(UserScopedStorageError)
     
     var errorDescription: String? {
         switch self {
@@ -21,154 +23,110 @@ enum LocalStorageError: LocalizedError {
             return "Failed to decode meal plan data: \(error.localizedDescription)"
         case .saveVerificationFailed:
             return "Data was not saved properly - verification failed"
+        case .userScopedStorageError(let error):
+            return "User scoped storage error: \(error.localizedDescription)"
         }
     }
 }
 
 class LocalMealPlanStorage {
     static let shared = LocalMealPlanStorage()
-    private let userDefaults = UserDefaults.standard
-    private let fileManager = FileManager.default
+    private let userScopedStorage = UserScopedStorageManager.shared
+    
     
     private init() {
-        createStorageDirectoryIfNeeded()
-        migrateLegacyDataIfNeeded()
+        // Migration is now handled by UserScopedStorageManager
+        // when a user logs in
     }
     
     // MARK: - Constants
     private let weeklyMealPlanKey = "weeklyMealPlan" // Legacy key
     private let multiWeekKeyPrefix = "weeklyMealPlan_"
     private let maxStoredWeeks = 6
-    private let storageDirectoryName = "MealPlans"
     
-    // MARK: - Storage Directory Management
-    
-    private var documentsDirectory: URL {
-        fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-    }
-    
-    private var storageDirectory: URL {
-        documentsDirectory.appendingPathComponent(storageDirectoryName)
-    }
-    
-    private func createStorageDirectoryIfNeeded() {
-        if !fileManager.fileExists(atPath: storageDirectory.path) {
-            try? fileManager.createDirectory(at: storageDirectory, withIntermediateDirectories: true, attributes: nil)
-        }
-    }
-    
-    private func fileURL(for weekStartDate: Date) -> URL {
-        let fileName = "\(formatWeekDate(weekStartDate)).json"
-        return storageDirectory.appendingPathComponent(fileName)
-    }
     
     // MARK: - Storage Methods
     
     /// Save weekly meal plan for a specific week
     func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError> {
         let normalizedDate = normalizeWeekStartDate(weekStartDate)
-        let fileURL = fileURL(for: normalizedDate)
+        let weekKey = generateWeekKey(for: normalizedDate)
         
         do {
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(weeklyGrid)
+            // Save to file system using user-scoped storage
+            try userScopedStorage.setFileSystemValue(weeklyGrid, forKey: weekKey)
             
-            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            // Backup to UserDefaults using user-scoped storage
+            userScopedStorage.setUserDefaultsValue(weeklyGrid, forKey: weekKey)
             
-            // Verify save
-            guard let savedData = try? Data(contentsOf: fileURL) else {
-                return .failure(.saveVerificationFailed)
-            }
-            
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            guard let _ = try? decoder.decode(WeeklyMealGrid.self, from: savedData) else {
-                return .failure(.saveVerificationFailed)
-            }
-            
-            // Backup to UserDefaults
-            saveToUserDefaultsBackup(for: normalizedDate, weeklyGrid)
+            // Cleanup old weeks
             cleanupOldWeeks()
             
+            print("✅ [LocalMealPlanStorage] Saved meal plan for week: \(formatWeekDate(normalizedDate))")
             return .success(())
+        } catch let error as UserScopedStorageError {
+            return .failure(.userScopedStorageError(error))
         } catch {
             return .failure(.encodingFailed(error))
         }
     }
     
-    /// Save to UserDefaults as backup
-    private func saveToUserDefaultsBackup(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(weeklyGrid) else { return }
-        let key = generateWeekKey(for: weekStartDate)
-        userDefaults.set(data, forKey: key)
-    }
     
     /// Load weekly meal plan for a specific week
     func loadWeeklyMealPlan(for weekStartDate: Date) -> WeeklyMealGrid? {
         let normalizedDate = normalizeWeekStartDate(weekStartDate)
-        let fileURL = fileURL(for: normalizedDate)
+        let weekKey = generateWeekKey(for: normalizedDate)
         
-        // Try to load from file first
-        if let data = try? Data(contentsOf: fileURL) {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            if let weeklyGrid = try? decoder.decode(WeeklyMealGrid.self, from: data) {
-                return weeklyGrid
-            }
+        // Try to load from file system using user-scoped storage
+        if let weeklyGrid: WeeklyMealGrid = userScopedStorage.getFileSystemValue(forKey: weekKey, type: WeeklyMealGrid.self) {
+            return weeklyGrid
         }
         
-        // Fallback to UserDefaults backup
-        let key = generateWeekKey(for: normalizedDate)
-        guard let data = userDefaults.data(forKey: key) else {
-            return nil
+        // Fallback to UserDefaults using user-scoped storage
+        if let weeklyGrid: WeeklyMealGrid = userScopedStorage.getUserDefaultsValue(forKey: weekKey, type: WeeklyMealGrid.self) {
+            // Save to file system for future use
+            _ = saveWeeklyMealPlan(for: normalizedDate, weeklyGrid)
+            return weeklyGrid
         }
         
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let weeklyGrid = try? decoder.decode(WeeklyMealGrid.self, from: data) else {
-            return nil
-        }
-        
-        // Save to file for future use
-        _ = saveWeeklyMealPlan(for: normalizedDate, weeklyGrid)
-        return weeklyGrid
+        return nil
     }
     
     /// Clear meal plan for a specific week
     func clearMealPlan(for weekStartDate: Date) {
         let normalizedDate = normalizeWeekStartDate(weekStartDate)
-        let fileURL = fileURL(for: normalizedDate)
-        let key = generateWeekKey(for: normalizedDate)
+        let weekKey = generateWeekKey(for: normalizedDate)
         
-        try? fileManager.removeItem(at: fileURL)
-        userDefaults.removeObject(forKey: key)
+        // Clear from file system using user-scoped storage
+        userScopedStorage.removeFileSystemValue(forKey: weekKey)
+        
+        // Clear from UserDefaults using user-scoped storage
+        userScopedStorage.removeUserDefaultsValue(forKey: weekKey)
+        
+        print("🗑️ [LocalMealPlanStorage] Cleared meal plan for week: \(formatWeekDate(normalizedDate))")
     }
     
     /// Get all stored week start dates
     func getAllStoredWeeks() -> [Date] {
         var dates: [Date] = []
         
-        // Get dates from files
-        if let fileURLs = try? fileManager.contentsOfDirectory(at: storageDirectory, includingPropertiesForKeys: nil) {
-            let jsonFiles = fileURLs.filter { $0.pathExtension == "json" }
-            dates.append(contentsOf: jsonFiles.compactMap { fileURL in
-                let fileName = fileURL.deletingPathExtension().lastPathComponent
-                return weekDateFormatter.date(from: fileName)
-            })
-        }
+        // Get all user-scoped keys
+        let userKeys = userScopedStorage.getCurrentUserKeys()
         
-        // Check UserDefaults for backup data
-        let allKeys = Array(userDefaults.dictionaryRepresentation().keys)
-        let weekKeys = allKeys.filter { $0.hasPrefix(multiWeekKeyPrefix) }
-        let userDefaultsDates = weekKeys.compactMap { key -> Date? in
+        // Process file system keys
+        let fileSystemWeekKeys = userKeys.fileSystemKeys.filter { $0.hasPrefix(multiWeekKeyPrefix) }
+        dates.append(contentsOf: fileSystemWeekKeys.compactMap { key -> Date? in
             let dateString = String(key.dropFirst(multiWeekKeyPrefix.count))
             return weekDateFormatter.date(from: dateString)
-        }
+        })
         
-        dates.append(contentsOf: userDefaultsDates)
+        // Process UserDefaults keys
+        let userDefaultsWeekKeys = userKeys.userDefaultsKeys.filter { $0.hasPrefix(multiWeekKeyPrefix) }
+        dates.append(contentsOf: userDefaultsWeekKeys.compactMap { key -> Date? in
+            let dateString = String(key.dropFirst(multiWeekKeyPrefix.count))
+            return weekDateFormatter.date(from: dateString)
+        })
+        
         return Array(Set(dates)).sorted()
     }
     
@@ -213,20 +171,6 @@ class LocalMealPlanStorage {
         }
     }
     
-    private func migrateLegacyDataIfNeeded() {
-        guard let legacyData = userDefaults.data(forKey: weeklyMealPlanKey) else {
-            return
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let legacyGrid = try? decoder.decode(WeeklyMealGrid.self, from: legacyData) else {
-            return
-        }
-        
-        _ = saveWeeklyMealPlan(for: legacyGrid.weekStartDate, legacyGrid)
-        userDefaults.removeObject(forKey: weeklyMealPlanKey)
-    }
     
     // MARK: - Date Formatter
     

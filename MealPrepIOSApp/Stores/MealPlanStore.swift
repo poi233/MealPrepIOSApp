@@ -76,11 +76,9 @@ class MealPlanStore: ObservableObject {
     }
     
     private func setupSelectedWeek() {
-        let calendar = Calendar.current
         let now = Date()
-        // Get the start of the current week (Sunday)
-        let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now)
-        selectedWeekStartDate = normalizeWeekStartDate(weekInterval?.start ?? now)
+        // Get the start of the current week (Monday) using our Monday-first calendar
+        selectedWeekStartDate = normalizeWeekStartDate(now.startOfWeek())
         
         // Always initialize with an empty weekly grid for the current week
         weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
@@ -88,7 +86,7 @@ class MealPlanStore: ObservableObject {
     
     /// Normalize week start date to remove time components and ensure consistency
     private func normalizeWeekStartDate(_ date: Date) -> Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         return calendar.date(from: components) ?? date
     }
@@ -103,8 +101,8 @@ class MealPlanStore: ObservableObject {
     
     /// Clean up stored weeks that are outside the allowed range
     private func cleanupInvalidStoredWeeks() {
-        let calendar = Calendar.current
-        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let calendar = Calendar.mondayFirst
+        let currentWeekStart = Date().startOfWeek()
         
         let storage = LocalMealPlanStorage.shared
         let storedWeeks = storage.getAllStoredWeeks()
@@ -144,13 +142,13 @@ class MealPlanStore: ObservableObject {
     // MARK: - Navigation Helper Methods
     
     var canNavigateToPreviousWeek: Bool {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let previousWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         return isWithinAllowedWeekRange(previousWeek)
     }
     
     var canNavigateToNextWeek: Bool {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         return isWithinAllowedWeekRange(nextWeek)
     }
@@ -363,7 +361,7 @@ class MealPlanStore: ObservableObject {
             errorMessage = "Failed to save current week: \(error.localizedDescription)"
         }
         
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let rawNewDate: Date
         
         switch direction {
@@ -372,9 +370,7 @@ class MealPlanStore: ObservableObject {
         case .next:
             rawNewDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         case .current:
-            let now = Date()
-            let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now)
-            rawNewDate = weekInterval?.start ?? now
+            rawNewDate = Date().startOfWeek()
         }
         
         // Normalize the new date to ensure consistency
@@ -396,8 +392,8 @@ class MealPlanStore: ObservableObject {
     // MARK: - Week Range Validation
     
     private func isWithinAllowedWeekRange(_ weekStartDate: Date) -> Bool {
-        let calendar = Calendar.current
-        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let calendar = Calendar.mondayFirst
+        let currentWeekStart = Date().startOfWeek()
         
         // Calculate the difference in weeks
         let weekDifference = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: weekStartDate).weekOfYear ?? 0
@@ -641,9 +637,9 @@ class MealPlanStore: ObservableObject {
     // MARK: - Create Meal Plan for Current Week
     
     private func createMealPlanForCurrentWeek() async {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let now = Date()
-        let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let weekStart = now.startOfWeek()
         let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
         
         let request = CreateMealPlanRequest(

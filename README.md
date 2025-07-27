@@ -53,6 +53,13 @@ Native iOS client for the MealPrepAI application, providing a seamless mobile ex
 #### Utilities Layer
 - `UserCacheManager`: Local user data caching and session persistence
 - `RecipeCacheManager`: ⚠️ Not implemented - Recipe caching temporarily disabled (being replaced by `UnifiedRecipeCache`)
+- `TimeZoneHelper`: Comprehensive timezone handling utility for consistent date/time operations across the app
+  - **Current Time Zone Management**: Device timezone detection and calendar configuration
+  - **Week Management**: Current week calculations, weekday detection, and week validation
+  - **Date Operations**: Normalization, calculations (adding weeks/days), and difference calculations
+  - **Formatting Utilities**: Week range display, date formatting, and relative descriptions
+  - **Meal Plan Integration**: Specialized sorting for daily meals with current week prioritization
+  - **Date Extensions**: Convenient Date extensions for common timezone operations
 
 #### Data Models
 - `User`: User profile with flexible ID parsing
@@ -91,7 +98,9 @@ if let idString = try? container.decode(String.self, forKey: .id) {
 
 #### Date Handling
 - Flexible ISO-8601 date parsing for `created_at` and `updated_at` fields
-- Automatic timezone handling
+- Comprehensive timezone handling with `TimeZoneHelper` utility
+- Consistent date normalization and week calculations
+- Device timezone-aware date operations and formatting
 
 #### Ingredient Amount Parsing
 - Flexible parsing for ingredient amounts (String, Double, or Int)
@@ -227,7 +236,8 @@ MealPrepIOSApp/
    │   ├── NotificationComponents.swift  # Notification UI components
    │   └── SharedComponents.swift   # Shared reusable components
 │   ├── Utils/               # Utilities and extensions
-│   │   └── UserCacheManager.swift  # User data caching
+│   │   ├── UserCacheManager.swift  # User data caching
+│   │   └── TimeZoneHelper.swift    # Timezone handling utilities
 │   └── Data/                # Core Data stack
 ├── MealPrepIOSAppTests/     # Unit tests
 └── MealPrepIOSAppUITests/   # UI tests

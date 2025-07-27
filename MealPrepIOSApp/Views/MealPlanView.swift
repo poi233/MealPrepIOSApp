@@ -159,13 +159,13 @@ struct WeekNavigationView: View {
         formatter.dateFormat = "MMM d"
         
         let startDate = mealPlanStore.selectedWeekStartDate
-        let endDate = Calendar.current.date(byAdding: .day, value: 6, to: startDate) ?? startDate
+        let endDate = Calendar.mondayFirst.date(byAdding: .day, value: 6, to: startDate) ?? startDate
         
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
     
     private var weekSubtitle: String {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let now = Date()
         
         if calendar.isDate(mealPlanStore.selectedWeekStartDate, equalTo: now, toGranularity: .weekOfYear) {
@@ -182,9 +182,9 @@ struct WeeklyMealGridView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     
     private var sortedDailyMeals: [(dailyMeal: DailyMealSlots, dayOfWeek: Int)] {
-        let calendar = Calendar.current
+        let calendar = Calendar.mondayFirst
         let today = Date()
-        let currentWeekday = calendar.component(.weekday, from: today) - 1 // Sunday = 0
+        let todayMondayBasedWeekday = today.mondayBasedWeekday() // Monday = 0, Tuesday = 1, etc.
         
         let dailyMealsWithIndex = Array(mealPlanStore.weeklyGrid.dailyMeals.enumerated())
             .map { (dailyMeal: $0.element, dayOfWeek: $0.offset) }
@@ -195,13 +195,13 @@ struct WeeklyMealGridView: View {
         
         if isCurrentWeek {
             // Current week: Today first, then future days, then past days
-            let todayMeals = dailyMealsWithIndex.filter { $0.dayOfWeek == currentWeekday }
-            let futureMeals = dailyMealsWithIndex.filter { $0.dayOfWeek > currentWeekday }
-            let pastMeals = dailyMealsWithIndex.filter { $0.dayOfWeek < currentWeekday }
+            let todayMeals = dailyMealsWithIndex.filter { $0.dayOfWeek == todayMondayBasedWeekday }
+            let futureMeals = dailyMealsWithIndex.filter { $0.dayOfWeek > todayMondayBasedWeekday }
+            let pastMeals = dailyMealsWithIndex.filter { $0.dayOfWeek < todayMondayBasedWeekday }
             
             return todayMeals + futureMeals + pastMeals
         } else {
-            // Past/future week: normal order
+            // Past/future week: normal Monday-first order (Monday=0, Tuesday=1, etc.)
             return dailyMealsWithIndex
         }
     }
@@ -548,7 +548,6 @@ struct FavoriteButtonView: View {
                 await MainActor.run {
                     isFavorite = status.isFavorite
                     isLoading = false
-                    print("🔄 Loaded favorite status: \(status.isFavorite) for recipe: \(recipe.name)")
                 }
             } catch {
                 // Handle error silently, default to not favorite

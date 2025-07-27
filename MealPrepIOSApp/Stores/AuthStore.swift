@@ -20,6 +20,7 @@ class AuthStore: ObservableObject {
     
     private let authService = AuthenticationService()
     private let networkManager = NetworkManager.shared
+    private let userScopedStorage = UserScopedStorageManager.shared
     // private let userCacheManager = UserCacheManager() // TODO: Implement cache manager
 
     private var cancellables = Set<AnyCancellable>()
@@ -54,6 +55,12 @@ class AuthStore: ObservableObject {
     
     private func handleAuthenticationLost() {
         print("🔒 [AuthStore] Authentication lost - clearing user data")
+        
+        // Clear user scoped storage
+        userScopedStorage.setCurrentUser(userID: nil)
+        
+        // Send user logout notification for cache invalidation
+        NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
         
         // Clear current user
         currentUser = nil
@@ -114,6 +121,12 @@ class AuthStore: ObservableObject {
             self.currentUser = user
             self.isAuthenticated = true
             
+            // Set user ID for scoped storage
+            userScopedStorage.setCurrentUser(userID: user.id)
+            
+            // Send user login notification for cache loading
+            NotificationCenter.default.post(name: .userLoggedIn, object: nil, userInfo: ["userID": user.id])
+            
             // TODO: Cache the user (cache not implemented)
             // try await userCacheManager.saveCurrentUser(user)
         } catch {
@@ -132,6 +145,12 @@ class AuthStore: ObservableObject {
             let response = try await authService.login(email: email, password: password)
             self.currentUser = response.user
             self.isAuthenticated = true
+            
+            // Set user ID for scoped storage
+            userScopedStorage.setCurrentUser(userID: response.user.id)
+            
+            // Send user login notification for cache loading
+            NotificationCenter.default.post(name: .userLoggedIn, object: nil, userInfo: ["userID": response.user.id])
             
             // Start session monitoring after successful login
             startSessionMonitoring()
@@ -193,6 +212,12 @@ class AuthStore: ObservableObject {
             let response = try await authService.register(userData: registerRequest)
             self.currentUser = response.user
             self.isAuthenticated = true
+            
+            // Set user ID for scoped storage
+            userScopedStorage.setCurrentUser(userID: response.user.id)
+            
+            // Send user login notification for cache loading
+            NotificationCenter.default.post(name: .userLoggedIn, object: nil, userInfo: ["userID": response.user.id])
         } catch {
             self.isAuthenticated = false
             self.currentUser = nil
@@ -211,12 +236,14 @@ class AuthStore: ObservableObject {
         }
         
         // Clear cache
-        do {
-            // TODO: Clear cache (cache not implemented)
-            // try await userCacheManager.clearCurrentUser()
-        } catch {
-            print("Failed to clear user cache: \(error)")
-        }
+        // TODO: Clear cache (cache not implemented)
+        // try await userCacheManager.clearCurrentUser()
+        
+        // Clear user scoped storage
+        userScopedStorage.setCurrentUser(userID: nil)
+        
+        // Send user logout notification for cache clearing
+        NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
         
         // Clear local state regardless of server response
         self.currentUser = nil
@@ -299,8 +326,8 @@ class AuthStore: ObservableObject {
             }
         }
         
-        // Auto-refresh token every 45 minutes (assuming 1-hour expiry)
-        sessionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 2700, repeats: true) { [weak self] _ in
+        // Auto-refresh token every 24 hours (for 30-day token expiry)
+        sessionRefreshTimer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.refreshSessionIfNeeded()
             }
@@ -360,16 +387,18 @@ class AuthStore: ObservableObject {
             self.currentUser = nil
         }
         
+        // Clear user scoped storage
+        userScopedStorage.setCurrentUser(userID: nil)
+        
+        // Send user logout notification for cache clearing
+        NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
+        
         // Clear stored tokens
         networkManager.clearTokens()
         
         // Clear cached user data
-        do {
-            // TODO: Clear cache (cache not implemented)
-            // try await userCacheManager.clearCurrentUser()
-        } catch {
-            print("Failed to clear cached user: \(error)")
-        }
+        // TODO: Clear cache (cache not implemented)
+        // try await userCacheManager.clearCurrentUser()
         
         // Stop session monitoring
         stopSessionMonitoring()

@@ -261,15 +261,15 @@ class NetworkManager: ObservableObject {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         
-        // Set session expiry to 7 days from now
-        self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+        // Set session expiry to 30 days from now
+        self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())
         
         Task { @MainActor in
             self.isAuthenticated = true
         }
         storeTokens()
         
-        print("🔐 [NetworkManager] Session set for 7 days, expires: \(sessionExpiry?.description ?? "unknown")")
+        print("🔐 [NetworkManager] Session set for 30 days, expires: \(sessionExpiry?.description ?? "unknown")")
     }
     
     func clearTokens() {
@@ -311,7 +311,7 @@ class NetworkManager: ObservableObject {
         let currentDate = Date()
         let isTokenExpired = currentDate >= tokenExpirationDate
         
-        // Also check session expiry (7-day limit)
+        // Also check session expiry (30-day limit)
         let isSessionExpired = if let sessionExpiry = sessionExpiry {
             currentDate >= sessionExpiry
         } else {
@@ -326,7 +326,7 @@ class NetworkManager: ObservableObject {
             print("⚠️ [NetworkManager] Access token has expired")
         }
         if isSessionExpired {
-            print("⚠️ [NetworkManager] 7-day session has expired")
+            print("⚠️ [NetworkManager] 30-day session has expired")
         }
         
         return isExpired
@@ -348,12 +348,12 @@ class NetworkManager: ObservableObject {
             let response: TokenRefreshResponse = try await self.request(refreshEndpoint, responseType: TokenRefreshResponse.self)
             self.accessToken = response.access
             
-            // Renew session for another 7 days on token refresh
-            self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+            // Renew session for another 30 days on token refresh
+            self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())
             
             storeTokens()
             
-            print("🔄 [NetworkManager] Token refreshed and session renewed for 7 days")
+            print("🔄 [NetworkManager] Token refreshed and session renewed for 30 days")
         } catch {
             // If refresh fails, clear tokens and require re-authentication
             clearTokens()

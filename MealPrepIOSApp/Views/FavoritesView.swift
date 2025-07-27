@@ -10,6 +10,7 @@ import Foundation
 
 struct FavoritesView: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
+    @EnvironmentObject var recipeStore: RecipeStore
     @State private var showingFilters = false
     @State private var selectedFavorite: Favorite?
     @State private var viewMode: FavoriteViewMode = .list
@@ -196,7 +197,8 @@ struct FavoritesView: View {
             }
             .sheet(item: $selectedFavorite) { favorite in
                 NavigationView {
-                    FavoriteDetailView(favorite: favorite)
+                    RecipeDetailView(recipe: favorite.recipe, isFromMealPlan: false)
+                        .environmentObject(recipeStore ?? RecipeStore())
                         .environmentObject(favoritesStore)
                 }
             }
