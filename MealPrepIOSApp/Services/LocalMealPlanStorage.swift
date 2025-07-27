@@ -132,10 +132,21 @@ class LocalMealPlanStorage {
     
     // MARK: - Cleanup Methods
     
+    /// Clear all stored meal plans
+    func clearAllMealPlans() {
+        let storedWeeks = getAllStoredWeeks()
+        
+        for week in storedWeeks {
+            clearMealPlan(for: week)
+        }
+        
+        print("🗑️ [LocalMealPlanStorage] Cleared all stored meal plans")
+    }
+    
     /// Force cleanup of invalid weeks (outside ±4 weeks from current)
     func forceCleanupInvalidWeeks() {
-        let calendar = Calendar.current
-        let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let calendar = Calendar.mondayFirst
+        let currentWeekStart = Date().startOfWeek(using: calendar)
         
         let storedWeeks = getAllStoredWeeks()
         for week in storedWeeks {
@@ -158,9 +169,10 @@ class LocalMealPlanStorage {
     
     /// Normalize week start date to remove time components and ensure consistency
     private func normalizeWeekStartDate(_ date: Date) -> Date {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        return calendar.date(from: components) ?? date
+        let calendar = Calendar.mondayFirst
+        let weekStart = date.startOfWeek(using: calendar)
+        let components = calendar.dateComponents([.year, .month, .day], from: weekStart)
+        return calendar.date(from: components) ?? weekStart
     }
     
     private func cleanupOldWeeks() {

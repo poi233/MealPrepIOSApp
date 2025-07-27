@@ -55,8 +55,92 @@ extension Date {
         return Calendar.mondayFirst.startOfWeek(for: self)
     }
     
+    /// Returns the start of the week (Monday) for this date (with calendar parameter)
+    func startOfWeek(using calendar: Calendar = Calendar.mondayFirst) -> Date {
+        return calendar.startOfWeek(for: self)
+    }
+    
     /// Get Monday-based weekday (Monday = 0, Tuesday = 1, etc.)
     func mondayBasedWeekday() -> Int {
         return Calendar.mondayFirst.mondayBasedWeekday(for: self)
+    }
+    
+    /// Returns the day of week index (0 = Monday, 1 = Tuesday, ..., 6 = Sunday)
+    func dayOfWeekIndex(using calendar: Calendar = Calendar.mondayFirst) -> Int {
+        return calendar.mondayBasedWeekday(for: self)
+    }
+    
+    /// Returns the end of the week (Sunday) for this date
+    func endOfWeek(using calendar: Calendar = Calendar.mondayFirst) -> Date {
+        let startOfWeek = self.startOfWeek(using: calendar)
+        return calendar.date(byAdding: .day, value: 6, to: startOfWeek) ?? self
+    }
+    
+    /// Returns true if this date is in the same week as the other date
+    func isSameWeek(as other: Date, using calendar: Calendar = Calendar.mondayFirst) -> Bool {
+        let thisWeekStart = self.startOfWeek(using: calendar)
+        let otherWeekStart = other.startOfWeek(using: calendar)
+        return calendar.isDate(thisWeekStart, inSameDayAs: otherWeekStart)
+    }
+    
+    /// Returns the name of the day of week
+    func dayOfWeekName(using calendar: Calendar = Calendar.mondayFirst) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: self)
+    }
+    
+    /// Returns the short name of the day of week (Mon, Tue, etc.)
+    func shortDayOfWeekName(using calendar: Calendar = Calendar.mondayFirst) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: self)
+    }
+}
+
+// MARK: - DateFormatter Extensions
+extension DateFormatter {
+    /// Formatter for week range display (MMM d - MMM d, yyyy)
+    static let weekRange: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.mondayFirst
+        return formatter
+    }()
+    
+    /// Format a week range string (e.g., "Jan 15 - Jan 21, 2024")
+    static func weekRangeString(from startDate: Date) -> String {
+        let calendar = Calendar.mondayFirst
+        let endDate = calendar.date(byAdding: .day, value: 6, to: startDate) ?? startDate
+        
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        
+        // Check if start and end are in the same month and year
+        let startComponents = calendar.dateComponents([.year, .month], from: startDate)
+        let endComponents = calendar.dateComponents([.year, .month], from: endDate)
+        
+        if startComponents.year == endComponents.year && startComponents.month == endComponents.month {
+            // Same month: "Jan 15 - 21, 2024"
+            formatter.dateFormat = "MMM d"
+            let startString = formatter.string(from: startDate)
+            formatter.dateFormat = "d, yyyy"
+            let endString = formatter.string(from: endDate)
+            return "\(startString) - \(endString)"
+        } else if startComponents.year == endComponents.year {
+            // Same year, different month: "Jan 30 - Feb 5, 2024"
+            formatter.dateFormat = "MMM d"
+            let startString = formatter.string(from: startDate)
+            formatter.dateFormat = "MMM d, yyyy"
+            let endString = formatter.string(from: endDate)
+            return "\(startString) - \(endString)"
+        } else {
+            // Different year: "Dec 30, 2023 - Jan 5, 2024"
+            formatter.dateFormat = "MMM d, yyyy"
+            let startString = formatter.string(from: startDate)
+            let endString = formatter.string(from: endDate)
+            return "\(startString) - \(endString)"
+        }
     }
 }

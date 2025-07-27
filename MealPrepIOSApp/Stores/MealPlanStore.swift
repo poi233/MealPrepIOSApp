@@ -829,6 +829,84 @@ class MealPlanStore: ObservableObject {
         }
     }
     
+    // MARK: - Data Management
+    
+    /// Clear all data when user logs out
+    func clearAllData() {
+        mealPlans = []
+        currentMealPlan = nil
+        activeMealPlan = nil
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
+        shoppingList = []
+        nutritionAnalysis = nil
+        recentMeals = []
+        aiRecommendedRecipes = []
+        currentPage = 1
+        totalPages = 1
+        hasMorePages = false
+        totalCount = 0
+        errorMessage = nil
+        
+        // Clear local storage
+        LocalMealPlanStorage.shared.clearAllMealPlans()
+        
+        print("🗑️ [MealPlanStore] Cleared all data")
+    }
+    
+    /// Remove a deleted recipe from all meal plans and weekly grid
+    func removeDeletedRecipe(recipeId: String) {
+        // Remove from weekly grid
+        for i in 0..<weeklyGrid.dailyMeals.count {
+            weeklyGrid.dailyMeals[i].breakfast.removeAll { $0.id == recipeId }
+            weeklyGrid.dailyMeals[i].lunch.removeAll { $0.id == recipeId }
+            weeklyGrid.dailyMeals[i].dinner.removeAll { $0.id == recipeId }
+        }
+        
+        // Remove from recent meals
+        recentMeals.removeAll { $0.id == recipeId }
+        
+        // Remove from AI recommendations
+        aiRecommendedRecipes.removeAll { $0.id == recipeId }
+        
+        // Save updated weekly grid
+        let _ = saveLocalMealPlan()
+        
+        print("🗑️ [MealPlanStore] Removed deleted recipe \(recipeId) from meal plans")
+    }
+    
+    /// Clear all meals for the current week
+    private func clearAllMealsForWeek() async {
+        await MainActor.run {
+            for i in 0..<weeklyGrid.dailyMeals.count {
+                weeklyGrid.dailyMeals[i].breakfast = []
+                weeklyGrid.dailyMeals[i].lunch = []
+                weeklyGrid.dailyMeals[i].dinner = []
+            }
+        }
+        
+        // Save cleared state
+        let _ = saveLocalMealPlan()
+    }
+    
+    /// Find empty meal slots in the current week
+    private func findEmptyMealSlots() -> [(dayIndex: Int, mealType: MealType)] {
+        var emptySlots: [(dayIndex: Int, mealType: MealType)] = []
+        
+        for (dayIndex, dailyMeal) in weeklyGrid.dailyMeals.enumerated() {
+            if dailyMeal.breakfast.isEmpty {
+                emptySlots.append((dayIndex, .breakfast))
+            }
+            if dailyMeal.lunch.isEmpty {
+                emptySlots.append((dayIndex, .lunch))
+            }
+            if dailyMeal.dinner.isEmpty {
+                emptySlots.append((dayIndex, .dinner))
+            }
+        }
+        
+        return emptySlots
+    }
+    
     // MARK: - Batch Operations
     
     func copyMealsFromPlan(_ sourcePlan: MealPlan) async {
@@ -875,6 +953,7 @@ class MealPlanStore: ObservableObject {
             // Generate AI recommendations for empty slots
             let emptySlots = findEmptyMealSlots()
             
+            // Generate AI recommendations for each empty slot
             for slot in emptySlots {
                 // TODO: Replace with actual AI service call
                 let recommendations = [Recipe.sampleRecipe]
@@ -883,7 +962,7 @@ class MealPlanStore: ObservableObject {
                     let _ = try await mealPlanService.addMealPlanItem(
                         mealPlanId: mealPlan.id,
                         recipeId: recipe.id,
-                        dayOfWeek: slot.dayOfWeek,
+                        dayOfWeek: slot.dayIndex,
                         mealType: slot.mealType,
                         servingSize: 1.0
                     )
@@ -894,33 +973,6 @@ class MealPlanStore: ObservableObject {
             
         } catch {
             errorMessage = "Failed to generate week with AI: \(error.localizedDescription)"
-        }
-        
-        isLoading = false
-    }
-    
-    func clearAllMealsForWeek() async {
-        guard let mealPlan = activeMealPlan,
-              let items = mealPlan.items else { return }
-        
-        isLoading = true
-        
-        do {
-            // Remove all meal items
-            for item in items {
-                if let mealType = MealType(rawValue: item.mealType) {
-                    try await mealPlanService.removeMealPlanItem(
-                        mealPlanId: mealPlan.id,
-                        dayOfWeek: item.dayOfWeek,
-                        mealType: mealType
-                    )
-                }
-            }
-            
-            await loadWeeklyMealPlan()
-            
-        } catch {
-            errorMessage = "Failed to clear meals: \(error.localizedDescription)"
         }
         
         isLoading = false
@@ -991,27 +1043,7 @@ class MealPlanStore: ObservableObject {
         isLoadingShoppingList = false
     }
     
-    // MARK: - Helper Methods for Batch Operations
-    
-    private func findEmptyMealSlots() -> [MealSlot] {
-        var emptySlots: [MealSlot] = []
-        let allMealTypes = MealType.allCases
-        
-        for dayOfWeek in 0..<7 {
-            for mealType in allMealTypes {
-                // Check if this slot is empty
-                let hasExistingMeal = activeMealPlan?.items?.contains { item in
-                    item.dayOfWeek == dayOfWeek && item.mealType == mealType.rawValue
-                } ?? false
-                
-                if !hasExistingMeal {
-                    emptySlots.append(MealSlot(dayOfWeek: dayOfWeek, mealType: mealType))
-                }
-            }
-        }
-        
-        return emptySlots
-    }
+
     
     // MARK: - Convenience Methods
     
@@ -1046,97 +1078,7 @@ class MealPlanStore: ObservableObject {
             return "\(totalCount) meal plan\(totalCount == 1 ? "" : "s")"
         }
     }
-    
-    // MARK: - Recipe Cleanup
-    
-    /// Remove all references to a deleted recipe from local meal plans
-    func removeDeletedRecipe(recipeId: String) {
-        print("🧹 [MealPlanStore] Cleaning up deleted recipe: \(recipeId)")
-        
-        var hasChanges = false
-        
-        // Remove from weekly grid
-        for dayIndex in 0..<weeklyGrid.dailyMeals.count {
-            let originalBreakfastCount = weeklyGrid.dailyMeals[dayIndex].breakfast.count
-            let originalLunchCount = weeklyGrid.dailyMeals[dayIndex].lunch.count
-            let originalDinnerCount = weeklyGrid.dailyMeals[dayIndex].dinner.count
-            
-            weeklyGrid.dailyMeals[dayIndex].breakfast.removeAll { $0.id == recipeId }
-            weeklyGrid.dailyMeals[dayIndex].lunch.removeAll { $0.id == recipeId }
-            weeklyGrid.dailyMeals[dayIndex].dinner.removeAll { $0.id == recipeId }
-            
-            if originalBreakfastCount != weeklyGrid.dailyMeals[dayIndex].breakfast.count ||
-               originalLunchCount != weeklyGrid.dailyMeals[dayIndex].lunch.count ||
-               originalDinnerCount != weeklyGrid.dailyMeals[dayIndex].dinner.count {
-                hasChanges = true
-            }
-        }
-        
-        // Remove from recent meals
-        let originalRecentCount = recentMeals.count
-        recentMeals.removeAll { $0.id == recipeId }
-        if originalRecentCount != recentMeals.count {
-            hasChanges = true
-        }
-        
-        // Remove from AI recommendations
-        let originalAICount = aiRecommendedRecipes.count
-        aiRecommendedRecipes.removeAll { $0.id == recipeId }
-        if originalAICount != aiRecommendedRecipes.count {
-            hasChanges = true
-        }
-        
-        // Remove from meal plans items if they contain the deleted recipe
-        for mealPlan in mealPlans {
-            if let items = mealPlan.items {
-                let containsDeletedRecipe = items.contains { item in
-                    item.recipe?.id == recipeId
-                }
-                if containsDeletedRecipe {
-                    hasChanges = true
-                    print("🧹 [MealPlanStore] Found deleted recipe in meal plan: \(mealPlan.name)")
-                }
-            }
-        }
-        
-        // Save updated meal plan if changes were made
-        if hasChanges {
-            let saveResult = saveLocalMealPlan()
-            if case .failure(let error) = saveResult {
-                errorMessage = "Failed to save meal plan after recipe cleanup: \(error.localizedDescription)"
-            } else {
-                print("✅ [MealPlanStore] Successfully cleaned up deleted recipe references")
-            }
-        } else {
-            print("📝 [MealPlanStore] No references to deleted recipe found")
-        }
-    }
-    
-    /// Clear all data when user logs out
-    private func clearAllData() {
-        mealPlans = []
-        currentMealPlan = nil
-        activeMealPlan = nil
-        weeklyGrid = WeeklyMealGrid()
-        selectedWeekStartDate = Date()
-        shoppingList = []
-        nutritionAnalysis = nil
-        recentMeals = []
-        aiRecommendedRecipes = []
-        currentPage = 1
-        totalPages = 1
-        hasMorePages = false
-        totalCount = 0
-        errorMessage = nil
-        
-        // Clear local storage for all stored weeks
-        let storedWeeks = LocalMealPlanStorage.shared.getAllStoredWeeks()
-        for week in storedWeeks {
-            LocalMealPlanStorage.shared.clearMealPlan(for: week)
-        }
-        
-        print("🧹 [MealPlanStore] Cleared all data after user logout")
-    }
+
     
     /// Cleanup method for deinit
     deinit {
