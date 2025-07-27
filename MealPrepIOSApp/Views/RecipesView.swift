@@ -13,7 +13,6 @@ struct RecipesView: View {
     @EnvironmentObject var authStore: AuthStore
     @State private var showingFilters = false
     @State private var showingCreateRecipe = false
-    @State private var showingManualCreateRecipe = false
     @State private var selectedRecipe: Recipe?
     @State private var viewMode: RecipeViewMode = .list
     @State private var recipeToEdit: Recipe?
@@ -184,24 +183,8 @@ struct RecipesView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showingCreateRecipe = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "wand.and.stars")
-                                Text("AI Generated Recipe")
-                            }
-                        }
-                        
-                        Button {
-                            showingManualCreateRecipe = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "pencil")
-                                Text("Manual Entry")
-                            }
-                        }
+                    Button {
+                        showingCreateRecipe = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
@@ -227,12 +210,6 @@ struct RecipesView: View {
             .sheet(isPresented: $showingCreateRecipe) {
                 NavigationView {
                     AIRecipeGenerationView()
-                        .environmentObject(recipeStore)
-                }
-            }
-            .sheet(isPresented: $showingManualCreateRecipe) {
-                NavigationView {
-                    ManualCreateRecipeView()
                         .environmentObject(recipeStore)
                 }
             }
