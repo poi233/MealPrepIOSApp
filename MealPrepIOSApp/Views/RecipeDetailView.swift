@@ -178,8 +178,9 @@ struct RecipeDetailView: View {
             .toolbar {
                 toolbarContent
             }
-            .autoRefresh {
-                await checkFavoriteStatus()
+            .onAppear {
+                // Use cached favorite status instead of making API call
+                checkCachedFavoriteStatus()
             }
     }
     
@@ -239,6 +240,12 @@ struct RecipeDetailView: View {
                 print("Failed to toggle favorite from heart button: \(error)")
             }
         }
+    }
+    
+    private func checkCachedFavoriteStatus() {
+        // Use the cached favorite status from FavoritesStore to avoid API call
+        isFavorite = favoritesStore.isFavorite(recipeId: recipe.id)
+        print("📖 [RecipeDetailView] Using cached favorite status for recipe \(recipe.id): \(isFavorite)")
     }
     
     private func checkFavoriteStatus() async {

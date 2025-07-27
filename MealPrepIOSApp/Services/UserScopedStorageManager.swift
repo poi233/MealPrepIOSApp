@@ -131,6 +131,7 @@ class UserScopedStorageManager {
     // User ID provider - this will be set by AuthStore when user logs in/out
     private var currentUserID: String?
     private let anonymousUserID = "anonymous"
+    private let lastUserIDKey = "last_logged_in_user_id"
     
     private init() {
         self.userDefaultsBackend = UserDefaultsStorageBackend()
@@ -153,10 +154,41 @@ class UserScopedStorageManager {
         print("🔑 [UserScopedStorage] Setting current user ID: \(userID ?? "nil")")
         self.currentUserID = userID
         
+        // Persist the user ID for app restart recovery (only if not nil)
+        if let userID = userID {
+            userDefaultsBackend.setValue(userID, forKey: lastUserIDKey)
+            migrationManager.migrateExistingDataIfNeeded(for: userID)
+        }
+    }
+    
+    /// Set the current user ID only for this session (doesn't persist for restart)
+    func setCurrentUserTemporary(userID: String?) {
+        print("🔑 [UserScopedStorage] Setting temporary user ID: \(userID ?? "nil")")
+        self.currentUserID = userID
+        
         // Trigger migration for new user if needed
         if let userID = userID {
             migrationManager.migrateExistingDataIfNeeded(for: userID)
         }
+    }
+    
+    /// Restore user scope from persistent storage (for app startup)
+    func restoreUserScopeOnStartup() -> String? {
+        if let persistedUserID = userDefaultsBackend.getValue(forKey: lastUserIDKey) as? String {
+            print("🔄 [UserScopedStorage] Restoring user scope on startup: \(persistedUserID)")
+            self.currentUserID = persistedUserID
+            return persistedUserID
+        } else {
+            print("🔄 [UserScopedStorage] No persisted user ID found on startup")
+            return nil
+        }
+    }
+    
+    /// Clear the persisted user ID (only called on explicit logout)
+    func clearPersistedUserID() {
+        print("🗑️ [UserScopedStorage] Clearing persisted user ID")
+        userDefaultsBackend.removeValue(forKey: lastUserIDKey)
+        self.currentUserID = nil
     }
     
     /// Get the current effective user ID (falls back to anonymous if no user)
@@ -294,6 +326,9 @@ class UserScopedStorageManager {
         for key in userScopedFileKeys {
             fileSystemBackend.removeValue(forKey: key)
         }
+        
+        // Clear persisted user ID (for explicit logout)
+        clearPersistedUserID()
         
         print("✅ [UserScopedStorage] Cleared \(userScopedDefaultsKeys.count) UserDefaults keys and \(userScopedFileKeys.count) file system keys")
     }

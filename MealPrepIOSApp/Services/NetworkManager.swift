@@ -361,6 +361,28 @@ class NetworkManager: ObservableObject {
         }
     }
     
+    /// Extract user ID from the current access token
+    func getCurrentUserID() -> String? {
+        guard let accessToken = accessToken else { return nil }
+        
+        guard let payload = decodeJWTPayload(token: accessToken) else {
+            print("❌ [NetworkManager] Failed to decode JWT payload for userId")
+            return nil
+        }
+        
+        // Try common JWT claims for user ID
+        if let userId = payload["user_id"] as? String {
+            return userId
+        } else if let userId = payload["sub"] as? String {
+            return userId
+        } else if let userId = payload["user_id"] as? Int {
+            return String(userId)
+        }
+        
+        print("⚠️ [NetworkManager] No user_id found in JWT token payload")
+        return nil
+    }
+    
     // MARK: - Private Helper Methods
     
     private func buildURLRequest(for endpoint: APIEndpoint) throws -> URLRequest {
@@ -413,19 +435,18 @@ class NetworkManager: ObservableObject {
             self.sessionExpiry = Date(timeIntervalSince1970: expiryInterval)
         }
         
-        // Only set authenticated if we have both tokens and session hasn't expired
+        // Only set authenticated if we have both tokens and they're not expired
         let hasTokens = accessToken != nil && refreshToken != nil
-        let sessionValid = sessionExpiry == nil || Date() < sessionExpiry!
-        let isAuthenticated = hasTokens && sessionValid
+        let tokensValid = hasTokens && !isTokenExpired()
         
         Task { @MainActor in
-            self.isAuthenticated = isAuthenticated
+            self.isAuthenticated = tokensValid
         }
         
         // Debug logging
-        print("NetworkManager: Tokens loaded, authenticated: \(isAuthenticated), session valid: \(sessionValid)")
+        print("🔐 [NetworkManager] Tokens loaded, authenticated: \(tokensValid)")
         if let expiry = sessionExpiry {
-            print("NetworkManager: Session expires at: \(expiry)")
+            print("🔐 [NetworkManager] Session expires at: \(expiry)")
         }
     }
     
@@ -581,7 +602,7 @@ extension NetworkManager {
     
     // MARK: - JWT Debugging Helper
     
-    private func decodeJWTPayload(token: String) -> [String: Any]? {
+    func decodeJWTPayload(token: String) -> [String: Any]? {
         let segments = token.components(separatedBy: ".")
         guard segments.count == 3 else {
             print("🚨 [JWT] Invalid JWT format - expected 3 segments, got \(segments.count)")

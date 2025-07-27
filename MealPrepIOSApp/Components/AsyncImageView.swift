@@ -2,12 +2,14 @@
 //  AsyncImageView.swift
 //  MealPrepIOSApp
 //
-//  Created by AI Assistant on 7/26/25.
+//  Updated by AI Assistant on 7/27/25.
+//  Added RecipeImageCacheManager integration for local image caching
 //
 
 import SwiftUI
+import UIKit
 
-// MARK: - Enhanced AsyncImage with Loading States
+// MARK: - Enhanced AsyncImage with Local Caching
 
 struct AsyncImageView: View {
     let url: String?
@@ -15,31 +17,57 @@ struct AsyncImageView: View {
     let height: CGFloat
     let cornerRadius: CGFloat
     let contentMode: SwiftUI.ContentMode
+    let useCache: Bool
     
+    @State private var loadedImage: UIImage?
     @State private var isLoading = true
     @State private var hasError = false
+    @StateObject private var imageCache = RecipeImageCacheManager.shared
     
     init(
         url: String?,
         width: CGFloat = 150,
         height: CGFloat = 150,
         cornerRadius: CGFloat = 12,
-        contentMode: SwiftUI.ContentMode = .fill
+        contentMode: SwiftUI.ContentMode = .fill,
+        useCache: Bool = true
     ) {
         self.url = url
         self.width = width
         self.height = height
         self.cornerRadius = cornerRadius
         self.contentMode = contentMode
+        self.useCache = useCache
     }
     
     var body: some View {
         ZStack {
-            if let url = url, let imageURL = URL(string: url) {
+            if useCache && url != nil {
+                // Use cached image loading
+                Group {
+                    if isLoading {
+                        LoadingImageView(width: width, height: height)
+                    } else if let loadedImage = loadedImage {
+                        Image(uiImage: loadedImage)
+                            .resizable()
+                            .aspectRatio(contentMode: contentMode)
+                            .frame(width: width, height: height)
+                            .clipped()
+                            .transition(.opacity.animation(.easeOut(duration: 0.3)))
+                    } else {
+                        // Error state - show default image
+                        DefaultRecipeImageView_Elegant(width: width, height: height)
+                            .transition(.opacity.animation(.easeOut(duration: 0.3)))
+                    }
+                }
+                .task {
+                    await loadCachedImage()
+                }
+            } else if let url = url, let imageURL = URL(string: url) {
+                // Fallback to standard AsyncImage when cache is disabled
                 AsyncImage(url: imageURL) { phase in
                     switch phase {
                     case .empty:
-                        // Loading state
                         LoadingImageView(width: width, height: height)
                             .onAppear {
                                 isLoading = true
@@ -47,7 +75,6 @@ struct AsyncImageView: View {
                             }
                         
                     case .success(let image):
-                        // Success state
                         image
                             .resizable()
                             .aspectRatio(contentMode: contentMode)
@@ -61,7 +88,6 @@ struct AsyncImageView: View {
                             }
                         
                     case .failure(_):
-                        // Error state - show default image
                         DefaultRecipeImageView_Elegant(width: width, height: height)
                             .onAppear {
                                 withAnimation(.easeOut(duration: 0.3)) {
@@ -71,7 +97,6 @@ struct AsyncImageView: View {
                             }
                         
                     @unknown default:
-                        // Fallback
                         LoadingImageView(width: width, height: height)
                     }
                 }
@@ -88,6 +113,30 @@ struct AsyncImageView: View {
         .cornerRadius(cornerRadius)
         .animation(.easeInOut(duration: 0.3), value: isLoading)
         .animation(.easeInOut(duration: 0.3), value: hasError)
+    }
+    
+    // MARK: - Cache Loading
+    
+    private func loadCachedImage() async {
+        guard let url = url, !url.isEmpty else {
+            await MainActor.run {
+                isLoading = false
+                hasError = false
+            }
+            return
+        }
+        
+        do {
+            let cachedImage = await imageCache.getCachedImage(from: url)
+            
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    self.loadedImage = cachedImage
+                    self.isLoading = false
+                    self.hasError = cachedImage == nil
+                }
+            }
+        }
     }
 }
 
@@ -211,42 +260,32 @@ struct RecipeImageView: View {
     let height: CGFloat
     let cornerRadius: CGFloat
     let showLoadingAnimation: Bool
+    let useCache: Bool
     
     init(
         recipe: Recipe,
         width: CGFloat = 150,
         height: CGFloat = 150,
         cornerRadius: CGFloat = 12,
-        showLoadingAnimation: Bool = true
+        showLoadingAnimation: Bool = true,
+        useCache: Bool = true
     ) {
         self.recipe = recipe
         self.width = width
         self.height = height
         self.cornerRadius = cornerRadius
         self.showLoadingAnimation = showLoadingAnimation
+        self.useCache = useCache
     }
     
     var body: some View {
-        if showLoadingAnimation {
-            AsyncImageView(
-                url: recipe.imageUrl,
-                width: width,
-                height: height,
-                cornerRadius: cornerRadius
-            )
-        } else {
-            // Fallback to simple AsyncImage for better performance in lists
-            AsyncImage(url: URL(string: recipe.imageUrl ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                DefaultRecipeImageView_Elegant(width: width, height: height)
-            }
-            .frame(width: width, height: height)
-            .clipped()
-            .cornerRadius(cornerRadius)
-        }
+        AsyncImageView(
+            url: recipe.imageUrl,
+            width: width,
+            height: height,
+            cornerRadius: cornerRadius,
+            useCache: useCache && showLoadingAnimation
+        )
     }
 }
 
@@ -258,11 +297,20 @@ struct RecipeImageView: View {
             // Loading state
             LoadingImageView(width: 120, height: 120)
             
-            // With URL
+            // With URL (cached)
             AsyncImageView(
                 url: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop",
                 width: 120,
-                height: 120
+                height: 120,
+                useCache: true
+            )
+            
+            // With URL (no cache)
+            AsyncImageView(
+                url: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop",
+                width: 120,
+                height: 120,
+                useCache: false
             )
             
             // No URL (default)

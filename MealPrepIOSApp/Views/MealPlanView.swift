@@ -424,16 +424,16 @@ struct MealSlotView: View {
                 date: date
             )
             .environmentObject(mealPlanStore)
-            .environmentObject(RecipeStore())
-            .environmentObject(FavoritesStore())
+            // Use existing environment objects instead of creating new instances
+            // This prevents duplicate API calls on sheet presentation
         }
         .sheet(item: $selectedRecipe) { recipe in
             NavigationView {
                 RecipeDetailView(recipe: recipe, isFromMealPlan: true)
                     .navigationBarTitleDisplayMode(.large)
             }
-            .environmentObject(RecipeStore())
-            .environmentObject(FavoritesStore())
+            // Use existing environment objects instead of creating new instances
+            // This prevents duplicate API calls
             .onAppear {
                 print("📱 Recipe detail sheet appeared for: \(recipe.name)")
             }
@@ -541,23 +541,14 @@ struct FavoriteButtonView: View {
     }
     
     private func loadFavoriteStatus() {
-        isLoading = true
-        Task {
-            do {
-                let status = try await favoritesStore.checkFavoriteStatus(recipeId: recipe.id)
-                await MainActor.run {
-                    isFavorite = status.isFavorite
-                    isLoading = false
-                }
-            } catch {
-                // Handle error silently, default to not favorite
-                await MainActor.run {
-                    isFavorite = false
-                    isLoading = false
-                    print("⚠️ Failed to load favorite status for recipe: \(recipe.name), error: \(error)")
-                }
-            }
-        }
+        // First try to use cached status to avoid API call
+        let cachedStatus = favoritesStore.isFavorite(recipeId: recipe.id)
+        isFavorite = cachedStatus
+        print("📖 [FavoriteButtonView] Using cached favorite status for recipe \(recipe.id): \(cachedStatus)")
+        
+        // Only make API call if cache is potentially stale (not implemented yet)
+        // For now, rely on the cached status to reduce API calls
+        isLoading = false
     }
 }
 

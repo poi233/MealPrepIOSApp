@@ -2,7 +2,8 @@
 //  AuthStore.swift
 //  MealPrepIOSApp
 //
-//  Updated by AI Assistant on 7/20/25.
+//  Updated by AI Assistant on 7/27/25.
+//  Fixed login cache to handle auth expiry vs explicit logout correctly
 //
 
 import SwiftUI
@@ -34,7 +35,7 @@ class AuthStore: ObservableObject {
             .sink { [weak self] isAuth in
                 self?.isAuthenticated = isAuth
                 if !isAuth {
-                    // Authentication lost - clear user data and show logout message
+                    // Authentication lost - handle session expiry (preserve cache)
                     self?.handleAuthenticationLost()
                 }
             }
@@ -47,36 +48,44 @@ class AuthStore: ObservableObject {
     // MARK: - Initialization
     
     func initialize() {
+        // First try to get userId from stored tokens
+        if let userID = networkManager.getCurrentUserID() {
+            // Set user scope immediately if we have a valid token
+            userScopedStorage.setCurrentUser(userID: userID)
+            print("🔄 [AuthStore] Set user scope from token on startup: \(userID)")
+        } else {
+            // Fallback to restore from persistent storage
+            if let restoredUserID = userScopedStorage.restoreUserScopeOnStartup() {
+                print("🔄 [AuthStore] Restored user scope from persistence on startup: \(restoredUserID)")
+            }
+        }
+        
+        // Then check authentication status
         checkAuthenticationStatus()
         startSessionMonitoring()
     }
     
     // MARK: - Authentication Status
     
+    /// Handle authentication lost due to session expiry (preserves cache)
     private func handleAuthenticationLost() {
-        print("🔒 [AuthStore] Authentication lost - clearing user data")
+        print("🔒 [AuthStore] Authentication lost - handling session expiry")
         
-        // Clear user scoped storage
-        userScopedStorage.setCurrentUser(userID: nil)
+        // For auth expiry, we DON'T clear cache - only clear UI state
+        // Cache should persist so user can see their data when they log back in
         
-        // Send user logout notification for cache invalidation
-        NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
-        
-        // Clear current user
+        // Clear current user but keep user scope for cache persistence
         currentUser = nil
+        isAuthenticated = false
         isInitializing = false // Ensure we're not stuck in loading state
         
-        // Clear any cached user data
-        // TODO: Clear cached user data (cache not implemented)
-        print("✅ [AuthStore] User data cleared (cache not implemented)")
-        
-        // Don't set session error - just redirect silently
-        // sessionError = "Your session has expired. Please log in again."
+        // Don't clear user scoped storage - let cache persist
+        // Don't send logout notification - this prevents cache clearing
         
         // Stop session monitoring
         stopSessionMonitoring()
         
-        print("🚪 [AuthStore] User logged out due to authentication failure - redirecting to login")
+        print("🚪 [AuthStore] Authentication expired - user will need to log in again but cache preserved")
     }
     
     func checkAuthenticationStatus() {
@@ -146,7 +155,7 @@ class AuthStore: ObservableObject {
             self.currentUser = response.user
             self.isAuthenticated = true
             
-            // Set user ID for scoped storage
+            // Set user ID for scoped storage (persists for app restart)
             userScopedStorage.setCurrentUser(userID: response.user.id)
             
             // Send user login notification for cache loading
@@ -191,9 +200,6 @@ class AuthStore: ObservableObject {
         }
         
         isLoading = false
-        
-        // Stop session monitoring on logout
-        stopSessionMonitoring()
     }
     
     func register(userData: RegisterData) async {
@@ -213,7 +219,7 @@ class AuthStore: ObservableObject {
             self.currentUser = response.user
             self.isAuthenticated = true
             
-            // Set user ID for scoped storage
+            // Set user ID for scoped storage (persists for app restart)
             userScopedStorage.setCurrentUser(userID: response.user.id)
             
             // Send user login notification for cache loading
@@ -226,6 +232,7 @@ class AuthStore: ObservableObject {
         isLoading = false
     }
     
+    /// Explicit logout - clears all cache and persisted data
     func logout() async {
         isLoading = true
         
@@ -235,12 +242,12 @@ class AuthStore: ObservableObject {
             print("Logout error: \(error.localizedDescription)")
         }
         
-        // Clear cache
+        // Clear cache completely for explicit logout
         // TODO: Clear cache (cache not implemented)
         // try await userCacheManager.clearCurrentUser()
         
-        // Clear user scoped storage
-        userScopedStorage.setCurrentUser(userID: nil)
+        // Clear user scoped storage and persisted user ID
+        userScopedStorage.clearCurrentUserData()
         
         // Send user logout notification for cache clearing
         NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
@@ -249,6 +256,9 @@ class AuthStore: ObservableObject {
         self.currentUser = nil
         self.isAuthenticated = false
         self.sessionError = nil
+        
+        // Stop session monitoring
+        stopSessionMonitoring()
         
         isLoading = false
     }
@@ -380,6 +390,7 @@ class AuthStore: ObservableObject {
         }
     }
     
+    /// Handle session expiry (preserves cache unlike explicit logout)
     private func handleSessionExpired() async {
         await MainActor.run {
             self.sessionError = "Your session has expired. Please log in again."
@@ -387,18 +398,12 @@ class AuthStore: ObservableObject {
             self.currentUser = nil
         }
         
-        // Clear user scoped storage
-        userScopedStorage.setCurrentUser(userID: nil)
-        
-        // Send user logout notification for cache clearing
-        NotificationCenter.default.post(name: .userLoggedOut, object: nil, userInfo: nil)
+        // For session expiry, preserve cache but clear tokens
+        // Don't clear user scoped storage - cache should persist
+        // Don't send logout notification - this prevents cache clearing
         
         // Clear stored tokens
         networkManager.clearTokens()
-        
-        // Clear cached user data
-        // TODO: Clear cache (cache not implemented)
-        // try await userCacheManager.clearCurrentUser()
         
         // Stop session monitoring
         stopSessionMonitoring()

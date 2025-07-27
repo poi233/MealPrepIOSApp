@@ -325,8 +325,13 @@ extension MealSelectionBottomSheet {
             .padding(.vertical, 16)
         }
         .onAppear {
-            Task {
-                await favoritesStore.loadFavorites()
+            // Only load favorites if we don't have any cached data
+            if favoritesStore.favorites.isEmpty {
+                Task {
+                    await favoritesStore.loadFavorites()
+                }
+            } else {
+                print("📖 [FavoritesTab] Using cached favorites data, skipping API call")
             }
         }
     }
@@ -599,7 +604,13 @@ extension MealSelectionBottomSheet {
         Task {
             // Use meal selection specific loading for better caching
             await recipeStore.loadRecipesForMealSelection()
-            await favoritesStore.loadFavorites()
+            
+            // Only load favorites if we don't have cached data
+            if favoritesStore.favorites.isEmpty {
+                await favoritesStore.loadFavorites()
+            } else {
+                print("📖 [MealSelectionBottomSheet] Using cached favorites data, skipping API call")
+            }
         }
     }
     

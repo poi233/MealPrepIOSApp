@@ -30,6 +30,10 @@ struct MealPrepIOSAppApp: App {
                         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                         await MainActor.run {
                             authStore.initialize()
+                            // If user is already authenticated on app start, initialize meal plan data
+                            if authStore.isAuthenticated {
+                                mealPlanStore.initializeData()
+                            }
                         }
                     }
                 }

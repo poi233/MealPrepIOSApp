@@ -48,7 +48,7 @@ class MealPlanStore: ObservableObject {
     init() {
         setupSelectedWeek()
         setupNotificationObservers()
-        loadInitialData()
+        // Don't load initial data immediately - wait for user authentication
     }
     
     // MARK: - Initial Setup
@@ -62,6 +62,18 @@ class MealPlanStore: ObservableObject {
         ) { [weak self] notification in
             if let recipeId = notification.userInfo?[RecipeDeletionNotificationKeys.recipeId] as? String {
                 self?.removeDeletedRecipe(recipeId: recipeId)
+            }
+        }
+        
+        // Listen for user login to load cached data
+        NotificationCenter.default.addObserver(
+            forName: .userLoggedIn,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let userID = notification.userInfo?["userID"] as? String {
+                print("📥 [MealPlanStore] User logged in (\(userID)), loading cached data")
+                self?.loadInitialData()
             }
         }
         
@@ -89,6 +101,11 @@ class MealPlanStore: ObservableObject {
         let calendar = Calendar.mondayFirst
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         return calendar.date(from: components) ?? date
+    }
+    
+    /// Initialize data loading when user authentication is ready
+    func initializeData() {
+        loadInitialData()
     }
     
     private func loadInitialData() {
