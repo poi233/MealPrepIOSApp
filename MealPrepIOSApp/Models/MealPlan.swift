@@ -37,6 +37,35 @@ struct MealPlan: Codable, Identifiable, Equatable {
         case updatedAt = "updated_at"
     }
     
+    // Standard initializer
+    init(
+        id: String,
+        userId: String?,
+        name: String,
+        description: String?,
+        weekStartDate: Date,
+        isActive: Bool,
+        planDescription: String?,
+        analysisText: String?,
+        items: [MealPlanItem]?,
+        itemsCount: Int?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.userId = userId
+        self.name = name
+        self.description = description
+        self.weekStartDate = weekStartDate
+        self.isActive = isActive
+        self.planDescription = planDescription
+        self.analysisText = analysisText
+        self.items = items
+        self.itemsCount = itemsCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         

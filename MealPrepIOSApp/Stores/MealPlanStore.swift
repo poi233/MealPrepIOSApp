@@ -8,6 +8,38 @@
 import SwiftUI
 import Combine
 
+// MARK: - AI Generation State
+enum AIGenerationState {
+    case idle
+    case generating
+    case previewing
+    case confirming
+    case error(String)
+    
+    var isLoading: Bool {
+        switch self {
+        case .generating, .confirming:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    var canPreview: Bool {
+        if case .previewing = self {
+            return true
+        }
+        return false
+    }
+    
+    var canConfirm: Bool {
+        if case .previewing = self {
+            return true
+        }
+        return false
+    }
+}
+
 @MainActor
 class MealPlanStore: ObservableObject {
     // MARK: - Published Properties
@@ -39,6 +71,13 @@ class MealPlanStore: ObservableObject {
     // UI State
     @Published var showingGenerationView = false
     @Published var showingAnalysisView = false
+    
+    // MARK: - AI Generation State Management
+    @Published var aiGenerationState: AIGenerationState = .idle
+    @Published var previewMealPlan: MealPlan?
+    @Published var previewWeeklyGrid: WeeklyMealGrid?
+    @Published var aiGenerationError: String?
+    @Published var showingAIPreview = false
     
     private let mealPlanService = MealPlanService()
     private let aiService = AIService()
@@ -227,6 +266,164 @@ class MealPlanStore: ObservableObject {
     }
     
     // MARK: - AI Meal Plan Generation
+    
+    /// Generate a weekly meal plan with AI and show preview
+    func generateWeeklyMealPlan(
+        description: String,
+        dietType: DietType? = nil,
+        allergies: [String] = [],
+        dislikes: [String] = [],
+        calorieTarget: Int? = nil,
+        additionalRequirements: String? = nil
+    ) async {
+        await MainActor.run {
+            aiGenerationState = .generating
+            aiGenerationError = nil
+            previewMealPlan = nil
+            previewWeeklyGrid = nil
+        }
+        
+        do {
+            // Prepare dietary preferences
+            var dietaryPreferences: [String: String] = [:]
+            if let dietType = dietType {
+                dietaryPreferences["dietType"] = dietType.rawValue
+            }
+            
+            // Create generation request
+            let request = GenerateMealPlanRequest(
+                planDescription: description,
+                dietaryPreferences: dietaryPreferences.isEmpty ? nil : dietaryPreferences,
+                allergies: allergies.isEmpty ? nil : allergies,
+                dislikes: dislikes.isEmpty ? nil : dislikes,
+                calorieTarget: calorieTarget,
+                weekStartDate: selectedWeekStartDate,
+                additionalRequirements: additionalRequirements
+            )
+            
+            // Generate meal plan using AI service
+            let generatedPlan = try await aiService.generateMealPlan(request)
+            
+            await MainActor.run {
+                // Store the preview meal plan
+                previewMealPlan = generatedPlan
+                
+                // Convert to weekly grid for preview
+                previewWeeklyGrid = convertMealPlanToWeeklyGrid(generatedPlan)
+                
+                // Update state to previewing
+                aiGenerationState = .previewing
+                showingAIPreview = true
+                
+                print("✅ [MealPlanStore] AI meal plan generated successfully for preview")
+            }
+            
+        } catch {
+            await MainActor.run {
+                let errorMessage = "Failed to generate meal plan: \(error.localizedDescription)"
+                aiGenerationState = .error(errorMessage)
+                aiGenerationError = errorMessage
+                
+                print("❌ [MealPlanStore] AI meal plan generation failed: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Confirm and apply the preview meal plan to current week
+    func confirmPreviewMealPlan() async {
+        guard let preview = previewMealPlan,
+              let previewGrid = previewWeeklyGrid,
+              case .previewing = aiGenerationState else {
+            await MainActor.run {
+                aiGenerationError = "No preview available to confirm"
+            }
+            return
+        }
+        
+        await MainActor.run {
+            aiGenerationState = .confirming
+        }
+        
+        do {
+            // Apply the preview to current weekly grid
+            await MainActor.run {
+                weeklyGrid = previewGrid
+            }
+            
+            // Save to local storage
+            let saveResult = saveLocalMealPlan()
+            if case .failure(let error) = saveResult {
+                throw error
+            }
+            
+            // Add to meal plans list if not already there
+            await MainActor.run {
+                if !mealPlans.contains(where: { $0.id == preview.id }) {
+                    mealPlans.insert(preview, at: 0)
+                    totalCount += 1
+                }
+                
+                // Update current meal plan
+                currentMealPlan = preview
+                activeMealPlan = preview
+                
+                // Reset AI generation state
+                resetAIGenerationState()
+                
+                print("✅ [MealPlanStore] Preview meal plan applied successfully")
+            }
+            
+        } catch {
+            await MainActor.run {
+                let errorMessage = "Failed to apply meal plan: \(error.localizedDescription)"
+                aiGenerationState = .error(errorMessage)
+                aiGenerationError = errorMessage
+                
+                print("❌ [MealPlanStore] Failed to apply preview meal plan: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Cancel the current preview and return to idle state
+    func cancelPreview() {
+        resetAIGenerationState()
+        print("🔄 [MealPlanStore] AI generation preview cancelled")
+    }
+    
+    /// Reset AI generation state to idle
+    func resetAIGenerationState() {
+        aiGenerationState = .idle
+        previewMealPlan = nil
+        previewWeeklyGrid = nil
+        aiGenerationError = nil
+        showingAIPreview = false
+    }
+    
+    /// Convert MealPlan to WeeklyMealGrid for preview
+    private func convertMealPlanToWeeklyGrid(_ mealPlan: MealPlan) -> WeeklyMealGrid {
+        var grid = WeeklyMealGrid(weekStartDate: mealPlan.weekStartDate)
+        
+        guard let items = mealPlan.items else { return grid }
+        
+        // Group items by day and meal type
+        for item in items {
+            let dayIndex = item.dayOfWeek
+            if dayIndex < grid.dailyMeals.count, let recipe = item.recipe {
+                switch item.mealType.lowercased() {
+                case "breakfast":
+                    grid.dailyMeals[dayIndex].breakfast.append(recipe)
+                case "lunch":
+                    grid.dailyMeals[dayIndex].lunch.append(recipe)
+                case "dinner":
+                    grid.dailyMeals[dayIndex].dinner.append(recipe)
+                default:
+                    break
+                }
+            }
+        }
+        
+        return grid
+    }
     
     func generateMealPlan(preferences: MealPlanPreferences, description: String) async -> Bool {
         isGenerating = true
@@ -847,6 +1044,9 @@ class MealPlanStore: ObservableObject {
         totalCount = 0
         errorMessage = nil
         
+        // Clear AI generation state
+        resetAIGenerationState()
+        
         // Clear local storage
         LocalMealPlanStorage.shared.clearAllMealPlans()
         
@@ -1078,6 +1278,58 @@ class MealPlanStore: ObservableObject {
             return "\(totalCount) meal plan\(totalCount == 1 ? "" : "s")"
         }
     }
+    
+    // MARK: - AI Generation State Computed Properties
+    
+    var isAIGenerating: Bool {
+        if case .generating = aiGenerationState {
+            return true
+        }
+        return false
+    }
+    
+    var isAIPreviewing: Bool {
+        if case .previewing = aiGenerationState {
+            return true
+        }
+        return false
+    }
+    
+    var isAIConfirming: Bool {
+        if case .confirming = aiGenerationState {
+            return true
+        }
+        return false
+    }
+    
+    var hasAIError: Bool {
+        if case .error = aiGenerationState {
+            return true
+        }
+        return false
+    }
+    
+    var canConfirmPreview: Bool {
+        if case .previewing = aiGenerationState {
+            return previewMealPlan != nil && previewWeeklyGrid != nil
+        }
+        return false
+    }
+    
+    var aiGenerationStateDescription: String {
+        switch aiGenerationState {
+        case .idle:
+            return "Ready to generate"
+        case .generating:
+            return "Generating meal plan..."
+        case .previewing:
+            return "Preview ready"
+        case .confirming:
+            return "Applying meal plan..."
+        case .error(let message):
+            return "Error: \(message)"
+        }
+    }
 
     
     /// Cleanup method for deinit
@@ -1090,6 +1342,13 @@ class MealPlanStore: ObservableObject {
     
     func clearError() {
         errorMessage = nil
+    }
+    
+    func clearAIGenerationError() {
+        aiGenerationError = nil
+        if case .error = aiGenerationState {
+            aiGenerationState = .idle
+        }
     }
     
     func handleError(_ error: Error) {
