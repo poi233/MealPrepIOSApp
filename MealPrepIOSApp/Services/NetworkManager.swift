@@ -501,12 +501,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-        return "https://meal-prep-app-backend.vercel.app/api"
-//        #if DEBUG
-//        return "http://127.0.0.1:8000/api"
-//        #else
 //        return "https://meal-prep-app-backend.vercel.app/api"
-//        #endif
+        #if DEBUG
+        return "http://127.0.0.1:8000/api"
+        #else
+        return "https://meal-prep-app-backend.vercel.app/api"
+        #endif
     }
 }
 

@@ -1,5 +1,5 @@
 //
-//  AIWeeklyGenerationView.swift
+//  AIWeeklyGenerationViewWithCallbacks.swift
 //  MealPrepIOSApp
 //
 //  Created by AI Assistant on 7/28/25.
@@ -7,13 +7,13 @@
 
 import SwiftUI
 
-struct AIWeeklyGenerationView: View {
+/// Enhanced version of AIWeeklyGenerationView with workflow callback support
+struct AIWeeklyGenerationViewWithCallbacks: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    @Environment(\.dismiss) private var dismiss
     
     // MARK: - Workflow Integration
-    var onGenerationStart: ((AIGenerationRequest) -> Void)? = nil
-    var onCancel: (() -> Void)? = nil
+    let onGenerationStart: (AIGenerationRequest) -> Void
+    let onCancel: () -> Void
     
     // MARK: - Step Management
     @State private var currentStep = 1
@@ -34,42 +34,27 @@ struct AIWeeklyGenerationView: View {
     private let commonDietTypes = DietType.allCases
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Progress Header
-                    progressHeader
-                    
-                    // Current Step Content
-                    currentStepView
-                        .animation(.easeInOut(duration: 0.3), value: currentStep)
-                    
-                    Spacer(minLength: 100)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Progress Header
+                progressHeader
+                
+                // Current Step Content
+                currentStepView
+                    .animation(.easeInOut(duration: 0.3), value: currentStep)
+                
+                Spacer(minLength: 100)
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("AI Weekly Meal Plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        if let onCancel = onCancel {
-                            onCancel()
-                        } else {
-                            dismiss()
-                        }
-                    }
-                }
-            }
-            .overlay(alignment: .bottom) {
-                bottomActionBar
-            }
-            .disabled(mealPlanStore.isGenerating)
-            .onAppear {
-                setupInitialValues()
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+        }
+        .background(Color(.systemGroupedBackground))
+        .overlay(alignment: .bottom) {
+            bottomActionBar
+        }
+        .disabled(mealPlanStore.isGenerating)
+        .onAppear {
+            setupInitialValues()
         }
     }
     
@@ -535,28 +520,8 @@ struct AIWeeklyGenerationView: View {
             additionalRequirements: nil
         )
         
-        if let onGenerationStart = onGenerationStart {
-            onGenerationStart(request)
-        } else {
-            // Fallback to direct generation for standalone usage
-            Task {
-                let success = await mealPlanStore.generateCustomMealPlan(
-                    description: request.description,
-                    dietType: request.dietType,
-                    allergies: request.allergies,
-                    dislikes: request.dislikes,
-                    calorieTarget: request.calorieTarget,
-                    weekStartDate: request.weekStartDate,
-                    additionalRequirements: request.additionalRequirements
-                )
-                
-                await MainActor.run {
-                    if success {
-                        dismiss()
-                    }
-                }
-            }
-        }
+        // Call the workflow callback instead of direct generation
+        onGenerationStart(request)
     }
     
     // MARK: - Static Data
@@ -573,17 +538,15 @@ struct AIWeeklyGenerationView: View {
 
 
 
-// MARK: - DateFormatter Extension
-extension DateFormatter {
-    static let weekFormat: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        return formatter
-    }()
-}
-
 // MARK: - Preview
 #Preview {
-    AIWeeklyGenerationView()
-        .environmentObject(MealPlanStore())
+    AIWeeklyGenerationViewWithCallbacks(
+        onGenerationStart: { request in
+            print("Generation started with: \(request.description)")
+        },
+        onCancel: {
+            print("Generation cancelled")
+        }
+    )
+    .environmentObject(MealPlanStore())
 }

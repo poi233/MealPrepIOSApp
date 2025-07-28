@@ -14,6 +14,11 @@ struct AIWeeklyPreviewView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
     
+    // MARK: - Workflow Integration
+    var onApply: (() -> Void)? = nil
+    var onRegenerate: (() -> Void)? = nil
+    var onCancel: (() -> Void)? = nil
+    
     // MARK: - Preview Data
     let generatedMealPlan: MealPlan
     @State private var previewGrid: WeeklyMealGrid
@@ -61,13 +66,21 @@ struct AIWeeklyPreviewView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        dismiss()
+                        if let onCancel = onCancel {
+                            onCancel()
+                        } else {
+                            dismiss()
+                        }
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Regenerate") {
-                        showingRegenerateOptions = true
+                        if let onRegenerate = onRegenerate {
+                            onRegenerate()
+                        } else {
+                            showingRegenerateOptions = true
+                        }
                     }
                     .foregroundColor(.primaryGreen)
                 }
@@ -254,7 +267,13 @@ struct AIWeeklyPreviewView: View {
     // MARK: - Action Buttons
     private var actionButtonsView: some View {
         VStack(spacing: 12) {
-            Button(action: applyToCurrentWeek) {
+            Button(action: {
+                if let onApply = onApply {
+                    onApply()
+                } else {
+                    applyToCurrentWeek()
+                }
+            }) {
                 HStack {
                     if isApplying {
                         ProgressView()

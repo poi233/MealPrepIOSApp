@@ -9,11 +9,13 @@ import SwiftUI
 
 struct MealPlanView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
+    @EnvironmentObject var recipeStore: RecipeStore
 
     @State private var showingAnalysisView = false
     @State private var showingShoppingList = false
     @State private var showingBatchOperations = false
     @State private var showingTemplateSheet = false
+    @State private var showingAIWorkflow = false
     var body: some View {
         NavigationView {
             WeeklyMealPlanView()
@@ -35,6 +37,12 @@ struct MealPlanView: View {
                             Button("Batch Operations") {
                                 showingBatchOperations = true
                             }
+                            
+                            Divider()
+                            
+                            Button("AI Generate Week") {
+                                showingAIWorkflow = true
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")
@@ -49,7 +57,23 @@ struct MealPlanView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // AI Generation Button
+                    Button {
+                        showingAIWorkflow = true
+                    } label: {
+                        Label("AI Generate", systemImage: "brain")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.purple, .purple.opacity(0.8)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    }
+                    
+                    // Template Button
                     Button {
                         showingTemplateSheet = true
                     } label: {
@@ -81,6 +105,11 @@ struct MealPlanView: View {
             .sheet(isPresented: $showingBatchOperations) {
                 BatchOperationsSheet()
                     .environmentObject(mealPlanStore)
+            }
+            .fullScreenCover(isPresented: $showingAIWorkflow) {
+                AIWeeklyWorkflowView()
+                    .environmentObject(mealPlanStore)
+                    .environmentObject(recipeStore)
             }
             .autoRefresh {
                 await mealPlanStore.refreshMealPlans()
@@ -557,4 +586,5 @@ struct FavoriteButtonView: View {
 #Preview {
     MealPlanView()
         .environmentObject(MealPlanStore())
+        .environmentObject(RecipeStore())
 }

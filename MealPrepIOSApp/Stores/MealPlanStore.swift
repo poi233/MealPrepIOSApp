@@ -458,6 +458,7 @@ class MealPlanStore: ObservableObject {
         weekStartDate: Date? = nil,
         additionalRequirements: String? = nil
     ) async -> Bool {
+        aiGenerationState = .generating
         isGenerating = true
         
         do {
@@ -471,20 +472,70 @@ class MealPlanStore: ObservableObject {
                 additionalRequirements: additionalRequirements
             )
             
-            mealPlans.insert(newMealPlan, at: 0)
-            currentMealPlan = newMealPlan
-            totalCount += 1
-            
-            if Calendar.current.isDate(newMealPlan.weekStartDate, inSameDayAs: selectedWeekStartDate) {
-                updateWeeklyGridFromMealPlan(newMealPlan)
-            }
+            // Store as preview instead of immediately applying
+            previewMealPlan = newMealPlan
+            aiGenerationState = .previewing
             
             isGenerating = false
             return true
         } catch {
             isGenerating = false
+            aiGenerationState = .error("Failed to generate meal plan: \(error.localizedDescription)")
             return false
         }
+    }
+    
+    // MARK: - AI Workflow Management
+    
+    /// Apply the preview meal plan to the current week
+    func applyPreviewMealPlan() async -> Bool {
+        guard let preview = previewMealPlan else {
+            aiGenerationState = .error("No preview meal plan available")
+            return false
+        }
+        
+        aiGenerationState = .confirming
+        
+        do {
+            // Add to meal plans list
+            mealPlans.insert(preview, at: 0)
+            currentMealPlan = preview
+            totalCount += 1
+            
+            // Update weekly grid if it's for the current week
+            if Calendar.current.isDate(preview.weekStartDate, inSameDayAs: selectedWeekStartDate) {
+                updateWeeklyGridFromMealPlan(preview)
+            }
+            
+            // Save to backend if needed
+            let saveResult = saveLocalMealPlan()
+            if case .failure(let error) = saveResult {
+                print("⚠️ [MealPlanStore] Failed to save applied meal plan: \(error)")
+            }
+            
+            // Reset AI state
+            resetAIGeneration()
+            
+            return true
+        } catch {
+            aiGenerationState = .error("Failed to apply meal plan: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    /// Cancel AI generation process
+    func cancelAIGeneration() {
+        isGenerating = false
+        resetAIGeneration()
+    }
+    
+    /// Reset AI generation state
+    func resetAIGeneration() {
+        aiGenerationState = .idle
+        previewMealPlan = nil
+        previewWeeklyGrid = nil
+        aiGenerationError = nil
+        showingAIPreview = false
     }
     
     // MARK: - Meal Plan Analysis
