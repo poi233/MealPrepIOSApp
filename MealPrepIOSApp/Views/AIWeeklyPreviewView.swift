@@ -335,8 +335,33 @@ struct AIWeeklyPreviewView: View {
         // Convert MealPlan to WeeklyMealGrid
         previewGrid = WeeklyMealGrid(weekStartDate: generatedMealPlan.weekStartDate)
         
-        // Populate grid with meal plan items
+        print("🔄 [AIWeeklyPreviewView] Setting up preview data...")
+        print("📋 [AIWeeklyPreviewView] Has dailyMeals: \(generatedMealPlan.dailyMeals != nil)")
+        print("📋 [AIWeeklyPreviewView] Has items: \(generatedMealPlan.items != nil)")
+        
+        // Handle AI-generated meal plans with dailyMeals
+        if let dailyMeals = generatedMealPlan.dailyMeals {
+            print("📋 [AIWeeklyPreviewView] Processing \(dailyMeals.count) daily meals...")
+            
+            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
+                if dayIndex < previewGrid.dailyMeals.count {
+                    print("📋 [AIWeeklyPreviewView] Day \(dayIndex) (\(dailyMeal.day)): \(dailyMeal.breakfast.count) breakfast, \(dailyMeal.lunch.count) lunch, \(dailyMeal.dinner.count) dinner")
+                    
+                    // Now dailyMeal contains Recipe objects directly, no conversion needed
+                    previewGrid.dailyMeals[dayIndex].breakfast = dailyMeal.breakfast
+                    previewGrid.dailyMeals[dayIndex].lunch = dailyMeal.lunch
+                    previewGrid.dailyMeals[dayIndex].dinner = dailyMeal.dinner
+                }
+            }
+            
+            print("✅ [AIWeeklyPreviewView] Successfully loaded AI meal plan to preview grid")
+            return
+        }
+        
+        // Handle regular meal plans with items
         if let items = generatedMealPlan.items {
+            print("📋 [AIWeeklyPreviewView] Processing \(items.count) meal plan items...")
+            
             for item in items {
                 guard let recipe = item.recipe,
                       item.dayOfWeek < previewGrid.dailyMeals.count else { continue }
@@ -354,6 +379,8 @@ struct AIWeeklyPreviewView: View {
             }
         }
     }
+    
+
     
     private func calculateNutritionSummary() {
         var totalCalories: Double = 0

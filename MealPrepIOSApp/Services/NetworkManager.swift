@@ -225,6 +225,14 @@ class NetworkManager: ObservableObject {
                 return decodedResponse
             } catch {
                 print("❌ [NetworkManager] Decoding failed for \(T.self): \(error)")
+                
+                // For AI endpoints, log the raw response to help debug
+                if endpoint.path.contains("/ai/") {
+                    if let responseString = String(data: data, encoding: .utf8) {
+                        print("❌ [NetworkManager] Raw response for \(endpoint.path): \(responseString)")
+                    }
+                }
+                
                 throw NetworkError.decodingError(error)
             }
             
@@ -534,12 +542,20 @@ extension NetworkManager {
     func post<T: Codable, U: Codable>(_ path: String, body: T, responseType: U.Type, requiresAuth: Bool = true) async throws -> U {
         let bodyData = try encoder.encode(body)
         
-        // DEBUG: Special logging for recipe creation endpoints
+        // DEBUG: Special logging for recipe creation and AI endpoints
         if path.contains("/recipes") || path.contains("/ai/") {
             print("[DEBUG] NetworkManager.post - Endpoint: \(path)")
             
-            // Try to extract image_url from the request body if it's a recipe
             if let bodyString = String(data: bodyData, encoding: .utf8) {
+                // For AI meal plan generation, log the date format
+                if path.contains("/ai/generate-meal-plan/") {
+                    if let range = bodyString.range(of: "\"week_start_date\":\"[^\"]*\"", options: .regularExpression) {
+                        let dateUrlPart = String(bodyString[range])
+                        print("[DEBUG] NetworkManager.post - Request contains: \(dateUrlPart)")
+                    }
+                }
+                
+                // Try to extract image_url from the request body if it's a recipe
                 if let range = bodyString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
                     let imageUrlPart = String(bodyString[range])
                     print("[DEBUG] NetworkManager.post - Request body contains: \(imageUrlPart)")

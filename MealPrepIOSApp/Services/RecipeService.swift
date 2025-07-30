@@ -209,18 +209,22 @@ class RecipeService {
         print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data name: '\(request.aiRecipeData.name)'")
         print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data imageUrl: '\(request.aiRecipeData.imageUrl ?? "nil")'")
         
-        let result = try await networkManager.post(
+        // The backend returns a nested response format: {"success": true, "recipe": {...}, "status": "created"}
+        let response = try await networkManager.post(
             "/ai/create-recipe-from-ai/",
             body: request,
-            responseType: Recipe.self,
+            responseType: CreateRecipeFromAIResponse.self,
             requiresAuth: true
         )
         
-        print("[DEBUG] RecipeService.createRecipeFromAI - Received AI response:")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe ID: \(result.id)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe name: \(result.name)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Response recipe imageUrl: '\(result.imageUrl ?? "nil")'")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Received nested AI response:")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Success: \(response.success)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Status: \(response.status)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe ID: \(response.recipe.id)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe name: \(response.recipe.name)")
+        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe imageUrl: '\(response.recipe.imageUrl ?? "nil")'")
         
-        return result
+        // Return the extracted recipe from the nested response
+        return response.recipe
     }
 }

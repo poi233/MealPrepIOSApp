@@ -81,6 +81,11 @@ class AIWorkflowCoordinator: ObservableObject {
         canCancel = true
         
         Task {
+            print("🚀 [AIWorkflowCoordinator] Calling generateCustomMealPlan...")
+            
+            print("🚀 [AIWorkflowCoordinator] About to call generateCustomMealPlan...")
+            print("🚀 [AIWorkflowCoordinator] MealPlanStore instance: \(mealPlanStore)")
+            
             let success = await mealPlanStore.generateCustomMealPlan(
                 description: request.description,
                 dietType: request.dietType,
@@ -91,9 +96,25 @@ class AIWorkflowCoordinator: ObservableObject {
                 additionalRequirements: request.additionalRequirements
             )
             
+            print("🚀 [AIWorkflowCoordinator] Call completed, success: \(success)")
+            
+            print("🚀 [AIWorkflowCoordinator] generateCustomMealPlan returned: \(success)")
+            
             if !success {
                 await MainActor.run {
                     handleWorkflowError(.generationFailed("Failed to generate meal plan. Please check your connection and try again."))
+                }
+            } else {
+                print("🚀 [AIWorkflowCoordinator] Generation successful, waiting for state change...")
+                
+                // Check the current state after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    print("🔍 [AIWorkflowCoordinator] Current state after generation: \(self.mealPlanStore.aiGenerationState)")
+                    print("🔍 [AIWorkflowCoordinator] Preview meal plan exists: \(self.mealPlanStore.previewMealPlan != nil)")
+                    if let previewPlan = self.mealPlanStore.previewMealPlan {
+                        print("🔍 [AIWorkflowCoordinator] Preview plan name: \(previewPlan.name)")
+                        print("🔍 [AIWorkflowCoordinator] Preview plan daily meals count: \(previewPlan.dailyMeals?.count ?? 0)")
+                    }
                 }
             }
         }
@@ -101,12 +122,18 @@ class AIWorkflowCoordinator: ObservableObject {
     
     /// Move to preview step with generated meal plan
     func proceedToPreview() {
-        guard let mealPlan = mealPlanStore.previewMealPlan else {
+        // Try to get meal plan from store first, then from local state
+        let mealPlan = mealPlanStore.previewMealPlan ?? generatedMealPlan
+        
+        guard let mealPlan = mealPlan else {
+            print("❌ [AIWorkflowCoordinator] No meal plan available for preview")
             handleWorkflowError(.previewUnavailable)
             return
         }
         
-        print("📋 [AIWorkflowCoordinator] Moving to preview step")
+        print("📋 [AIWorkflowCoordinator] Moving to preview step with meal plan: \(mealPlan.name)")
+        print("📋 [AIWorkflowCoordinator] Meal plan has dailyMeals: \(mealPlan.dailyMeals != nil)")
+        print("📋 [AIWorkflowCoordinator] Daily meals count: \(mealPlan.dailyMeals?.count ?? 0)")
         
         generatedMealPlan = mealPlan
         previewGrid = convertMealPlanToGrid(mealPlan)
@@ -235,6 +262,8 @@ class AIWorkflowCoordinator: ObservableObject {
     // MARK: - State Change Handlers
     
     private func handleStoreStateChange(_ state: AIGenerationState) {
+        print("🔄 [AIWorkflowCoordinator] Store state changed to: \(state)")
+        
         switch state {
         case .generating:
             if currentStep == .input {
@@ -243,6 +272,7 @@ class AIWorkflowCoordinator: ObservableObject {
             }
             
         case .previewing:
+            print("📋 [AIWorkflowCoordinator] Store state is previewing, current step: \(currentStep)")
             if currentStep == .generating {
                 proceedToPreview()
             }
@@ -273,10 +303,13 @@ class AIWorkflowCoordinator: ObservableObject {
     }
     
     private func handlePreviewMealPlanChange(_ mealPlan: MealPlan?) {
+        print("📋 [AIWorkflowCoordinator] Preview meal plan changed: \(mealPlan?.name ?? "nil"), current step: \(currentStep)")
+        
         if let mealPlan = mealPlan, currentStep == .generating {
             generatedMealPlan = mealPlan
             previewGrid = convertMealPlanToGrid(mealPlan)
-            proceedToPreview()
+            // Don't call proceedToPreview here to avoid double calls
+            print("📋 [AIWorkflowCoordinator] Meal plan stored, waiting for state change to proceed")
         }
     }
     
@@ -285,7 +318,20 @@ class AIWorkflowCoordinator: ObservableObject {
     private func convertMealPlanToGrid(_ mealPlan: MealPlan) -> WeeklyMealGrid {
         var grid = WeeklyMealGrid(weekStartDate: mealPlan.weekStartDate)
         
-        // Populate grid with meal plan items
+        // Handle AI-generated meal plans with dailyMeals
+        if let dailyMeals = mealPlan.dailyMeals {
+            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
+                if dayIndex < grid.dailyMeals.count {
+                    // Now dailyMeal contains Recipe objects directly
+                    grid.dailyMeals[dayIndex].breakfast = dailyMeal.breakfast
+                    grid.dailyMeals[dayIndex].lunch = dailyMeal.lunch
+                    grid.dailyMeals[dayIndex].dinner = dailyMeal.dinner
+                }
+            }
+            return grid
+        }
+        
+        // Handle regular meal plans with items
         if let items = mealPlan.items {
             for item in items {
                 guard let recipe = item.recipe,
@@ -306,6 +352,8 @@ class AIWorkflowCoordinator: ObservableObject {
         
         return grid
     }
+    
+    // REMOVED: createRecipeFromMealItem - no longer needed as dailyMeals now contains Recipe objects directly
     
     // MARK: - Computed Properties
     

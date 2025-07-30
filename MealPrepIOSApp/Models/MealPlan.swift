@@ -19,6 +19,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
     let analysisText: String?
     let items: [MealPlanItem]?
     let itemsCount: Int?
+    let dailyMeals: [DailyMeal]?  // Add support for AI-generated meal plans
     let createdAt: Date
     let updatedAt: Date
     
@@ -33,6 +34,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         case analysisText = "analysis_text"
         case items
         case itemsCount = "items_count"
+        case dailyMeals = "daily_meals"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -49,6 +51,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         analysisText: String?,
         items: [MealPlanItem]?,
         itemsCount: Int?,
+        dailyMeals: [DailyMeal]? = nil,
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -62,6 +65,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         self.analysisText = analysisText
         self.items = items
         self.itemsCount = itemsCount
+        self.dailyMeals = dailyMeals
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -86,6 +90,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         analysisText = try container.decodeIfPresent(String.self, forKey: .analysisText)
         items = try container.decodeIfPresent([MealPlanItem].self, forKey: .items)
         itemsCount = try container.decodeIfPresent(Int.self, forKey: .itemsCount)
+        dailyMeals = try container.decodeIfPresent([DailyMeal].self, forKey: .dailyMeals)
         
         // Handle flexible date parsing for week_start_date
         if let dateString = try? container.decode(String.self, forKey: .weekStartDate) {
@@ -174,9 +179,9 @@ struct MealPlanItem: Codable, Identifiable {
 struct DailyMeal: Codable, Identifiable {
     let id = UUID()
     let day: String
-    let breakfast: [MealItem]
-    let lunch: [MealItem]
-    let dinner: [MealItem]
+    let breakfast: [Recipe]  // Changed from MealItem to Recipe
+    let lunch: [Recipe]      // Changed from MealItem to Recipe
+    let dinner: [Recipe]     // Changed from MealItem to Recipe
     
     enum CodingKeys: String, CodingKey {
         case day
@@ -186,19 +191,7 @@ struct DailyMeal: Codable, Identifiable {
     }
 }
 
-// MARK: - Meal Item (UI Helper)
-struct MealItem: Codable, Identifiable {
-    let id = UUID()
-    let recipeName: String
-    let ingredients: [String]
-    let instructions: [String]
-    
-    enum CodingKeys: String, CodingKey {
-        case recipeName
-        case ingredients
-        case instructions
-    }
-}
+// MARK: - Meal Item (UI Helper) - DEPRECATED: Now using Recipe directly in DailyMeal
 
 // MARK: - Meal Plan Generation Request
 struct GenerateMealPlanRequest: Codable {
@@ -218,6 +211,27 @@ struct GenerateMealPlanRequest: Codable {
         case calorieTarget = "calorie_target"
         case weekStartDate = "week_start_date"
         case additionalRequirements = "additional_requirements"
+    }
+    
+    // Custom encoding to format date as YYYY-MM-DD string for Django DateField
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(planDescription, forKey: .planDescription)
+        try container.encodeIfPresent(dietaryPreferences, forKey: .dietaryPreferences)
+        try container.encodeIfPresent(allergies, forKey: .allergies)
+        try container.encodeIfPresent(dislikes, forKey: .dislikes)
+        try container.encodeIfPresent(calorieTarget, forKey: .calorieTarget)
+        try container.encodeIfPresent(additionalRequirements, forKey: .additionalRequirements)
+        
+        // Format date as YYYY-MM-DD string for Django DateField compatibility
+        if let weekStartDate = weekStartDate {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd"
+            dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+            let dateString = dateFormatter.string(from: weekStartDate)
+            try container.encode(dateString, forKey: .weekStartDate)
+        }
     }
 }
 

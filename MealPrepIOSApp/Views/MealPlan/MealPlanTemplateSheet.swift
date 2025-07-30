@@ -17,6 +17,8 @@ struct MealPlanTemplateSheet: View {
     @State private var isSaving = false
     @State private var isLoadingTemplates = false
     @State private var isApplyingTemplate = false
+    @State private var savingState: TemplateSavingState = .validating
+    @State private var showingSavingProgress = false
     @State private var selectedTemplate: MealPlanTemplate?
     @State private var availableTemplates: [MealPlanTemplate] = []
     @State private var showingSaveConfirmation = false
@@ -98,11 +100,30 @@ struct MealPlanTemplateSheet: View {
         }
         .alert("Template Saved!", isPresented: $showingSaveConfirmation) {
             Button("OK") {
+                showingSavingProgress = false
                 dismiss()
             }
         } message: {
             Text("Your meal plan template has been saved successfully.")
         }
+        .overlay(
+            // Full-screen loading overlay
+            Group {
+                if showingSavingProgress {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                        
+                        TemplateSavingLoader(
+                            progress: savingState.progress,
+                            statusText: savingState.statusText,
+                            currentStep: savingState.currentStep
+                        )
+                    }
+                    .animation(.easeInOut(duration: 0.3), value: showingSavingProgress)
+                }
+            }
+        )
     }
 }
 
@@ -251,12 +272,11 @@ extension MealPlanTemplateSheet {
                     }) {
                         HStack {
                             if isSaving {
-                                ProgressView()
-                                    .scaleEffect(0.8)
+                                CircularProgress(progress: savingState.progress, size: 24, lineWidth: 3)
                             } else {
                                 Image(systemName: saveMode == .newTemplate ? "folder.badge.plus" : "arrow.clockwise")
                             }
-                            Text(isSaving ? "Saving..." : (saveMode == .newTemplate ? "Save as Template" : "Update Meal Plan"))
+                            Text(isSaving ? savingState.statusText : (saveMode == .newTemplate ? "Save as Template" : "Update Meal Plan"))
                         }
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .foregroundColor(.white)
@@ -942,7 +962,9 @@ extension MealPlanTemplateSheet {
         print("📅 [UpdateMealPlan] Selected week: \(formatWeekRange(from: selectedWeekForSave))")
         
         isSaving = true
+        showingSavingProgress = true
         saveError = nil
+        savingState = .validating
         
         do {
             // Extract meals from selected week
@@ -985,6 +1007,11 @@ extension MealPlanTemplateSheet {
             
             print("🍽️ [UpdateMealPlan] Total meals to update: \(meals.count)")
             
+            // Update progress: saving changes
+            await MainActor.run {
+                savingState = .savingTemplate
+            }
+            
             // Update the existing meal plan with name and description
             let updatedMealPlan = try await MealPlanTemplateService().updateExistingMealPlan(
                 mealPlanId: selectedMealPlan.id,
@@ -996,16 +1023,33 @@ extension MealPlanTemplateSheet {
             print("✅ [UpdateMealPlan] Meal plan updated successfully")
             print("📊 [UpdateMealPlan] Updated meal plan: '\(updatedMealPlan.name)'")
             
+            // Update progress: completed
+            await MainActor.run {
+                savingState = .completed
+            }
+            
+            // Show completion briefly before hiding overlay
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
             showingSaveConfirmation = true
             
         } catch {
             print("❌ [UpdateMealPlan] Failed to update meal plan")
             print("🚨 [UpdateMealPlan] Error details: \(error)")
             
+            // Update progress: error
+            await MainActor.run {
+                savingState = .error(error.localizedDescription)
+            }
+            
+            // Show error briefly before hiding overlay
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
             saveError = "Failed to update meal plan: \(error.localizedDescription)"
         }
         
         isSaving = false
+        showingSavingProgress = false
         print("🔚 [UpdateMealPlan] Update operation completed")
     }
     
@@ -1026,9 +1070,16 @@ extension MealPlanTemplateSheet {
         print("   Selected week: \(formatWeekRange(from: selectedWeekForSave))")
         
         isSaving = true
+        showingSavingProgress = true
         saveError = nil
+        savingState = .validating
         
         do {
+            // Update progress: validating recipes
+            await MainActor.run {
+                savingState = .validating
+            }
+            
             // Extract meals from selected week
             print("🔍 [SaveTemplate] Extracting meals from local storage for selected week...")
             let selectedWeekMeals = getSelectedWeekMeals()
@@ -1048,7 +1099,7 @@ extension MealPlanTemplateSheet {
                 print("   📅 \(dayName) (Day \(dayIndex)): \(dayTotal) meals")
                 
                 // Add breakfast meals
-                for (index, recipe) in dayMeals.breakfast.enumerated() {
+                for (_, recipe) in dayMeals.breakfast.enumerated() {
                     let templateMeal = CreateMealPlanTemplateMeal(
                         recipeId: recipe.id,
                         dayOfWeek: dayIndex,
@@ -1060,7 +1111,7 @@ extension MealPlanTemplateSheet {
                 }
                 
                 // Add lunch meals
-                for (index, recipe) in dayMeals.lunch.enumerated() {
+                for (_, recipe) in dayMeals.lunch.enumerated() {
                     let templateMeal = CreateMealPlanTemplateMeal(
                         recipeId: recipe.id,
                         dayOfWeek: dayIndex,
@@ -1072,7 +1123,7 @@ extension MealPlanTemplateSheet {
                 }
                 
                 // Add dinner meals
-                for (index, recipe) in dayMeals.dinner.enumerated() {
+                for (_, recipe) in dayMeals.dinner.enumerated() {
                     let templateMeal = CreateMealPlanTemplateMeal(
                         recipeId: recipe.id,
                         dayOfWeek: dayIndex,
@@ -1100,6 +1151,11 @@ extension MealPlanTemplateSheet {
                 meals: meals
             )
             
+            // Update progress: creating recipes in backend
+            await MainActor.run {
+                savingState = .creatingRecipes
+            }
+            
             print("🔄 [SaveTemplate] Converting to backend API format...")
             print("📤 [SaveTemplate] Request payload:")
             print("   {")
@@ -1117,6 +1173,11 @@ extension MealPlanTemplateSheet {
             print("     ]")
             print("   }")
             
+            // Update progress: saving template
+            await MainActor.run {
+                savingState = .savingTemplate
+            }
+            
             print("🌐 [SaveTemplate] Making API call to backend: POST /meal-plans/")
             print("🔐 [SaveTemplate] Using authenticated request...")
             
@@ -1130,6 +1191,14 @@ extension MealPlanTemplateSheet {
             print("   Created At: \(response.createdAt?.description ?? "Unknown")")
             print("   Updated At: \(response.updatedAt?.description ?? "Unknown")")
             
+            // Update progress: completed
+            await MainActor.run {
+                savingState = .completed
+            }
+            
+            // Show completion briefly before hiding overlay
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            
             showingSaveConfirmation = true
             
         } catch {
@@ -1139,10 +1208,19 @@ extension MealPlanTemplateSheet {
                 print("🌐 [SaveTemplate] Network error type: \(networkError)")
             }
             
+            // Update progress: error
+            await MainActor.run {
+                savingState = .error(error.localizedDescription)
+            }
+            
+            // Show error briefly before hiding overlay
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
             saveError = "Failed to save template: \(error.localizedDescription)"
         }
         
         isSaving = false
+        showingSavingProgress = false
         print("🔚 [SaveTemplate] Save operation completed")
     }
     

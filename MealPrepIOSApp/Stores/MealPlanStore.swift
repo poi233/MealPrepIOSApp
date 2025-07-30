@@ -403,6 +403,30 @@ class MealPlanStore: ObservableObject {
     private func convertMealPlanToWeeklyGrid(_ mealPlan: MealPlan) -> WeeklyMealGrid {
         var grid = WeeklyMealGrid(weekStartDate: mealPlan.weekStartDate)
         
+        print("🔄 [MealPlanStore] Converting meal plan to weekly grid...")
+        print("📋 [MealPlanStore] Has dailyMeals: \(mealPlan.dailyMeals != nil)")
+        print("📋 [MealPlanStore] Has items: \(mealPlan.items != nil)")
+        
+        // Handle AI-generated meal plans with dailyMeals
+        if let dailyMeals = mealPlan.dailyMeals {
+            print("📋 [MealPlanStore] Processing \(dailyMeals.count) daily meals...")
+            
+            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
+                if dayIndex < grid.dailyMeals.count {
+                    print("📋 [MealPlanStore] Day \(dayIndex) (\(dailyMeal.day)): \(dailyMeal.breakfast.count) breakfast, \(dailyMeal.lunch.count) lunch, \(dailyMeal.dinner.count) dinner")
+                    
+                    // Now dailyMeal contains Recipe objects directly
+                    grid.dailyMeals[dayIndex].breakfast = dailyMeal.breakfast
+                    grid.dailyMeals[dayIndex].lunch = dailyMeal.lunch
+                    grid.dailyMeals[dayIndex].dinner = dailyMeal.dinner
+                }
+            }
+            
+            print("✅ [MealPlanStore] Successfully loaded AI meal plan to weekly grid")
+            return grid
+        }
+        
+        // Handle regular meal plans with items
         guard let items = mealPlan.items else { return grid }
         
         // Group items by day and meal type
@@ -424,6 +448,8 @@ class MealPlanStore: ObservableObject {
         
         return grid
     }
+    
+    // REMOVED: createRecipeFromMealItem - no longer needed as dailyMeals now contains Recipe objects directly
     
     func generateMealPlan(preferences: MealPlanPreferences, description: String) async -> Bool {
         isGenerating = true
@@ -458,10 +484,17 @@ class MealPlanStore: ObservableObject {
         weekStartDate: Date? = nil,
         additionalRequirements: String? = nil
     ) async -> Bool {
-        aiGenerationState = .generating
-        isGenerating = true
+        print("🔄 [MealPlanStore] Starting generateCustomMealPlan with description: '\(description)'")
+        print("🔄 [MealPlanStore] Parameters - dietType: \(dietType?.rawValue ?? "nil"), allergies: \(allergies), calorieTarget: \(calorieTarget ?? 0)")
+        
+        await MainActor.run {
+            aiGenerationState = .generating
+            isGenerating = true
+        }
         
         do {
+            print("🔄 [MealPlanStore] Calling mealPlanService.generateCustomMealPlan...")
+            
             let newMealPlan = try await mealPlanService.generateCustomMealPlan(
                 description: description,
                 dietType: dietType,
@@ -472,15 +505,36 @@ class MealPlanStore: ObservableObject {
                 additionalRequirements: additionalRequirements
             )
             
-            // Store as preview instead of immediately applying
-            previewMealPlan = newMealPlan
-            aiGenerationState = .previewing
+            print("✅ [MealPlanStore] Meal plan generated successfully: \(newMealPlan.name)")
+            print("📋 [MealPlanStore] Daily meals count: \(newMealPlan.dailyMeals?.count ?? 0)")
             
-            isGenerating = false
+            // Debug: Print first daily meal if available
+            if let dailyMeals = newMealPlan.dailyMeals, !dailyMeals.isEmpty {
+                let firstDay = dailyMeals[0]
+                print("📋 [MealPlanStore] First day (\(firstDay.day)): \(firstDay.breakfast.count) breakfast, \(firstDay.lunch.count) lunch, \(firstDay.dinner.count) dinner")
+                if !firstDay.breakfast.isEmpty {
+                    print("📋 [MealPlanStore] First breakfast: \(firstDay.breakfast[0].name)")
+                }
+            }
+            
+            // Store as preview instead of immediately applying
+            await MainActor.run {
+                previewMealPlan = newMealPlan
+                print("📋 [MealPlanStore] Setting aiGenerationState to .previewing")
+                aiGenerationState = .previewing
+                isGenerating = false
+            }
+            
             return true
         } catch {
-            isGenerating = false
-            aiGenerationState = .error("Failed to generate meal plan: \(error.localizedDescription)")
+            print("❌ [MealPlanStore] Generation failed: \(error.localizedDescription)")
+            print("❌ [MealPlanStore] Error details: \(error)")
+            
+            await MainActor.run {
+                isGenerating = false
+                aiGenerationState = .error("Failed to generate meal plan: \(error.localizedDescription)")
+            }
+            
             return false
         }
     }

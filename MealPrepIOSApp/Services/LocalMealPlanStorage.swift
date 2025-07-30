@@ -184,6 +184,51 @@ class LocalMealPlanStorage {
     }
     
     
+    // MARK: - Recipe Search Methods
+    
+    /// Find a recipe in local storage across all stored weeks
+    /// This is used to lookup recipes when creating templates
+    func findRecipeInLocalStorage(recipeId: String) -> Recipe? {
+        print("🔍 [LocalMealPlanStorage] Searching for recipe \(recipeId) in local storage...")
+        
+        // Get all stored weeks
+        let storedWeeks = getAllStoredWeeks()
+        
+        for weekDate in storedWeeks {
+            if let weeklyGrid = loadWeeklyMealPlan(for: weekDate) {
+                // Search through all meals in this week
+                for dayMeals in weeklyGrid.dailyMeals {
+                    // Check breakfast meals
+                    for recipe in dayMeals.breakfast {
+                        if recipe.id == recipeId {
+                            print("✅ [LocalMealPlanStorage] Found recipe '\(recipe.name)' in breakfast meals")
+                            return recipe
+                        }
+                    }
+                    
+                    // Check lunch meals  
+                    for recipe in dayMeals.lunch {
+                        if recipe.id == recipeId {
+                            print("✅ [LocalMealPlanStorage] Found recipe '\(recipe.name)' in lunch meals")
+                            return recipe
+                        }
+                    }
+                    
+                    // Check dinner meals
+                    for recipe in dayMeals.dinner {
+                        if recipe.id == recipeId {
+                            print("✅ [LocalMealPlanStorage] Found recipe '\(recipe.name)' in dinner meals")
+                            return recipe
+                        }
+                    }
+                }
+            }
+        }
+        
+        print("❌ [LocalMealPlanStorage] Recipe \(recipeId) not found in any local storage")
+        return nil
+    }
+    
     // MARK: - Date Formatter
     
     private lazy var weekDateFormatter: DateFormatter = {

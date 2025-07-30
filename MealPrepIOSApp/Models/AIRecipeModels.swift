@@ -28,6 +28,23 @@ struct AIGeneratedRecipe: Codable {
     let nutritionInfo: AINutritionInfo
     let tags: [String]
     
+    // Regular initializer for creating AIGeneratedRecipe instances
+    init(name: String, description: String, cuisine: String, difficulty: Difficulty, 
+         prepTime: Int, cookTime: Int, imageUrl: String?, ingredients: [AIIngredient], 
+         instructions: [String], nutritionInfo: AINutritionInfo, tags: [String]) {
+        self.name = name
+        self.description = description
+        self.cuisine = cuisine
+        self.difficulty = difficulty
+        self.prepTime = prepTime
+        self.cookTime = cookTime
+        self.imageUrl = imageUrl
+        self.ingredients = ingredients
+        self.instructions = instructions
+        self.nutritionInfo = nutritionInfo
+        self.tags = tags
+    }
+    
     enum CodingKeys: String, CodingKey {
         case name
         case description
@@ -78,6 +95,12 @@ struct AIGeneratedRecipe: Codable {
 struct AIIngredient: Codable {
     let name: String
     let amount: String
+    
+    // Regular initializer for creating AIIngredient instances
+    init(name: String, amount: String) {
+        self.name = name
+        self.amount = amount
+    }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -162,6 +185,20 @@ extension AIGeneratedRecipe {
             createdByUser: createdByUser,
             createdByUserId: "ai-generated"
         )
+    }
+}
+
+// MARK: - AI Recipe Creation Response
+
+struct CreateRecipeFromAIResponse: Codable {
+    let success: Bool
+    let recipe: Recipe
+    let status: String
+    
+    enum CodingKeys: String, CodingKey {
+        case success
+        case recipe
+        case status
     }
 }
 

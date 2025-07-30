@@ -7,6 +7,21 @@
 
 import Foundation
 
+// MARK: - Custom Errors
+enum MealPlanTemplateError: Error, LocalizedError {
+    case recipeNotFound(recipeId: String)
+    case recipeCreationFailed(recipeName: String, error: Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .recipeNotFound(let recipeId):
+            return "Recipe with ID \(recipeId) not found in local storage or backend database"
+        case .recipeCreationFailed(let recipeName, let error):
+            return "Failed to create recipe '\(recipeName)' in backend: \(error.localizedDescription)"
+        }
+    }
+}
+
 // MARK: - Meal Plan Template Service
 class MealPlanTemplateService {
     private let networkManager = NetworkManager.shared
@@ -37,6 +52,11 @@ class MealPlanTemplateService {
         
         print("📊 [MealPlanTemplateService] Filtered meals: \(request.meals.count) → \(uniqueMeals.count)")
         
+        // CRITICAL FIX: Ensure all recipes exist in backend before creating template
+        print("🔧 [MealPlanTemplateService] Ensuring all recipes exist in backend database...")
+        let validatedMeals = try await ensureRecipesExistInBackend(uniqueMeals)
+        print("✅ [MealPlanTemplateService] Recipe validation completed. Valid meals: \(validatedMeals.count)")
+        
         // Convert template request to meal plan creation request matching backend API spec
         // week_start_date is required by backend - use current week's Monday
         let weekStartDate = getMondayOfCurrentWeek()
@@ -44,7 +64,7 @@ class MealPlanTemplateService {
             name: request.name,
             description: request.description ?? "Saved as template",
             weekStartDate: weekStartDate,
-            items: uniqueMeals.map { templateMeal in
+            items: validatedMeals.map { templateMeal in
                 BackendCreateMealPlanItemRequest(
                     recipeId: templateMeal.recipeId,
                     dayOfWeek: templateMeal.dayOfWeek,
@@ -69,7 +89,7 @@ class MealPlanTemplateService {
             id: createdMealPlan.id,
             name: request.name, // Use original name
             description: request.description,
-            meals: request.meals.map { templateMeal in
+            meals: validatedMeals.map { templateMeal in
                 MealPlanTemplateMeal(
                     id: nil,
                     recipeId: templateMeal.recipeId,
@@ -264,11 +284,16 @@ class MealPlanTemplateService {
         
         print("📊 [MealPlanTemplateService] Filtered meals: \(templateMeals.count) → \(uniqueMeals.count)")
         
+        // CRITICAL FIX: Ensure all recipes exist in backend before updating meal plan
+        print("🔧 [MealPlanTemplateService] Ensuring all recipes exist in backend database...")
+        let validatedMeals = try await ensureRecipesExistInBackend(uniqueMeals)
+        print("✅ [MealPlanTemplateService] Recipe validation completed. Valid meals: \(validatedMeals.count)")
+        
         // Create update request with name, description, and new items (this will override existing items)
         let updateRequest = UpdateExistingMealPlanRequest(
             name: name,
             description: description,
-            items: uniqueMeals.map { templateMeal in
+            items: validatedMeals.map { templateMeal in
                 BackendCreateMealPlanItemRequest(
                     recipeId: templateMeal.recipeId,
                     dayOfWeek: templateMeal.dayOfWeek,
@@ -347,6 +372,129 @@ class MealPlanTemplateService {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: monday)
+    }
+    
+    /// Ensure all recipes referenced in meal plan exist in the backend database
+    /// This is critical for template saving to work properly
+    private func ensureRecipesExistInBackend(_ meals: [CreateMealPlanTemplateMeal]) async throws -> [CreateMealPlanTemplateMeal] {
+        print("🔍 [MealPlanTemplateService] Checking \(meals.count) recipes against backend database...")
+        
+        let recipeService = RecipeService()
+        let localMealPlanStorage = LocalMealPlanStorage.shared
+        var validatedMeals: [CreateMealPlanTemplateMeal] = []
+        
+        for (index, meal) in meals.enumerated() {
+            print("🔍 [MealPlanTemplateService] [\(index + 1)/\(meals.count)] Checking recipe ID: \(meal.recipeId)")
+            
+            do {
+                // First, try to fetch the recipe from backend to see if it exists
+                let _ = try await recipeService.getRecipe(id: meal.recipeId)
+                print("✅ [MealPlanTemplateService] Recipe \(meal.recipeId) exists in backend")
+                validatedMeals.append(meal)
+                
+            } catch {
+                print("⚠️ [MealPlanTemplateService] Recipe \(meal.recipeId) not found in backend, attempting to create it...")
+                
+                // Recipe doesn't exist in backend, try to find it in local storage and create it
+                if let localRecipe = localMealPlanStorage.findRecipeInLocalStorage(recipeId: meal.recipeId) {
+                    print("📱 [MealPlanTemplateService] Found recipe '\(localRecipe.name)' in local storage, creating in backend...")
+                    
+                    do {
+                        // Convert local recipe to AI format for backend creation
+                        let aiIngredients = (localRecipe.ingredients ?? []).map { ingredient in
+                            AIIngredient(
+                                name: ingredient.name,
+                                amount: "\(ingredient.amount) \(ingredient.unit)".trimmingCharacters(in: .whitespaces)
+                            )
+                        }
+                        
+                        let aiNutritionInfo = AINutritionInfo(
+                            calories: extractNumericValue(from: localRecipe.nutritionInfo?.calories),
+                            protein: extractStringValue(from: localRecipe.nutritionInfo?.protein),
+                            carbohydrates: extractStringValue(from: localRecipe.nutritionInfo?.carbohydrates),
+                            fat: extractStringValue(from: localRecipe.nutritionInfo?.fat),
+                            fiber: extractStringValue(from: localRecipe.nutritionInfo?.fiber),
+                            sodium: extractStringValue(from: localRecipe.nutritionInfo?.sodium),
+                            sugar: extractStringValue(from: localRecipe.nutritionInfo?.sugar),
+                            servings: localRecipe.nutritionInfo?.servings
+                        )
+                        
+                        let aiRecipeData = AIGeneratedRecipe(
+                            name: localRecipe.name,
+                            description: localRecipe.description ?? "",
+                            cuisine: localRecipe.cuisine ?? "Unknown",
+                            difficulty: localRecipe.difficulty ?? .medium,
+                            prepTime: localRecipe.prepTime ?? 30,
+                            cookTime: localRecipe.cookTime ?? 30,
+                            imageUrl: localRecipe.imageUrl,
+                            ingredients: aiIngredients,
+                            instructions: localRecipe.instructions ?? [],
+                            nutritionInfo: aiNutritionInfo,
+                            tags: localRecipe.tags ?? []
+                        )
+                        
+                        let createRequest = CreateRecipeFromAIRequest(
+                            aiRecipeData: aiRecipeData,
+                            saveToAccount: true,
+                            addToMealPlan: nil,
+                            mealPlanDay: nil,
+                            mealPlanType: nil
+                        )
+                        
+                        let createdRecipe = try await recipeService.createRecipeFromAI(createRequest)
+                        print("✅ [MealPlanTemplateService] Successfully created recipe '\(createdRecipe.name)' in backend with ID: \(createdRecipe.id)")
+                        
+                        // Use the created recipe's ID (should be same as original, but backend confirms it)
+                        let updatedMeal = CreateMealPlanTemplateMeal(
+                            recipeId: createdRecipe.id,
+                            dayOfWeek: meal.dayOfWeek,
+                            mealType: meal.mealType,
+                            servingSize: meal.servingSize
+                        )
+                        validatedMeals.append(updatedMeal)
+                        
+                    } catch {
+                        print("❌ [MealPlanTemplateService] Failed to create recipe '\(localRecipe.name)' in backend: \(error)")
+                        throw MealPlanTemplateError.recipeCreationFailed(recipeName: localRecipe.name, error: error)
+                    }
+                    
+                } else {
+                    print("❌ [MealPlanTemplateService] Recipe \(meal.recipeId) not found in local storage either")
+                    throw MealPlanTemplateError.recipeNotFound(recipeId: meal.recipeId)
+                }
+            }
+        }
+        
+        print("🎯 [MealPlanTemplateService] Recipe validation completed: \(validatedMeals.count)/\(meals.count) recipes validated")
+        return validatedMeals
+    }
+    
+    /// Extract numeric value from nutrition string (e.g., "25g" -> 25, "10 grams" -> 10)
+    private func extractNumericValue(from nutritionString: String?) -> Int? {
+        guard let str = nutritionString, !str.isEmpty else { return nil }
+        
+        // Use regex to extract the first number from the string
+        let pattern = #"(\d+(?:\.\d+)?)"#
+        if let regex = try? NSRegularExpression(pattern: pattern),
+           let match = regex.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)),
+           let range = Range(match.range(at: 1), in: str) {
+            let numberString = String(str[range])
+            return Int(Double(numberString) ?? 0)
+        }
+        
+        return nil
+    }
+    
+    /// Extract string value from nutrition string, converting numeric values to proper string format
+    private func extractStringValue(from nutritionString: String?) -> String? {
+        guard let str = nutritionString, !str.isEmpty else { return nil }
+        
+        // Extract numeric value and return as string
+        if let numericValue = extractNumericValue(from: str) {
+            return String(numericValue)
+        }
+        
+        return nil
     }
 }
 
