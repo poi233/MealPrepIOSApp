@@ -25,11 +25,15 @@ struct AIWeeklyPreviewView: View {
     @State private var nutritionSummary: NutritionSummary?
     
     // MARK: - UI State
-    @State private var isApplying = false
     @State private var showingRecipeReplacement = false
     @State private var selectedMealSlot: MealSlotIdentifier?
     @State private var showingRegenerateOptions = false
     @State private var showingNutritionDetail = false
+    @State private var showingSuccessAlert = false
+    // REMOVED: State variables for Apply Meal Plan and Save Template buttons per user request
+    @State private var showingErrorAlert = false
+    @State private var successMessage = ""
+    @State private var errorMessage = ""
     
     // MARK: - Initialization
     init(generatedMealPlan: MealPlan) {
@@ -59,6 +63,7 @@ struct AIWeeklyPreviewView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
+                .padding(.bottom, 100) // Add bottom padding to account for fixed overlay buttons
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("AI Meal Plan Preview")
@@ -107,6 +112,20 @@ struct AIWeeklyPreviewView: View {
                 if let nutrition = nutritionSummary {
                     NutritionDetailSheet(summary: nutrition)
                 }
+            }
+            .alert("Success", isPresented: $showingSuccessAlert) {
+                Button("OK") {
+                    successMessage = ""
+                }
+            } message: {
+                Text(successMessage)
+            }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK") {
+                    errorMessage = ""
+                }
+            } message: {
+                Text(errorMessage)
             }
         }
     }
@@ -170,12 +189,18 @@ struct AIWeeklyPreviewView: View {
                 .foregroundColor(.primaryGreen)
             }
             
-            // Daily average nutrition
-            HStack(spacing: 20) {
-                nutritionItem("Calories", value: "\(Int(nutrition.averageCaloriesPerDay))", unit: "cal/day")
-                nutritionItem("Protein", value: "\(Int(nutrition.averageProteinPerDay))g", unit: "per day")
-                nutritionItem("Carbs", value: "\(Int(nutrition.averageCarbsPerDay))g", unit: "per day")
-                nutritionItem("Fat", value: "\(Int(nutrition.averageFatPerDay))g", unit: "per day")
+            // Daily average nutrition - comprehensive display
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    nutritionItem("Calories", value: "\(Int(nutrition.averageCaloriesPerDay))", unit: "cal/day")
+                    nutritionItem("Protein", value: "\(Int(nutrition.averageProteinPerDay))g", unit: "per day")
+                    nutritionItem("Carbs", value: "\(Int(nutrition.averageCarbsPerDay))g", unit: "per day")
+                    nutritionItem("Fat", value: "\(Int(nutrition.averageFatPerDay))g", unit: "per day")
+                    nutritionItem("Fiber", value: "\(Int(nutrition.averageFiberPerDay))g", unit: "per day")
+                    nutritionItem("Sodium", value: "\(Int(nutrition.averageSodiumPerDay))mg", unit: "per day")
+                    nutritionItem("Sugar", value: "\(Int(nutrition.averageSugarPerDay))g", unit: "per day")
+                }
+                .padding(.horizontal, 4)
             }
             
             // Nutrition balance indicators
@@ -266,37 +291,9 @@ struct AIWeeklyPreviewView: View {
     
     // MARK: - Action Buttons
     private var actionButtonsView: some View {
-        VStack(spacing: 12) {
-            Button(action: {
-                if let onApply = onApply {
-                    onApply()
-                } else {
-                    applyToCurrentWeek()
-                }
-            }) {
-                HStack {
-                    if isApplying {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .foregroundColor(.white)
-                    } else {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.headline)
-                    }
-                    
-                    Text(isApplying ? "Applying..." : "Apply to Current Week")
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                }
-            }
-            .primaryGreenButton()
-            .disabled(isApplying)
-            
-            Button("Save as Template") {
-                // TODO: Implement save as template
-            }
-            .outlineGreenButton()
-        }
+        // REMOVED: "Apply Meal Plan" and "Save As Template" buttons per user request
+        // The "Apply Plan" button is available in the main workflow view
+        EmptyView()
     }
     
     // MARK: - Regenerate Options
@@ -387,6 +384,9 @@ struct AIWeeklyPreviewView: View {
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
         var totalFat: Double = 0
+        var totalFiber: Double = 0
+        var totalSodium: Double = 0
+        var totalSugar: Double = 0
         var totalRecipes: Int = 0
         
         for dailyMeal in previewGrid.dailyMeals {
@@ -399,6 +399,9 @@ struct AIWeeklyPreviewView: View {
                     totalProtein += Double(nutrition.protein ?? "0") ?? 0
                     totalCarbs += Double(nutrition.carbohydrates ?? "0") ?? 0
                     totalFat += Double(nutrition.fat ?? "0") ?? 0
+                    totalFiber += Double(nutrition.fiber ?? "0") ?? 0
+                    totalSodium += Double(nutrition.sodium ?? "0") ?? 0
+                    totalSugar += Double(nutrition.sugar ?? "0") ?? 0
                 }
             }
         }
@@ -410,10 +413,16 @@ struct AIWeeklyPreviewView: View {
             totalProtein: totalProtein,
             totalCarbs: totalCarbs,
             totalFat: totalFat,
+            totalFiber: totalFiber,
+            totalSodium: totalSodium,
+            totalSugar: totalSugar,
             averageCaloriesPerDay: totalCalories / daysCount,
             averageProteinPerDay: totalProtein / daysCount,
             averageCarbsPerDay: totalCarbs / daysCount,
             averageFatPerDay: totalFat / daysCount,
+            averageFiberPerDay: totalFiber / daysCount,
+            averageSodiumPerDay: totalSodium / daysCount,
+            averageSugarPerDay: totalSugar / daysCount,
             varietyScore: calculateVarietyScore(),
             balanceScore: calculateBalanceScore(),
             healthScore: calculateHealthScore()
@@ -486,27 +495,7 @@ struct AIWeeklyPreviewView: View {
         calculateNutritionSummary()
     }
     
-    private func applyToCurrentWeek() {
-        isApplying = true
-        
-        Task {
-            // Apply the preview grid to the current week in meal plan store
-            await MainActor.run {
-                mealPlanStore.weeklyGrid = previewGrid
-                
-                // Save to local storage
-                let saveResult = mealPlanStore.saveLocalMealPlan()
-                if case .failure(let error) = saveResult {
-                    print("❌ Failed to save meal plan: \(error)")
-                }
-            }
-            
-            await MainActor.run {
-                isApplying = false
-                dismiss()
-            }
-        }
-    }
+    
     
     private func regenerateEntireWeek() {
         // TODO: Implement regeneration through AI service
@@ -699,10 +688,16 @@ struct NutritionSummary {
     let totalProtein: Double
     let totalCarbs: Double
     let totalFat: Double
+    let totalFiber: Double
+    let totalSodium: Double
+    let totalSugar: Double
     let averageCaloriesPerDay: Double
     let averageProteinPerDay: Double
     let averageCarbsPerDay: Double
     let averageFatPerDay: Double
+    let averageFiberPerDay: Double
+    let averageSodiumPerDay: Double
+    let averageSugarPerDay: Double
     let varietyScore: Double
     let balanceScore: Double
     let healthScore: Double
@@ -837,6 +832,9 @@ struct NutritionDetailSheet: View {
                         nutritionDetailItem("Protein", value: "\(Int(summary.averageProteinPerDay))g", unit: "per day")
                         nutritionDetailItem("Carbs", value: "\(Int(summary.averageCarbsPerDay))g", unit: "per day")
                         nutritionDetailItem("Fat", value: "\(Int(summary.averageFatPerDay))g", unit: "per day")
+                        nutritionDetailItem("Fiber", value: "\(Int(summary.averageFiberPerDay))g", unit: "per day")
+                        nutritionDetailItem("Sodium", value: "\(Int(summary.averageSodiumPerDay))mg", unit: "per day")
+                        nutritionDetailItem("Sugar", value: "\(Int(summary.averageSugarPerDay))g", unit: "per day")
                     }
                 }
                 .greenThemeCard()
@@ -852,6 +850,9 @@ struct NutritionDetailSheet: View {
                         nutritionDetailItem("Protein", value: "\(Int(summary.totalProtein))g", unit: "total")
                         nutritionDetailItem("Carbs", value: "\(Int(summary.totalCarbs))g", unit: "total")
                         nutritionDetailItem("Fat", value: "\(Int(summary.totalFat))g", unit: "total")
+                        nutritionDetailItem("Fiber", value: "\(Int(summary.totalFiber))g", unit: "total")
+                        nutritionDetailItem("Sodium", value: "\(Int(summary.totalSodium))mg", unit: "total")
+                        nutritionDetailItem("Sugar", value: "\(Int(summary.totalSugar))g", unit: "total")
                     }
                 }
                 .greenThemeCard()

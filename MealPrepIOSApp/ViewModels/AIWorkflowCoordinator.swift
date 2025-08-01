@@ -54,7 +54,9 @@ class AIWorkflowCoordinator: ObservableObject {
         
         // Observe meal plan store AI generation state
         mealPlanStore.$aiGenerationState
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
+                print("🔔 [AIWorkflowCoordinator] State observer triggered: \(state)")
                 self?.handleStoreStateChange(state)
             }
             .store(in: &cancellables)
@@ -137,6 +139,15 @@ class AIWorkflowCoordinator: ObservableObject {
         
         generatedMealPlan = mealPlan
         previewGrid = convertMealPlanToGrid(mealPlan)
+        
+        // CRITICAL: Also set the preview data in the store for confirmPreviewMealPlan to work
+        mealPlanStore.previewMealPlan = mealPlan
+        mealPlanStore.previewWeeklyGrid = previewGrid
+        
+        print("✅ [AIWorkflowCoordinator] Set both local and store preview data")
+        print("🔍 [AIWorkflowCoordinator] Store preview meal plan: \(mealPlanStore.previewMealPlan?.name ?? "nil")")
+        print("🔍 [AIWorkflowCoordinator] Store preview grid days: \(mealPlanStore.previewWeeklyGrid?.dailyMeals.count ?? 0)")
+        
         currentStep = .preview
         isLoading = false
         canCancel = true
@@ -156,13 +167,91 @@ class AIWorkflowCoordinator: ObservableObject {
         canCancel = false
         
         Task {
-            let success = await mealPlanStore.applyPreviewMealPlan()
-            
-            await MainActor.run {
-                if success {
-                    completeWorkflow()
-                } else {
-                    handleWorkflowError(.applyFailed("Failed to apply meal plan. Please try again."))
+            do {
+                // First, ensure the preview meal plan AND grid are set in the store
+                if let mealPlan = generatedMealPlan {
+                    await MainActor.run {
+                        print("🔄 [AIWorkflowCoordinator] Setting preview meal plan and generating weekly grid...")
+                        mealPlanStore.previewMealPlan = mealPlan
+                        
+                        // CRITICAL: Generate the weekly grid from the meal plan
+                        let weeklyGrid = convertMealPlanToGrid(mealPlan)
+                        mealPlanStore.previewWeeklyGrid = weeklyGrid
+                        
+                        print("✅ [AIWorkflowCoordinator] Preview meal plan and weekly grid set successfully")
+                        print("🔍 [AIWorkflowCoordinator] Weekly grid has \(weeklyGrid.dailyMeals.count) days")
+                        
+                        // DO NOT set aiGenerationState here - it should already be .previewing
+                        // Setting it here causes race conditions and interferes with proper state transitions
+                    }
+                }
+                
+                print("🔄 [AIWorkflowCoordinator] Starting confirmPreviewMealPlan...")
+                print("🔍 [AIWorkflowCoordinator] State before confirmPreviewMealPlan: \(mealPlanStore.aiGenerationState)")
+                print("🔍 [AIWorkflowCoordinator] Preview meal plan exists: \(mealPlanStore.previewMealPlan != nil)")
+                
+                await mealPlanStore.confirmPreviewMealPlan()
+                
+                print("✅ [AIWorkflowCoordinator] confirmPreviewMealPlan completed")
+                print("🔍 [AIWorkflowCoordinator] State immediately after confirmPreviewMealPlan: \(mealPlanStore.aiGenerationState)")
+                
+                // Give a small delay to ensure state changes propagate properly
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                
+                await MainActor.run {
+                    print("🔍 [AIWorkflowCoordinator] State after 0.1s delay: \(mealPlanStore.aiGenerationState)")
+                    print("🔍 [AIWorkflowCoordinator] Current meal plans count: \(mealPlanStore.mealPlans.count)")
+                    print("🔍 [AIWorkflowCoordinator] Active meal plan: \(mealPlanStore.activeMealPlan?.name ?? "none")")
+                    print("🔍 [AIWorkflowCoordinator] Preview meal plan after apply: \(mealPlanStore.previewMealPlan?.name ?? "none")")
+                    
+                    // Check if the operation was successful
+                    switch mealPlanStore.aiGenerationState {
+                    case .idle:
+                        print("✅ [AIWorkflowCoordinator] State is idle, completing workflow")
+                        completeWorkflow()
+                    case .error(let error):
+                        print("❌ [AIWorkflowCoordinator] State shows error: \(error)")
+                        handleWorkflowError(.applyFailed(error))
+                    case .confirming:
+                        print("⏳ [AIWorkflowCoordinator] Still confirming, waiting for completion...")
+                        print("🔍 [AIWorkflowCoordinator] Will wait for state observer to handle completion")
+                        // Still in progress, let the state observer handle completion
+                    case .previewing:
+                        print("⚠️ [AIWorkflowCoordinator] Unexpectedly back to previewing state")
+                        print("🔍 [AIWorkflowCoordinator] This suggests confirmPreviewMealPlan didn't properly transition to .idle")
+                        print("🔍 [AIWorkflowCoordinator] Checking if recipes were actually created...")
+                        print("🔍 [AIWorkflowCoordinator] Will wait additional 0.5s for potential delayed state change")
+                        
+                        // Wait a bit longer to see if the state updates
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            print("🔍 [AIWorkflowCoordinator] Final state check after 0.5s delay: \(self.mealPlanStore.aiGenerationState)")
+                            
+                            switch self.mealPlanStore.aiGenerationState {
+                            case .idle:
+                                print("✅ [AIWorkflowCoordinator] State eventually became idle, completing workflow")
+                                self.completeWorkflow()
+                            default:
+                                print("⚠️ [AIWorkflowCoordinator] State is still \(self.mealPlanStore.aiGenerationState) after delay")
+                                // Let's check if the operation actually succeeded despite the state
+                                if self.mealPlanStore.mealPlans.count > 0 {
+                                    print("✅ [AIWorkflowCoordinator] Meal plans exist (\(self.mealPlanStore.mealPlans.count)), operation succeeded despite state")
+                                    self.completeWorkflow()
+                                } else {
+                                    print("❌ [AIWorkflowCoordinator] No meal plans found, operation appears to have failed")
+                                    self.handleWorkflowError(.applyFailed("Operation completed but state is unclear. Please try again."))
+                                }
+                            }
+                        }
+                    case .generating:
+                        print("⚠️ [AIWorkflowCoordinator] Unexpectedly back to generating state")
+                        print("🔍 [AIWorkflowCoordinator] This is highly unusual - generation shouldn't be active during apply")
+                        handleWorkflowError(.applyFailed("Operation completed but state is unclear. Please try again."))
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    print("❌ [AIWorkflowCoordinator] Exception during apply: \(error)")
+                    handleWorkflowError(.applyFailed("Failed to apply meal plan: \(error.localizedDescription)"))
                 }
             }
         }
@@ -240,8 +329,6 @@ class AIWorkflowCoordinator: ObservableObject {
         handleWorkflowError(error)
     }
     
-
-    
     /// Retry current operation
     func retryCurrentOperation() {
         showingError = false
@@ -263,6 +350,8 @@ class AIWorkflowCoordinator: ObservableObject {
     
     private func handleStoreStateChange(_ state: AIGenerationState) {
         print("🔄 [AIWorkflowCoordinator] Store state changed to: \(state)")
+        print("🔍 [AIWorkflowCoordinator] Current workflow step: \(currentStep)")
+        print("🔍 [AIWorkflowCoordinator] Current isLoading: \(isLoading)")
         
         switch state {
         case .generating:
@@ -296,8 +385,12 @@ class AIWorkflowCoordinator: ObservableObject {
             handleWorkflowError(workflowError)
             
         case .idle:
+            print("🔍 [AIWorkflowCoordinator] State is idle, current step: \(currentStep)")
             if currentStep == .confirming {
+                print("✅ [AIWorkflowCoordinator] Confirming step completed successfully, transitioning to complete")
                 completeWorkflow()
+            } else {
+                print("🔍 [AIWorkflowCoordinator] State is idle but step is \(currentStep), not confirming")
             }
         }
     }
@@ -308,8 +401,14 @@ class AIWorkflowCoordinator: ObservableObject {
         if let mealPlan = mealPlan, currentStep == .generating {
             generatedMealPlan = mealPlan
             previewGrid = convertMealPlanToGrid(mealPlan)
+            
+            // CRITICAL: Ensure the store also has the weekly grid
+            mealPlanStore.previewWeeklyGrid = previewGrid
+            
+            print("📋 [AIWorkflowCoordinator] Meal plan stored with weekly grid")
+            print("🔍 [AIWorkflowCoordinator] Weekly grid has \(previewGrid!.dailyMeals.count) days")
             // Don't call proceedToPreview here to avoid double calls
-            print("📋 [AIWorkflowCoordinator] Meal plan stored, waiting for state change to proceed")
+            print("📋 [AIWorkflowCoordinator] Waiting for state change to proceed to preview")
         }
     }
     

@@ -174,13 +174,13 @@ struct AIRecipeGenerationView: View {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
                             AIRecipeNutritionItem(label: "Calories", value: "\(calories)")
                             if let protein = aiRecipe.nutritionInfo.protein {
-                                AIRecipeNutritionItem(label: "Protein", value: protein)
+                                AIRecipeNutritionItem(label: "Protein", value: "\(protein)g")
                             }
                             if let carbs = aiRecipe.nutritionInfo.carbohydrates {
-                                AIRecipeNutritionItem(label: "Carbs", value: carbs)
+                                AIRecipeNutritionItem(label: "Carbs", value: "\(carbs)g")
                             }
                             if let fat = aiRecipe.nutritionInfo.fat {
-                                AIRecipeNutritionItem(label: "Fat", value: fat)
+                                AIRecipeNutritionItem(label: "Fat", value: "\(fat)g")
                             }
                         }
                     }

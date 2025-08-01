@@ -331,46 +331,111 @@ class MealPlanStore: ObservableObject {
     
     /// Confirm and apply the preview meal plan to current week
     func confirmPreviewMealPlan() async {
-        guard let preview = previewMealPlan,
-              let previewGrid = previewWeeklyGrid,
-              case .previewing = aiGenerationState else {
+        print("🚀 [MealPlanStore] confirmPreviewMealPlan called")
+        print("🔍 [MealPlanStore] Initial state: \(aiGenerationState)")
+        print("🔍 [MealPlanStore] Preview meal plan exists: \(previewMealPlan != nil)")
+        print("🔍 [MealPlanStore] Preview weekly grid exists: \(previewWeeklyGrid != nil)")
+        print("🔍 [MealPlanStore] Thread: \(Thread.isMainThread ? "Main" : "Background")")
+        
+        guard let preview = previewMealPlan else {
+            print("❌ [MealPlanStore] No preview meal plan available")
             await MainActor.run {
                 aiGenerationError = "No preview available to confirm"
+                aiGenerationState = .error("No preview available to confirm")
             }
             return
         }
         
+        guard let previewGrid = previewWeeklyGrid else {
+            print("❌ [MealPlanStore] No preview weekly grid available")
+            await MainActor.run {
+                aiGenerationError = "No preview grid available to confirm"
+                aiGenerationState = .error("No preview grid available to confirm")
+            }
+            return
+        }
+        
+        guard case .previewing = aiGenerationState else {
+            print("❌ [MealPlanStore] Invalid state for confirmation: \(aiGenerationState)")
+            await MainActor.run {
+                aiGenerationError = "Invalid state for meal plan confirmation"
+                aiGenerationState = .error("Invalid state for meal plan confirmation")
+            }
+            return
+        }
+        
+        print("✅ [MealPlanStore] Prerequisites met, proceeding with confirmation")
+        print("🔍 [MealPlanStore] Preview meal plan name: \(preview.name)")
+        print("🔍 [MealPlanStore] Preview daily meals count: \(preview.dailyMeals?.count ?? 0)")
+        
         await MainActor.run {
+            print("🔄 [MealPlanStore] Setting state to confirming")
+            let previousState = aiGenerationState
             aiGenerationState = .confirming
+            print("🔍 [MealPlanStore] State changed from \(previousState) to \(aiGenerationState)")
         }
         
         do {
-            // Apply the preview to current weekly grid
+            print("🔄 [MealPlanStore] Confirming preview meal plan: creating all recipes...")
+            print("🔍 [MealPlanStore] Current state at start: \(aiGenerationState)")
+            
+            // CRITICAL: Create all recipes in the backend database before applying
+            let updatedMealPlan = try await createAllRecipesInMealPlan(preview)
+            print("✅ [MealPlanStore] Successfully created all recipes in meal plan")
+            
+            // Convert the updated meal plan to weekly grid
+            let updatedWeeklyGrid = convertMealPlanToWeeklyGrid(updatedMealPlan)
+            print("✅ [MealPlanStore] Successfully converted meal plan to weekly grid")
+            
+            // Apply the updated preview to current weekly grid
             await MainActor.run {
-                weeklyGrid = previewGrid
+                print("🔄 [MealPlanStore] Applying updated meal plan to current state...")
+                weeklyGrid = updatedWeeklyGrid
+                previewMealPlan = updatedMealPlan  // Update preview with created recipes
+                previewWeeklyGrid = updatedWeeklyGrid
+                print("✅ [MealPlanStore] Applied updated meal plan to current state")
+                print("🔍 [MealPlanStore] Current state after applying: \(aiGenerationState)")
             }
             
-            // Save to local storage
+            // Save to local storage with proper recipe IDs
+            print("🔄 [MealPlanStore] Saving meal plan to local storage...")
             let saveResult = saveLocalMealPlan()
             if case .failure(let error) = saveResult {
+                print("❌ [MealPlanStore] Failed to save to local storage: \(error)")
                 throw error
             }
+            print("✅ [MealPlanStore] Successfully saved meal plan to local storage")
             
             // Add to meal plans list if not already there
             await MainActor.run {
-                if !mealPlans.contains(where: { $0.id == preview.id }) {
-                    mealPlans.insert(preview, at: 0)
+                print("🔄 [MealPlanStore] Finalizing meal plan application...")
+                if !mealPlans.contains(where: { $0.id == updatedMealPlan.id }) {
+                    mealPlans.insert(updatedMealPlan, at: 0)
                     totalCount += 1
+                    print("✅ [MealPlanStore] Added meal plan to list")
                 }
                 
-                // Update current meal plan
-                currentMealPlan = preview
-                activeMealPlan = preview
+                // Update current meal plan with the version that has created recipes
+                currentMealPlan = updatedMealPlan
+                activeMealPlan = updatedMealPlan
+                print("✅ [MealPlanStore] Updated current and active meal plans")
                 
-                // Reset AI generation state
-                resetAIGenerationState()
+                print("🔄 [MealPlanStore] About to set state to idle...")
+                print("🔍 [MealPlanStore] Current state before setting to idle: \(aiGenerationState)")
                 
-                print("✅ [MealPlanStore] Preview meal plan applied successfully")
+                // IMPORTANT: Set state to idle to signal successful completion
+                aiGenerationState = .idle
+                print("✅ [MealPlanStore] Set aiGenerationState to .idle")
+                print("🔍 [MealPlanStore] Current state after setting to idle: \(aiGenerationState)")
+                
+                previewMealPlan = nil
+                previewWeeklyGrid = nil
+                aiGenerationError = nil
+                showingAIPreview = false
+                
+                print("✅ [MealPlanStore] Preview meal plan applied successfully with all recipes created")
+                print("✅ [MealPlanStore] AI generation state set to idle for workflow completion")
+                print("🔍 [MealPlanStore] FINAL STATE CHECK: \(aiGenerationState)")
             }
             
         } catch {
@@ -381,6 +446,101 @@ class MealPlanStore: ObservableObject {
                 
                 print("❌ [MealPlanStore] Failed to apply preview meal plan: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    /// Save the preview meal plan as a template
+    func savePreviewMealPlanAsTemplate(templateName: String, templateDescription: String?) async -> Bool {
+        guard let preview = previewMealPlan,
+              case .previewing = aiGenerationState else {
+            await MainActor.run {
+                aiGenerationError = "No preview available to save as template"
+            }
+            return false
+        }
+        
+        await MainActor.run {
+            aiGenerationState = .confirming  // Use same state for template saving
+        }
+        
+        do {
+            print("🔄 [MealPlanStore] Saving preview meal plan as template: creating all recipes...")
+            
+            // CRITICAL: Create all recipes in the backend database before saving template
+            let updatedMealPlan = try await createAllRecipesInMealPlan(preview)
+            
+            // Convert meal plan to template format
+            guard let dailyMeals = updatedMealPlan.dailyMeals else {
+                throw NSError(domain: "MealPlanStore", code: -1, userInfo: [NSLocalizedDescriptionKey: "No daily meals found in meal plan"])
+            }
+            
+            // Convert dailyMeals to template meal format
+            var templateMeals: [CreateMealPlanTemplateMeal] = []
+            
+            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
+                // Process breakfast recipes
+                for recipe in dailyMeal.breakfast {
+                    let templateMeal = CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "breakfast",
+                        servingSize: 1.0
+                    )
+                    templateMeals.append(templateMeal)
+                }
+                
+                // Process lunch recipes
+                for recipe in dailyMeal.lunch {
+                    let templateMeal = CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "lunch",
+                        servingSize: 1.0
+                    )
+                    templateMeals.append(templateMeal)
+                }
+                
+                // Process dinner recipes
+                for recipe in dailyMeal.dinner {
+                    let templateMeal = CreateMealPlanTemplateMeal(
+                        recipeId: recipe.id,
+                        dayOfWeek: dayIndex,
+                        mealType: "dinner",
+                        servingSize: 1.0
+                    )
+                    templateMeals.append(templateMeal)
+                }
+            }
+            
+            // Create template request
+            let templateRequest = CreateMealPlanTemplateRequest(
+                name: templateName,
+                description: templateDescription,
+                meals: templateMeals
+            )
+            
+            // Save template using the template service
+            let mealPlanTemplateService = MealPlanTemplateService()
+            let _ = try await mealPlanTemplateService.createTemplate(templateRequest)
+            
+            await MainActor.run {
+                // Reset AI generation state after successful save
+                resetAIGenerationState()
+                print("✅ [MealPlanStore] Successfully saved meal plan as template: '\(templateName)'")
+            }
+            
+            return true
+            
+        } catch {
+            await MainActor.run {
+                let errorMessage = "Failed to save as template: \(error.localizedDescription)"
+                aiGenerationState = .error(errorMessage)
+                aiGenerationError = errorMessage
+                
+                print("❌ [MealPlanStore] Failed to save preview meal plan as template: \(error.localizedDescription)")
+            }
+            
+            return false
         }
     }
     
@@ -1382,6 +1542,157 @@ class MealPlanStore: ObservableObject {
         } else {
             return "\(totalCount) meal plan\(totalCount == 1 ? "" : "s")"
         }
+    }
+    
+    // MARK: - Recipe Creation Logic
+    
+    /// Create all recipes from a MealPlan's dailyMeals in the backend database
+    /// This is called during Apply and Save As Template operations
+    private func createAllRecipesInMealPlan(_ mealPlan: MealPlan) async throws -> MealPlan {
+        guard let dailyMeals = mealPlan.dailyMeals else {
+            print("⚠️ [MealPlanStore] No dailyMeals found in meal plan, returning original")
+            return mealPlan
+        }
+        
+        print("🔄 [MealPlanStore] Creating all recipes for meal plan: \(mealPlan.name)")
+        print("📋 [MealPlanStore] Processing \(dailyMeals.count) daily meals...")
+        
+        let recipeService = RecipeService()
+        var updatedDailyMeals: [DailyMeal] = []
+        var recipesCreated = 0
+        var recipesSkipped = 0
+        
+        for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
+            print("📅 [MealPlanStore] Processing day \(dayIndex + 1): \(dailyMeal.day)")
+            
+            // Process each meal type
+            let updatedBreakfast = try await createRecipesIfNeeded(dailyMeal.breakfast, recipeService: recipeService, mealType: "breakfast", dayName: dailyMeal.day, recipesCreated: &recipesCreated, recipesSkipped: &recipesSkipped)
+            let updatedLunch = try await createRecipesIfNeeded(dailyMeal.lunch, recipeService: recipeService, mealType: "lunch", dayName: dailyMeal.day, recipesCreated: &recipesCreated, recipesSkipped: &recipesSkipped)
+            let updatedDinner = try await createRecipesIfNeeded(dailyMeal.dinner, recipeService: recipeService, mealType: "dinner", dayName: dailyMeal.day, recipesCreated: &recipesCreated, recipesSkipped: &recipesSkipped)
+            
+            let updatedDailyMeal = DailyMeal(
+                day: dailyMeal.day,
+                breakfast: updatedBreakfast,
+                lunch: updatedLunch,
+                dinner: updatedDinner
+            )
+            updatedDailyMeals.append(updatedDailyMeal)
+        }
+        
+        print("✅ [MealPlanStore] Recipe creation completed:")
+        print("   📦 Recipes created: \(recipesCreated)")
+        print("   ⏩ Recipes skipped (already exist): \(recipesSkipped)")
+        
+        // Create updated meal plan with the new recipe data
+        let updatedMealPlan = MealPlan(
+            id: mealPlan.id,
+            userId: mealPlan.userId,
+            name: mealPlan.name,
+            description: mealPlan.description,
+            weekStartDate: mealPlan.weekStartDate,
+            isActive: mealPlan.isActive,
+            planDescription: mealPlan.planDescription,
+            analysisText: mealPlan.analysisText,
+            items: mealPlan.items,
+            itemsCount: mealPlan.itemsCount,
+            dailyMeals: updatedDailyMeals,  // Use updated dailyMeals
+            createdAt: mealPlan.createdAt,
+            updatedAt: mealPlan.updatedAt
+        )
+        
+        return updatedMealPlan
+    }
+    
+    /// Create recipes if they don't already exist in the backend
+    private func createRecipesIfNeeded(_ recipes: [Recipe], recipeService: RecipeService, mealType: String, dayName: String, recipesCreated: inout Int, recipesSkipped: inout Int) async throws -> [Recipe] {
+        var updatedRecipes: [Recipe] = []
+        
+        for recipe in recipes {
+            print("🍽️ [MealPlanStore] Processing \(mealType) recipe: '\(recipe.name)' (ID: \(recipe.id))")
+            
+            do {
+                // First, try to fetch the recipe from backend to see if it exists
+                let existingRecipe = try await recipeService.getRecipe(id: recipe.id)
+                print("✅ [MealPlanStore] Recipe '\(recipe.name)' already exists in backend")
+                updatedRecipes.append(existingRecipe)
+                recipesSkipped += 1
+                
+            } catch {
+                print("🔧 [MealPlanStore] Recipe '\(recipe.name)' not found in backend, creating it...")
+                
+                do {
+                    // Convert Recipe to AI format for backend creation
+                    let aiIngredients = recipe.ingredients.map { ingredient in
+                        AIIngredient(
+                            name: ingredient.name,
+                            amount: "\(ingredient.amount) \(ingredient.unit)".trimmingCharacters(in: .whitespaces)
+                        )
+                    }
+                    
+                    let aiNutritionInfo = AINutritionInfo(
+                        calories: extractNumericValue(from: recipe.nutritionInfo?.calories),
+                        protein: extractNumericValue(from: recipe.nutritionInfo?.protein),
+                        carbohydrates: extractNumericValue(from: recipe.nutritionInfo?.carbohydrates),
+                        fat: extractNumericValue(from: recipe.nutritionInfo?.fat),
+                        fiber: extractNumericValue(from: recipe.nutritionInfo?.fiber),
+                        sodium: extractNumericValue(from: recipe.nutritionInfo?.sodium),
+                        sugar: extractNumericValue(from: recipe.nutritionInfo?.sugar),
+                        servings: recipe.nutritionInfo?.servings
+                    )
+                    
+                    let aiRecipeData = AIGeneratedRecipe(
+                        name: recipe.name,
+                        description: recipe.description ?? "",
+                        cuisine: recipe.cuisine ?? "Unknown",
+                        difficulty: recipe.difficulty ?? .medium,
+                        prepTime: recipe.prepTime ?? 30,
+                        cookTime: recipe.cookTime ?? 30,
+                        imageUrl: recipe.imageUrl,
+                        ingredients: aiIngredients,
+                        instructions: recipe.instructions,
+                        nutritionInfo: aiNutritionInfo,
+                        tags: recipe.tags
+                    )
+                    
+                    let createRequest = CreateRecipeFromAIRequest(
+                        aiRecipeData: aiRecipeData,
+                        saveToAccount: true,
+                        addToMealPlan: nil,
+                        mealPlanDay: nil,
+                        mealPlanType: nil
+                    )
+                    
+                    let createdRecipe = try await recipeService.createRecipeFromAI(createRequest)
+                    print("✅ [MealPlanStore] Successfully created recipe '\(createdRecipe.name)' in backend with ID: \(createdRecipe.id)")
+                    updatedRecipes.append(createdRecipe)
+                    recipesCreated += 1
+                    
+                } catch {
+                    print("❌ [MealPlanStore] Failed to create recipe '\(recipe.name)' in backend: \(error)")
+                    // Still add the original recipe to continue processing, but log the error
+                    updatedRecipes.append(recipe)
+                    throw error
+                }
+            }
+        }
+        
+        return updatedRecipes
+    }
+    
+    /// Extract numeric value from nutrition string (e.g., "25g" -> 25)
+    private func extractNumericValue(from nutritionString: String?) -> Int? {
+        guard let str = nutritionString, !str.isEmpty else { return nil }
+        
+        // Use regex to extract the first number from the string
+        let pattern = #"(\d+(?:\.\d+)?)"#
+        if let regex = try? NSRegularExpression(pattern: pattern),
+           let match = regex.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)),
+           let range = Range(match.range(at: 1), in: str) {
+            let numberString = String(str[range])
+            return Int(Double(numberString) ?? 0)
+        }
+        
+        return nil
     }
     
     // MARK: - AI Generation State Computed Properties

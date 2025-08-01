@@ -121,12 +121,12 @@ struct AIIngredient: Codable {
 
 struct AINutritionInfo: Codable {
     let calories: Int?
-    let protein: String?
-    let carbohydrates: String?
-    let fat: String?
-    let fiber: String?
-    let sodium: String?
-    let sugar: String?
+    let protein: Int?       // Changed from String to Int for backend validation
+    let carbohydrates: Int? // Changed from String to Int for backend validation
+    let fat: Int?           // Changed from String to Int for backend validation
+    let fiber: Int?         // Changed from String to Int for backend validation
+    let sodium: Int?        // Changed from String to Int for backend validation
+    let sugar: Int?         // Changed from String to Int for backend validation
     let servings: Int?
 }
 
@@ -155,12 +155,12 @@ extension AIGeneratedRecipe {
     func toRecipe(id: String = UUID().uuidString, createdByUser: String = "AI Generated") -> Recipe {
         let nutrition = NutritionInfo(
             calories: nutritionInfo.calories != nil ? String(nutritionInfo.calories!) : nil,
-            protein: nutritionInfo.protein,
-            carbohydrates: nutritionInfo.carbohydrates,
-            fat: nutritionInfo.fat,
-            fiber: nutritionInfo.fiber,
-            sodium: nutritionInfo.sodium,
-            sugar: nutritionInfo.sugar,
+            protein: nutritionInfo.protein != nil ? String(nutritionInfo.protein!) : nil,
+            carbohydrates: nutritionInfo.carbohydrates != nil ? String(nutritionInfo.carbohydrates!) : nil,
+            fat: nutritionInfo.fat != nil ? String(nutritionInfo.fat!) : nil,
+            fiber: nutritionInfo.fiber != nil ? String(nutritionInfo.fiber!) : nil,
+            sodium: nutritionInfo.sodium != nil ? String(nutritionInfo.sodium!) : nil,
+            sugar: nutritionInfo.sugar != nil ? String(nutritionInfo.sugar!) : nil,
             servings: nutritionInfo.servings
         )
         
