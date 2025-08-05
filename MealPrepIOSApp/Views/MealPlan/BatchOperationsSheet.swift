@@ -264,7 +264,7 @@ extension BatchOperationsSheet {
     private var weekDateString: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        let startDate = mealPlanStore.selectedWeekStartDate
+        let startDate = Date().startOfWeek()
         let endDate = Calendar.current.date(byAdding: .day, value: 6, to: startDate) ?? startDate
         
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
@@ -502,12 +502,17 @@ enum BatchOperation: CaseIterable, Identifiable {
     @MainActor func isAvailable(for store: MealPlanStore) -> Bool {
         switch self {
         case .copyFromLastWeek:
-            // Check if there's a previous week plan
+            // Check if there's a previous week plan stored locally
             let calendar = Calendar.current
-            let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: store.selectedWeekStartDate)!
-            return store.mealPlans.contains { plan in
-                calendar.isDate(plan.weekStartDate, inSameDayAs: lastWeekStart)
+            let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: Date().startOfWeek())!
+            // Check if there's stored meal data for the previous week
+            let normalizedLastWeekStart = store.localStorageService.normalizeWeekStartDate(lastWeekStart)
+            if let previousWeekGrid = store.localStorageService.loadMealPlan(for: normalizedLastWeekStart) {
+                return !previousWeekGrid.dailyMeals.allSatisfy { dailyMeal in
+                    dailyMeal.breakfast.isEmpty && dailyMeal.lunch.isEmpty && dailyMeal.dinner.isEmpty
+                }
             }
+            return false
         case .clearAllMeals, .duplicateToNextWeek:
             return store.activeMealPlan != nil
         case .generateShoppingList:

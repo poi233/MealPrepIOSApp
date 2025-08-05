@@ -36,7 +36,7 @@ class RecipeStore: ObservableObject {
     @Published var isDeletingRecipe = false
     
     private let recipeService = RecipeService()
-    // private let cacheManager = RecipeCacheManager() // TODO: Implement cache manager
+    private let cacheManager = MultiTierCacheManager()
     private let networkManager = NetworkManager.shared
 
     private var cancellables = Set<AnyCancellable>()
@@ -99,7 +99,19 @@ class RecipeStore: ObservableObject {
         isLoading = !refresh && recipes.isEmpty
         isLoadingMore = !recipes.isEmpty
         
-        // If offline, load from cache
+        // Generate cache key for current search/filter state
+        let cacheKey = MultiTierCacheManager.cacheKey(for: searchQuery, filters: buildCurrentFilterDict())
+        
+        // Try cache first (unless refresh is forced)
+        if !refresh, let cachedRecipes = cacheManager.getCachedRecipes(forKey: cacheKey) {
+            print("📦 [RecipeStore] Using cached recipes for query: \(searchQuery)")
+            recipes = cachedRecipes
+            isLoading = false
+            isLoadingMore = false
+            return
+        }
+        
+        // If offline, try cache anyway
         if isOffline {
             await loadFromCache()
             return
@@ -128,8 +140,12 @@ class RecipeStore: ObservableObject {
             totalCount = response.count
             hasMorePages = response.next != nil
             
-            // TODO: Cache the recipes (cache not implemented)
-            // try await cacheManager.save(response.results)
+            // Cache the successful response
+            if currentPage == 1 {
+                // Only cache first page results to avoid stale data
+                cacheManager.cacheRecipes(response.results, forKey: cacheKey)
+                print("📦 [RecipeStore] Cached \(response.results.count) recipes for key: \(cacheKey)")
+            }
             
         } catch {
             print("[Loading recipes] Error: \(error.localizedDescription)")
@@ -143,11 +159,82 @@ class RecipeStore: ObservableObject {
     }
     
     private func loadFromCache() async {
-        // TODO: Implement cache loading
-        print("Cache loading not implemented - no cached recipes available")
-        self.recipes = []
-        self.totalCount = 0
-        self.hasMorePages = false
+        print("🔍 [RecipeStore] Loading from cache (offline mode)")
+        // Try to load from any available cache
+        let cacheKey = MultiTierCacheManager.cacheKey(for: searchQuery, filters: buildCurrentFilterDict())
+        if let cachedRecipes = cacheManager.getCachedRecipes(forKey: cacheKey) {
+            recipes = cachedRecipes
+            totalCount = cachedRecipes.count
+            hasMorePages = false
+            print("📦 [RecipeStore] Loaded \(cachedRecipes.count) recipes from cache")
+        } else {
+            print("❌ [RecipeStore] No cached recipes available")
+            self.recipes = []
+            self.totalCount = 0
+            self.hasMorePages = false
+        }
+    }
+    
+    /// Convert current filters to dictionary format for cache key generation
+    private func buildCurrentFilterDict() -> [String: Any] {
+        var filterDict: [String: Any] = [:]
+        
+        if let cuisine = selectedCuisine {
+            filterDict["cuisine"] = cuisine
+        }
+        
+        if let difficulty = selectedDifficulty {
+            filterDict["difficulty"] = difficulty.rawValue
+        }
+        
+        if let mealType = selectedMealType {
+            filterDict["mealType"] = mealType.rawValue
+        }
+        
+        filterDict["showMyRecipesOnly"] = showMyRecipesOnly
+        
+        // Add filters from the RecipeFilters object (matching actual structure)
+        if let filterSearch = filters.search {
+            filterDict["filterSearch"] = filterSearch
+        }
+        
+        if let filterCuisine = filters.cuisine {
+            filterDict["filterCuisine"] = filterCuisine
+        }
+        
+        if let filterDifficulty = filters.difficulty {
+            filterDict["filterDifficulty"] = filterDifficulty.rawValue
+        }
+        
+        if let prepTimeMax = filters.prepTimeMax {
+            filterDict["prepTimeMax"] = prepTimeMax
+        }
+        
+        if let cookTimeMax = filters.cookTimeMax {
+            filterDict["cookTimeMax"] = cookTimeMax
+        }
+        
+        if let totalTimeMax = filters.totalTimeMax {
+            filterDict["totalTimeMax"] = totalTimeMax
+        }
+        
+        if let avgRatingMin = filters.avgRatingMin {
+            filterDict["avgRatingMin"] = avgRatingMin
+        }
+        
+        if let tags = filters.tags, !tags.isEmpty {
+            filterDict["tags"] = tags.joined(separator: ",")
+        }
+        
+        if let filterMealType = filters.mealType {
+            filterDict["filterMealType"] = filterMealType.rawValue
+        }
+        
+        if let myRecipes = filters.myRecipes {
+            filterDict["myRecipes"] = myRecipes
+        }
+        
+        return filterDict
     }
     
     private func applyLocalFilters(to recipes: [Recipe]) -> [Recipe] {
@@ -506,12 +593,96 @@ class RecipeStore: ObservableObject {
         }
     }
     
+    // MARK: - Recipe Stub Application
+    
+    /// Apply a RecipeStub to user's meal plan by converting it to a complete Recipe
+    func applyMealToPlan(
+        recipeStub: RecipeStub,
+        mealPlanId: String?,
+        dayOfWeek: Int,
+        mealType: String,
+        servingSize: Double = 1.0,
+        saveToAccount: Bool = true
+    ) async -> Bool {
+        do {
+            print("🔄 [RecipeStore] Applying meal to plan: \(recipeStub.name)")
+            
+            // Create the request model
+            let request = ApplyMealRequest(
+                recipeStub: recipeStub,
+                mealPlanId: mealPlanId,
+                dayOfWeek: dayOfWeek,
+                mealType: mealType,
+                servingSize: servingSize,
+                saveToAccount: saveToAccount
+            )
+            
+            // Call the AI service to apply the meal
+            let response = try await recipeService.applyMealToPlan(request)
+            
+            if response.success {
+                print("✅ [RecipeStore] Successfully applied meal to plan")
+                
+                // Cache the created recipe locally for quick access
+                if let recipe = response.recipe {
+                    await cacheRecipe(recipe)
+                }
+                
+                return true
+            } else {
+                print("❌ [RecipeStore] Failed to apply meal: \(response.message ?? "Unknown error")")
+                errorMessage = response.message ?? "Failed to apply meal to plan"
+                return false
+            }
+            
+        } catch {
+            print("❌ [RecipeStore] Error applying meal to plan: \(error)")
+            errorMessage = "Failed to apply meal: \(error.localizedDescription)"
+            return false
+        }
+    }
+    
+    /// Cache a recipe in memory for quick access
+    private func cacheRecipe(_ recipe: Recipe) async {
+        // Check if recipe already exists in our local cache
+        if let existingIndex = recipes.firstIndex(where: { $0.id == recipe.id }) {
+            // Update existing recipe
+            recipes[existingIndex] = recipe
+        } else {
+            // Add new recipe to the beginning of the list
+            recipes.insert(recipe, at: 0)
+            totalCount += 1
+        }
+        
+        print("📦 [RecipeStore] Cached recipe: \(recipe.name)")
+    }
+    
     // MARK: - Error Handling
     
     func clearError() {
+        errorMessage = nil
     }
     
     func handleError(_ error: Error) {
         errorMessage = error.localizedDescription
+    }
+}
+
+// MARK: - RecipeStore Errors
+
+enum RecipeStoreError: LocalizedError {
+    case applyMealFailed(String)
+    case networkError(String)
+    case decodingError(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .applyMealFailed(let message):
+            return "Apply meal failed: \(message)"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .decodingError(let message):
+            return "Decoding error: \(message)"
+        }
     }
 }

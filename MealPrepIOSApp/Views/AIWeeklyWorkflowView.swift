@@ -14,17 +14,11 @@ struct AIWeeklyWorkflowView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
     
-    // MARK: - Workflow Coordinator
-    @StateObject private var coordinator: AIWorkflowCoordinator
-    
-    // MARK: - Initialization
-    init() {
-        // We'll initialize coordinator in onAppear since we need environment objects
-        _coordinator = StateObject(wrappedValue: AIWorkflowCoordinator(
-            mealPlanStore: MealPlanStore(),
-            recipeStore: RecipeStore()
-        ))
-    }
+    // MARK: - Workflow Coordinator - Initialize with empty stores, update in onAppear
+    @StateObject private var coordinator = AIWorkflowCoordinator(
+        mealPlanStore: MealPlanStore(),
+        recipeStore: RecipeStore()
+    )
     
     var body: some View {
         NavigationView {
@@ -161,7 +155,7 @@ struct AIWeeklyWorkflowView: View {
     // MARK: - Preview Step
     private var previewStepView: some View {
         Group {
-            if let previewPlan = coordinator.generatedMealPlan {
+            if let previewPlan = mealPlanStore.aiGenerationService.previewMealPlan {
                 AIWeeklyPreviewView(generatedMealPlan: previewPlan)
                     .navigationBarHidden(true)
                     .overlay(alignment: .bottom) {

@@ -1,17 +1,14 @@
 {
   "images" : [
     {
-      "filename" : "recipe-placeholder.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "recipe-placeholder@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "recipe-placeholder@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

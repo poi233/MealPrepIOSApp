@@ -24,7 +24,7 @@ struct AIWeeklyGenerationView: View {
     @State private var selectedDietType: DietType?
     @State private var selectedAllergies: Set<String> = []
     @State private var calorieTarget: Double = 2000
-    @State private var weekStartDate = Date()
+    // weekStartDate removed - dates managed by WeeklyMealGrid
     
     // MARK: - UI State
     @State private var showingCalorieSlider = false
@@ -331,9 +331,9 @@ struct AIWeeklyGenerationView: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                DatePicker("", selection: $weekStartDate, displayedComponents: .date)
-                    .datePickerStyle(.compact)
-                    .labelsHidden()
+                Text("Using current week dates")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
             }
             .greenThemeCard()
             
@@ -367,7 +367,7 @@ struct AIWeeklyGenerationView: View {
                 }
                 
                 summaryRow(title: "Calories", value: "\(Int(calorieTarget))/day")
-                summaryRow(title: "Week", value: DateFormatter.weekFormat.string(from: weekStartDate))
+                summaryRow(title: "Week", value: "Current Week")
             }
         }
         .greenThemeCard()
@@ -519,7 +519,7 @@ struct AIWeeklyGenerationView: View {
         let today = Date()
         let weekday = calendar.component(.weekday, from: today)
         let daysUntilMonday = weekday == 1 ? 1 : (9 - weekday) % 7
-        weekStartDate = calendar.date(byAdding: .day, value: daysUntilMonday, to: today) ?? today
+        // weekStartDate initialization removed
     }
     
     private func generateWeeklyPlan() {
@@ -531,7 +531,7 @@ struct AIWeeklyGenerationView: View {
             allergies: Array(selectedAllergies),
             dislikes: [],
             calorieTarget: Int(calorieTarget),
-            weekStartDate: weekStartDate,
+            // weekStartDate parameter removed
             additionalRequirements: nil
         )
         
@@ -546,7 +546,7 @@ struct AIWeeklyGenerationView: View {
                     allergies: request.allergies,
                     dislikes: request.dislikes,
                     calorieTarget: request.calorieTarget,
-                    weekStartDate: request.weekStartDate,
+                    // weekStartDate parameter removed
                     additionalRequirements: request.additionalRequirements
                 )
                 

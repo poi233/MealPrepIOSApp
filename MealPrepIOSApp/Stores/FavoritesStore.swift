@@ -55,7 +55,9 @@ class FavoritesStore: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             if let recipeId = notification.userInfo?[RecipeDeletionNotificationKeys.recipeId] as? String {
-                self?.removeDeletedRecipeFromFavorites(recipeId: recipeId)
+                Task { @MainActor in
+                    self?.removeDeletedRecipeFromFavorites(recipeId: recipeId)
+                }
             }
         }
         
@@ -65,7 +67,9 @@ class FavoritesStore: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.clearAllData()
+            Task { @MainActor in
+                self?.clearAllData()
+            }
         }
     }
     

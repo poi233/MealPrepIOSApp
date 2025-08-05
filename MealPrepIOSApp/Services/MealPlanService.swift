@@ -144,7 +144,6 @@ class MealPlanService {
             allergies: preferences.excludeIngredients,
             dislikes: nil,
             calorieTarget: preferences.targetCalories,
-            weekStartDate: Date(),
             additionalRequirements: nil
         )
         
@@ -158,7 +157,6 @@ class MealPlanService {
         allergies: [String] = [],
         dislikes: [String] = [],
         calorieTarget: Int? = nil,
-        weekStartDate: Date? = nil,
         additionalRequirements: String? = nil
     ) async throws -> MealPlan {
         
@@ -173,7 +171,6 @@ class MealPlanService {
             allergies: allergies.isEmpty ? nil : allergies,
             dislikes: dislikes.isEmpty ? nil : dislikes,
             calorieTarget: calorieTarget,
-            weekStartDate: weekStartDate,
             additionalRequirements: additionalRequirements
         )
         
@@ -255,17 +252,8 @@ class MealPlanService {
     }
     
     
-    /// Get meal plan for a specific week
-    func getMealPlanForWeek(startDate: Date) async throws -> MealPlan? {
-        let calendar = Calendar.current
-        
-        // Search for meal plans that start in the specified week
-        let allMealPlans = try await getAllMealPlans()
-        
-        return allMealPlans.first { mealPlan in
-            calendar.isDate(mealPlan.weekStartDate, inSameDayAs: startDate)
-        }
-    }
+    // REMOVED: getMealPlanForWeek method - no longer supported after weekStartDate elimination
+    // Meal plans are now managed through local storage with WeeklyMealGrid
     
     /// Duplicate a meal plan for a new week
     func duplicateMealPlan(id: String, newWeekStartDate: Date) async throws -> MealPlan {
@@ -315,6 +303,22 @@ class MealPlanService {
         }
         
         return try await getMealPlan(id: mealPlanId)
+    }
+    
+    // MARK: - Recent Meals and AI Recommendations
+    
+    /// Get recent meals used in meal plans
+    func getRecentMeals(limit: Int = 10) async throws -> [Recipe] {
+        // This could be implemented to fetch recently used recipes from backend
+        // For now, return empty array as placeholder
+        return []
+    }
+    
+    /// Get AI-recommended recipes
+    func getAIRecommendations(limit: Int = 5) async throws -> [Recipe] {
+        // This could be implemented to fetch AI recommendations from backend
+        // For now, return empty array as placeholder
+        return []
     }
     
     // MARK: - Private Helper Methods

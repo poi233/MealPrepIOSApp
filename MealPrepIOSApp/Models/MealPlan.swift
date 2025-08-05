@@ -13,45 +13,48 @@ struct MealPlan: Codable, Identifiable, Equatable {
     let userId: String?
     let name: String
     let description: String?
-    let weekStartDate: Date
     let isActive: Bool
     let planDescription: String?
     let analysisText: String?
     let items: [MealPlanItem]?
     let itemsCount: Int?
-    let dailyMeals: [DailyMeal]?  // Add support for AI-generated meal plans
+    let dailyMeals: [DailyMeal]?            // Full recipes for applied meal plans
+    let lightweightDailyMeals: [LightweightDailyMeal]?  // Recipe stubs for AI-generated suggestions
     let createdAt: Date
     let updatedAt: Date
+    
+    // Removed weekStartDate - weeklyMealGrid now handles date calculations internally
     
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
         case name
         case description
-        case weekStartDate = "week_start_date"
         case isActive = "is_active"
         case planDescription = "plan_description"
         case analysisText = "analysis_text"
         case items
         case itemsCount = "items_count"
         case dailyMeals = "daily_meals"
+        case lightweightDailyMeals = "lightweight_daily_meals"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+        // Removed weekStartDate from CodingKeys - no longer sent to/from backend
     }
     
-    // Standard initializer
+    // Standard initializer - weekStartDate removed
     init(
         id: String,
         userId: String?,
         name: String,
         description: String?,
-        weekStartDate: Date,
         isActive: Bool,
         planDescription: String?,
         analysisText: String?,
         items: [MealPlanItem]?,
         itemsCount: Int?,
         dailyMeals: [DailyMeal]? = nil,
+        lightweightDailyMeals: [LightweightDailyMeal]? = nil,
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -59,13 +62,13 @@ struct MealPlan: Codable, Identifiable, Equatable {
         self.userId = userId
         self.name = name
         self.description = description
-        self.weekStartDate = weekStartDate
         self.isActive = isActive
         self.planDescription = planDescription
         self.analysisText = analysisText
         self.items = items
         self.itemsCount = itemsCount
         self.dailyMeals = dailyMeals
+        self.lightweightDailyMeals = lightweightDailyMeals
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -91,42 +94,9 @@ struct MealPlan: Codable, Identifiable, Equatable {
         items = try container.decodeIfPresent([MealPlanItem].self, forKey: .items)
         itemsCount = try container.decodeIfPresent(Int.self, forKey: .itemsCount)
         dailyMeals = try container.decodeIfPresent([DailyMeal].self, forKey: .dailyMeals)
+        lightweightDailyMeals = try container.decodeIfPresent([LightweightDailyMeal].self, forKey: .lightweightDailyMeals)
         
-        // Handle flexible date parsing for week_start_date
-        if let dateString = try? container.decode(String.self, forKey: .weekStartDate) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.timeZone = TimeZone(secondsFromGMT: 0)
-            
-            // Try simple date format first (YYYY-MM-DD)
-            formatter.dateFormat = "yyyy-MM-dd"
-            if let date = formatter.date(from: dateString) {
-                weekStartDate = date
-            } else {
-                // Try ISO-8601 format with microseconds
-                formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"
-                if let date = formatter.date(from: dateString) {
-                    weekStartDate = date
-                } else {
-                    // Try ISO-8601 format with milliseconds
-                    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-                    if let date = formatter.date(from: dateString) {
-                        weekStartDate = date
-                    } else {
-                        // Try basic ISO-8601 format
-                        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-                        if let date = formatter.date(from: dateString) {
-                            weekStartDate = date
-                        } else {
-                            throw DecodingError.dataCorruptedError(forKey: .weekStartDate, in: container, debugDescription: "Cannot decode date string '\(dateString)'. Expected formats: yyyy-MM-dd or ISO-8601")
-                        }
-                    }
-                }
-            }
-        } else {
-            // Fallback to standard Date decoding
-            weekStartDate = try container.decode(Date.self, forKey: .weekStartDate)
-        }
+        // weekStartDate parsing completely removed - backend may still send it but iOS ignores it
         
         // Handle flexible date parsing for timestamps
         createdAt = try container.decode(Date.self, forKey: .createdAt)
@@ -200,7 +170,6 @@ struct GenerateMealPlanRequest: Codable {
     let allergies: [String]?
     let dislikes: [String]?
     let calorieTarget: Int?
-    let weekStartDate: Date?
     let additionalRequirements: String?
     
     enum CodingKeys: String, CodingKey {
@@ -209,29 +178,7 @@ struct GenerateMealPlanRequest: Codable {
         case allergies
         case dislikes
         case calorieTarget = "calorie_target"
-        case weekStartDate = "week_start_date"
         case additionalRequirements = "additional_requirements"
-    }
-    
-    // Custom encoding to format date as YYYY-MM-DD string for Django DateField
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        try container.encode(planDescription, forKey: .planDescription)
-        try container.encodeIfPresent(dietaryPreferences, forKey: .dietaryPreferences)
-        try container.encodeIfPresent(allergies, forKey: .allergies)
-        try container.encodeIfPresent(dislikes, forKey: .dislikes)
-        try container.encodeIfPresent(calorieTarget, forKey: .calorieTarget)
-        try container.encodeIfPresent(additionalRequirements, forKey: .additionalRequirements)
-        
-        // Format date as YYYY-MM-DD string for Django DateField compatibility
-        if let weekStartDate = weekStartDate {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
-            let dateString = dateFormatter.string(from: weekStartDate)
-            try container.encode(dateString, forKey: .weekStartDate)
-        }
     }
 }
 
@@ -271,16 +218,14 @@ struct MealPlanAnalysis: Codable {
 
 // MARK: - Weekly Meal Grid (UI Helper)
 struct WeeklyMealGrid: Codable {
-    let weekStartDate: Date
     var dailyMeals: [DailyMealSlots]
     
-    init(weekStartDate: Date = Date()) {
-        self.weekStartDate = weekStartDate
+    init() {
         self.dailyMeals = []
         
-        // Initialize 7 days starting from Monday
+        // Initialize 7 days starting from Monday based on current date
         let calendar = Calendar.mondayFirst
-        let actualWeekStart = weekStartDate.startOfWeek() // Ensure we start from Monday
+        let actualWeekStart = Date().startOfWeek() // Use current date to calculate week start
         
         for i in 0..<7 {
             if let date = calendar.date(byAdding: .day, value: i, to: actualWeekStart) {
@@ -290,6 +235,21 @@ struct WeeklyMealGrid: Codable {
                 dailyMeals.append(DailyMealSlots(day: dayName, date: date))
             }
         }
+    }
+    
+    // Helper methods for date extraction from dailyMeals when needed
+    func getWeekStartDate() -> Date {
+        return dailyMeals.first?.date ?? Date().startOfWeek()
+    }
+    
+    func getWeekEndDate() -> Date {
+        return dailyMeals.last?.date ?? Date().endOfWeek()
+    }
+    
+    // Custom Codable implementation to exclude weekStartDate from encoding/decoding
+    enum CodingKeys: String, CodingKey {
+        case dailyMeals
+        // weekStartDate excluded - it's now computed from dailyMeals dates
     }
 }
 
@@ -384,6 +344,33 @@ struct CreateMealPlanItemRequest: Codable {
         case dayOfWeek = "day_of_week"
         case mealType = "meal_type"
         case servingSize = "serving_size"
+    }
+}
+
+// MARK: - WeeklyMealGrid Extensions
+
+extension WeeklyMealGrid {
+    /// Check if there are any meals planned for this week
+    var hasAnyMeals: Bool {
+        return dailyMeals.contains { day in
+            !day.breakfast.isEmpty || !day.lunch.isEmpty || !day.dinner.isEmpty
+        }
+    }
+    
+    /// Get total count of all meals (recipes) in the week
+    var totalMealsCount: Int {
+        return dailyMeals.reduce(0) { total, day in
+            total + day.breakfast.count + day.lunch.count + day.dinner.count
+        }
+    }
+    
+    /// Remove a recipe by ID from all meal slots
+    mutating func removeRecipe(_ recipeId: String) {
+        for dayIndex in 0..<dailyMeals.count {
+            dailyMeals[dayIndex].breakfast.removeAll { $0.id == recipeId }
+            dailyMeals[dayIndex].lunch.removeAll { $0.id == recipeId }
+            dailyMeals[dayIndex].dinner.removeAll { $0.id == recipeId }
+        }
     }
 }
 

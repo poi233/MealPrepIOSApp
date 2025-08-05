@@ -652,9 +652,9 @@ struct RoundedCorner: Shape {
 // MARK: - Preview Helpers
 #Preview("Shimmer Button") {
     VStack(spacing: 20) {
-        ShimmerButton("Login") {}
-        ShimmerButton("Loading", isLoading: true) {}
-        ShimmerButton("Disabled", disabled: true) {}
+        StaticButton("Login") {}
+        StaticButton("Loading", isLoading: true) {}
+        StaticButton("Disabled", disabled: true) {}
     }
     .padding()
 }
@@ -679,8 +679,8 @@ struct RoundedCorner: Shape {
 
 #Preview("Animated Text Field") {
     VStack(spacing: 20) {
-        AnimatedTextField("Email", text: .constant(""))
-        AnimatedTextField("Password", text: .constant(""), isSecure: true)
+        StaticTextField("Email", text: .constant(""))
+        StaticTextField("Password", text: .constant(""), isSecure: true)
     }
     .padding()
 }

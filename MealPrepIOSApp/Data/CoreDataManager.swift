@@ -108,7 +108,7 @@ class CoreDataManager: ObservableObject {
         // Ensure CoreData is initialized
         _ = persistentContainer
         
-        return try await MainActor.run {
+        return try await MainActor.run { [predicate, sortDescriptors] in
             let request = NSFetchRequest<T>(entityName: String(describing: type))
             request.predicate = predicate
             request.sortDescriptors = sortDescriptors
@@ -121,7 +121,7 @@ class CoreDataManager: ObservableObject {
         // Ensure CoreData is initialized
         _ = persistentContainer
         
-        return try await MainActor.run {
+        return try await MainActor.run { [predicate] in
             let request = NSFetchRequest<T>(entityName: String(describing: type))
             request.predicate = predicate
             request.fetchLimit = 1
@@ -131,7 +131,7 @@ class CoreDataManager: ObservableObject {
     }
     
     func count<T: NSManagedObject>(_ type: T.Type, predicate: NSPredicate? = nil) async throws -> Int {
-        return try await MainActor.run {
+        return try await MainActor.run { [predicate] in
             let request = NSFetchRequest<T>(entityName: String(describing: type))
             request.predicate = predicate
             
@@ -193,7 +193,7 @@ class RecipeCacheManager: CacheManager {
     func save(_ recipes: [Recipe]) async throws {
         let backgroundContext = coreData.newBackgroundContext()
         
-        try await backgroundContext.perform {
+        await backgroundContext.perform {
             for recipe in recipes {
                 let cachedRecipe = CachedRecipe(context: backgroundContext)
                 cachedRecipe.fromRecipe(recipe)
@@ -296,7 +296,7 @@ class UserCacheManager: CacheManager {
     func save(_ users: [User]) async throws {
         let backgroundContext = coreData.newBackgroundContext()
         
-        try await backgroundContext.perform {
+        await backgroundContext.perform {
             for user in users {
                 let cachedUser = CachedUser(context: backgroundContext)
                 cachedUser.fromUser(user)

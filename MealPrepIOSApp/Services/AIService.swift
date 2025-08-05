@@ -64,7 +64,6 @@ class AIService {
             allergies: allergies.isEmpty ? nil : allergies,
             dislikes: nil,
             calorieTarget: calorieTarget,
-            weekStartDate: nil,
             additionalRequirements: nil
         )
         

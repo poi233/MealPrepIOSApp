@@ -192,6 +192,13 @@ class NetworkManager: ObservableObject {
             // Log response summary
             print("📥 [NetworkManager] Response: \(httpResponse.statusCode) (\(data.count) bytes)")
             
+            // For AI generation errors, log the response body to see validation details
+            if endpoint.path.contains("/ai/generate-meal-plan/") && httpResponse.statusCode >= 400 {
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("❌ [NetworkManager] AI Generation Error Response: \(responseString)")
+                }
+            }
+            
             // Check for authentication errors
             if httpResponse.statusCode == 401 {
                 if endpoint.requiresAuth {
@@ -509,12 +516,12 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
     
     private static func getBaseURL() -> String {
-        return "https://meal-prep-app-backend.vercel.app/api"
-//        #if DEBUG
-//        return "http://127.0.0.1:8000/api"
-//        #else
 //        return "https://meal-prep-app-backend.vercel.app/api"
-//        #endif
+        #if DEBUG
+        return "http://127.0.0.1:8000/api"
+        #else
+        return "https://meal-prep-app-backend.vercel.app/api"
+        #endif
     }
 }
 
@@ -547,11 +554,34 @@ extension NetworkManager {
             print("[DEBUG] NetworkManager.post - Endpoint: \(path)")
             
             if let bodyString = String(data: bodyData, encoding: .utf8) {
-                // For AI meal plan generation, log the date format
+                // For AI meal plan generation, log FULL REQUEST PAYLOAD to debug validation error
                 if path.contains("/ai/generate-meal-plan/") {
-                    if let range = bodyString.range(of: "\"week_start_date\":\"[^\"]*\"", options: .regularExpression) {
-                        let dateUrlPart = String(bodyString[range])
-                        print("[DEBUG] NetworkManager.post - Request contains: \(dateUrlPart)")
+                    print("🔍 [NetworkManager] FULL AI Generation Request JSON:")
+                    print("🔍 [NetworkManager] \(bodyString)")
+                    
+                    // Parse and validate each required field
+                    do {
+                        if let jsonData = bodyString.data(using: .utf8),
+                           let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                            print("🔍 [NetworkManager] Parsed JSON fields:")
+                            for (key, value) in jsonObject {
+                                print("🔍 [NetworkManager]   \(key): \(value)")
+                                
+                                // Check if plan_description is valid
+                                if key == "plan_description" {
+                                    let desc = value as? String ?? ""
+                                    if desc.isEmpty {
+                                        print("❌ [NetworkManager] plan_description is EMPTY!")
+                                    } else if desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        print("❌ [NetworkManager] plan_description is only whitespace!")
+                                    } else {
+                                        print("✅ [NetworkManager] plan_description is valid: '\(desc)'")
+                                    }
+                                }
+                            }
+                        }
+                    } catch {
+                        print("❌ [NetworkManager] Failed to parse JSON: \(error)")
                     }
                 }
                 
@@ -565,9 +595,11 @@ extension NetworkManager {
                     print("[DEBUG] NetworkManager.post - Request body does NOT contain image_url field")
                 }
                 
-                // Show first 500 chars of body for debugging
-                let bodyPreview = String(bodyString.prefix(500))
-                print("[DEBUG] NetworkManager.post - Request body preview: \(bodyPreview)")
+                // Show first 500 chars of body for debugging (unless it's AI generation - we logged full above)
+                if !path.contains("/ai/generate-meal-plan/") {
+                    let bodyPreview = String(bodyString.prefix(500))
+                    print("[DEBUG] NetworkManager.post - Request body preview: \(bodyPreview)")
+                }
             }
         }
         

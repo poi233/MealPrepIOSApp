@@ -19,10 +19,19 @@ struct AIWeeklyPreviewView: View {
     var onRegenerate: (() -> Void)? = nil
     var onCancel: (() -> Void)? = nil
     
-    // MARK: - Preview Data
+    // MARK: - Preview Data - Now directly observing AIGenerationService
     let generatedMealPlan: MealPlan
-    @State private var previewGrid: WeeklyMealGrid
     @State private var nutritionSummary: NutritionSummary?
+    
+    // MARK: - Direct service observation for reactive UI updates
+    private var aiGenerationService: AIGenerationService {
+        mealPlanStore.aiGenerationService
+    }
+    
+    // MARK: - Computed preview grid from service
+    private var previewGrid: WeeklyMealGrid? {
+        aiGenerationService.previewWeeklyGrid
+    }
     
     // MARK: - UI State
     @State private var showingRecipeReplacement = false
@@ -38,34 +47,40 @@ struct AIWeeklyPreviewView: View {
     // MARK: - Initialization
     init(generatedMealPlan: MealPlan) {
         self.generatedMealPlan = generatedMealPlan
-        self._previewGrid = State(initialValue: WeeklyMealGrid(weekStartDate: generatedMealPlan.weekStartDate))
     }
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Header with plan description
-                    planHeaderView
-                    
-                    // Nutrition Summary Card
-                    if let nutrition = nutritionSummary {
-                        nutritionSummaryCard(nutrition)
+            ZStack {
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Header with plan description
+                        planHeaderView
+                        
+                        // Nutrition Summary Card
+                        if let nutrition = nutritionSummary {
+                            nutritionSummaryCard(nutrition)
+                        }
+                        
+                        // Weekly Meal Grid Preview
+                        weeklyGridPreview
+                        
+                        // Action Buttons
+                        actionButtonsView
+                        
+                        Spacer(minLength: 20)
                     }
-                    
-                    // Weekly Meal Grid Preview
-                    weeklyGridPreview
-                    
-                    // Action Buttons
-                    actionButtonsView
-                    
-                    Spacer(minLength: 20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 100) // Add bottom padding to account for fixed overlay buttons
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 100) // Add bottom padding to account for fixed overlay buttons
+                .background(Color(.systemGroupedBackground))
+                
+                // Batch Generation Progress Overlay
+                if aiGenerationService.isBatchGenerating {
+                    batchGenerationProgressOverlay
+                }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle("AI Meal Plan Preview")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -77,6 +92,7 @@ struct AIWeeklyPreviewView: View {
                             dismiss()
                         }
                     }
+                    .disabled(aiGenerationService.isBatchGenerating)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -88,10 +104,10 @@ struct AIWeeklyPreviewView: View {
                         }
                     }
                     .foregroundColor(.primaryGreen)
+                    .disabled(aiGenerationService.isBatchGenerating)
                 }
             }
             .onAppear {
-                setupPreviewData()
                 calculateNutritionSummary()
             }
             .sheet(isPresented: $showingRecipeReplacement) {
@@ -271,20 +287,31 @@ struct AIWeeklyPreviewView: View {
                 .fontWeight(.semibold)
                 .padding(.horizontal)
             
-            LazyVStack(spacing: 12) {
-                ForEach(Array(previewGrid.dailyMeals.enumerated()), id: \.element.id) { dayIndex, dailyMeal in
-                    DailyPreviewCard(
-                        dailyMeal: dailyMeal,
-                        dayIndex: dayIndex,
-                        onMealSlotTapped: { mealType in
-                            selectedMealSlot = MealSlotIdentifier(dayIndex: dayIndex, mealType: mealType)
-                            showingRecipeReplacement = true
-                        },
-                        onDeleteMeal: { mealType, recipe in
-                            deleteMeal(dayIndex: dayIndex, mealType: mealType, recipe: recipe)
-                        }
-                    )
+            if let grid = previewGrid {
+                LazyVStack(spacing: 12) {
+                    ForEach(Array(grid.dailyMeals.enumerated()), id: \.element.id) { dayIndex, dailyMeal in
+                        DailyPreviewCard(
+                            dailyMeal: dailyMeal,
+                            dayIndex: dayIndex,
+                            onMealSlotTapped: { mealType in
+                                selectedMealSlot = MealSlotIdentifier(dayIndex: dayIndex, mealType: mealType)
+                                showingRecipeReplacement = true
+                            },
+                            onDeleteMeal: { mealType, recipe in
+                                deleteMeal(dayIndex: dayIndex, mealType: mealType, recipe: recipe)
+                            }
+                        )
+                    }
                 }
+            } else {
+                // Loading or error state
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Loading meal plan preview...")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 200)
             }
         }
     }
@@ -294,6 +321,136 @@ struct AIWeeklyPreviewView: View {
         // REMOVED: "Apply Meal Plan" and "Save As Template" buttons per user request
         // The "Apply Plan" button is available in the main workflow view
         EmptyView()
+    }
+    
+    // MARK: - Batch Generation Progress Overlay
+    private var batchGenerationProgressOverlay: some View {
+        ZStack {
+            // Semi-transparent background
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+            
+            // Progress card
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "brain")
+                        .font(.largeTitle)
+                        .foregroundColor(.primaryGreen)
+                    
+                    Text("正在生成详细食谱")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text("AI正在为每个食谱生成完整的配料和制作步骤")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                
+                // Progress information
+                if let progress = aiGenerationService.batchGenerationProgress {
+                    VStack(spacing: 16) {
+                        // Progress bar
+                        VStack(spacing: 8) {
+                            HStack {
+                                Text("进度")
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                
+                                Spacer()
+                                
+                                Text("\(progress.completed + progress.failed)/\(progress.total)")
+                                    .font(.callout)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primaryGreen)
+                            }
+                            
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    Rectangle()
+                                        .frame(width: geometry.size.width, height: 8)
+                                        .opacity(0.3)
+                                        .foregroundColor(.secondary)
+                                        .cornerRadius(4)
+                                    
+                                    Rectangle()
+                                        .frame(width: min(CGFloat(progress.completionRate) * geometry.size.width, geometry.size.width), height: 8)
+                                        .foregroundColor(.primaryGreen)
+                                        .cornerRadius(4)
+                                        .animation(.easeInOut(duration: 0.3), value: progress.completionRate)
+                                }
+                            }
+                            .frame(height: 8)
+                        }
+                        
+                        // Current recipe being processed
+                        if let currentRecipe = progress.currentRecipe {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                
+                                Text("正在处理: \(currentRecipe)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                            }
+                        }
+                        
+                        // Success and failure counts
+                        HStack(spacing: 24) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("\(progress.completed)")
+                                    .fontWeight(.medium)
+                                Text("成功")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if progress.failed > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("\(progress.failed)")
+                                        .fontWeight(.medium)
+                                    Text("回退")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                        .font(.callout)
+                    }
+                }
+                
+                // Estimated time remaining (optional)
+                if let progress = aiGenerationService.batchGenerationProgress,
+                   !progress.isComplete && progress.completed > 0 {
+                    let avgTimePerRecipe = 2.0 // Assume 2 seconds per recipe
+                    let remainingRecipes = progress.total - progress.completed - progress.failed
+                    let estimatedTimeRemaining = Double(remainingRecipes) * avgTimePerRecipe
+                    
+                    if estimatedTimeRemaining > 0 {
+                        Text("预计剩余时间: \(Int(estimatedTimeRemaining))秒")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            )
+            .frame(maxWidth: 320)
+        }
     }
     
     // MARK: - Regenerate Options
@@ -322,64 +479,23 @@ struct AIWeeklyPreviewView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
         
-        let startDate = generatedMealPlan.weekStartDate
+        let startDate = Date().startOfWeek()
         let endDate = Calendar.current.date(byAdding: .day, value: 6, to: startDate) ?? startDate
         
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
     
-    private func setupPreviewData() {
-        // Convert MealPlan to WeeklyMealGrid
-        previewGrid = WeeklyMealGrid(weekStartDate: generatedMealPlan.weekStartDate)
-        
-        print("🔄 [AIWeeklyPreviewView] Setting up preview data...")
-        print("📋 [AIWeeklyPreviewView] Has dailyMeals: \(generatedMealPlan.dailyMeals != nil)")
-        print("📋 [AIWeeklyPreviewView] Has items: \(generatedMealPlan.items != nil)")
-        
-        // Handle AI-generated meal plans with dailyMeals
-        if let dailyMeals = generatedMealPlan.dailyMeals {
-            print("📋 [AIWeeklyPreviewView] Processing \(dailyMeals.count) daily meals...")
-            
-            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
-                if dayIndex < previewGrid.dailyMeals.count {
-                    print("📋 [AIWeeklyPreviewView] Day \(dayIndex) (\(dailyMeal.day)): \(dailyMeal.breakfast.count) breakfast, \(dailyMeal.lunch.count) lunch, \(dailyMeal.dinner.count) dinner")
-                    
-                    // Now dailyMeal contains Recipe objects directly, no conversion needed
-                    previewGrid.dailyMeals[dayIndex].breakfast = dailyMeal.breakfast
-                    previewGrid.dailyMeals[dayIndex].lunch = dailyMeal.lunch
-                    previewGrid.dailyMeals[dayIndex].dinner = dailyMeal.dinner
-                }
-            }
-            
-            print("✅ [AIWeeklyPreviewView] Successfully loaded AI meal plan to preview grid")
-            return
-        }
-        
-        // Handle regular meal plans with items
-        if let items = generatedMealPlan.items {
-            print("📋 [AIWeeklyPreviewView] Processing \(items.count) meal plan items...")
-            
-            for item in items {
-                guard let recipe = item.recipe,
-                      item.dayOfWeek < previewGrid.dailyMeals.count else { continue }
-                
-                switch item.mealType.lowercased() {
-                case "breakfast":
-                    previewGrid.dailyMeals[item.dayOfWeek].breakfast.append(recipe)
-                case "lunch":
-                    previewGrid.dailyMeals[item.dayOfWeek].lunch.append(recipe)
-                case "dinner":
-                    previewGrid.dailyMeals[item.dayOfWeek].dinner.append(recipe)
-                default:
-                    break
-                }
-            }
-        }
-    }
+    // REMOVED: setupPreviewData() - Now using reactive previewGrid computed property from AIGenerationService
     
 
     
     private func calculateNutritionSummary() {
+        guard let grid = previewGrid else {
+            print("⚠️ [AIWeeklyPreviewView] Cannot calculate nutrition: no preview grid available")
+            nutritionSummary = nil
+            return
+        }
+        
         var totalCalories: Double = 0
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
@@ -389,7 +505,7 @@ struct AIWeeklyPreviewView: View {
         var totalSugar: Double = 0
         var totalRecipes: Int = 0
         
-        for dailyMeal in previewGrid.dailyMeals {
+        for dailyMeal in grid.dailyMeals {
             let allRecipes = dailyMeal.breakfast + dailyMeal.lunch + dailyMeal.dinner
             totalRecipes += allRecipes.count
             
@@ -430,8 +546,9 @@ struct AIWeeklyPreviewView: View {
     }
     
     private func calculateVarietyScore() -> Double {
+        guard let grid = previewGrid else { return 0.0 }
         // Simple variety calculation based on unique recipes
-        let allRecipes = previewGrid.dailyMeals.flatMap { [$0.breakfast, $0.lunch, $0.dinner].flatMap { $0 } }
+        let allRecipes = grid.dailyMeals.flatMap { [$0.breakfast, $0.lunch, $0.dinner].flatMap { $0 } }
         let uniqueRecipes = Set(allRecipes.map { $0.id })
         return min(1.0, Double(uniqueRecipes.count) / 15.0) // Assume 15+ unique recipes = 100% variety
     }
@@ -447,9 +564,10 @@ struct AIWeeklyPreviewView: View {
     }
     
     private func getCurrentRecipe(for slot: MealSlotIdentifier) -> Recipe? {
-        guard slot.dayIndex < previewGrid.dailyMeals.count else { return nil }
+        guard let grid = previewGrid,
+              slot.dayIndex < grid.dailyMeals.count else { return nil }
         
-        let dailyMeal = previewGrid.dailyMeals[slot.dayIndex]
+        let dailyMeal = grid.dailyMeals[slot.dayIndex]
         let recipes: [Recipe]
         
         switch slot.mealType {
@@ -465,32 +583,40 @@ struct AIWeeklyPreviewView: View {
     }
     
     private func replaceRecipe(in slot: MealSlotIdentifier, with newRecipe: Recipe) {
-        guard slot.dayIndex < previewGrid.dailyMeals.count else { return }
+        guard var grid = aiGenerationService.previewWeeklyGrid,
+              slot.dayIndex < grid.dailyMeals.count else { return }
         
         switch slot.mealType {
         case .breakfast:
-            previewGrid.dailyMeals[slot.dayIndex].breakfast = [newRecipe]
+            grid.dailyMeals[slot.dayIndex].breakfast = [newRecipe]
         case .lunch:
-            previewGrid.dailyMeals[slot.dayIndex].lunch = [newRecipe]
+            grid.dailyMeals[slot.dayIndex].lunch = [newRecipe]
         case .dinner:
-            previewGrid.dailyMeals[slot.dayIndex].dinner = [newRecipe]
+            grid.dailyMeals[slot.dayIndex].dinner = [newRecipe]
         }
+        
+        // Update the service with modified grid
+        aiGenerationService.previewWeeklyGrid = grid
         
         // Recalculate nutrition summary
         calculateNutritionSummary()
     }
     
     private func deleteMeal(dayIndex: Int, mealType: MealType, recipe: Recipe) {
-        guard dayIndex < previewGrid.dailyMeals.count else { return }
+        guard var grid = aiGenerationService.previewWeeklyGrid,
+              dayIndex < grid.dailyMeals.count else { return }
         
         switch mealType {
         case .breakfast:
-            previewGrid.dailyMeals[dayIndex].breakfast.removeAll { $0.id == recipe.id }
+            grid.dailyMeals[dayIndex].breakfast.removeAll { $0.id == recipe.id }
         case .lunch:
-            previewGrid.dailyMeals[dayIndex].lunch.removeAll { $0.id == recipe.id }
+            grid.dailyMeals[dayIndex].lunch.removeAll { $0.id == recipe.id }
         case .dinner:
-            previewGrid.dailyMeals[dayIndex].dinner.removeAll { $0.id == recipe.id }
+            grid.dailyMeals[dayIndex].dinner.removeAll { $0.id == recipe.id }
         }
+        
+        // Update the service with modified grid
+        aiGenerationService.previewWeeklyGrid = grid
         
         calculateNutritionSummary()
     }
@@ -947,7 +1073,6 @@ struct NutritionDetailSheet: View {
         userId: "user-1",
         name: "AI Generated Plan",
         description: "Healthy weekly meal plan",
-        weekStartDate: Date(),
         isActive: true,
         planDescription: "Balanced nutrition with variety",
         analysisText: nil as String?,

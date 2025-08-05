@@ -98,6 +98,21 @@ extension Date {
         formatter.dateFormat = "EEE"
         return formatter.string(from: self)
     }
+    
+    /// Returns the next Monday from this date (or today if it's already Monday)
+    func nextMonday(using calendar: Calendar = Calendar.mondayFirst) -> Date {
+        let todayWeekday = calendar.component(.weekday, from: self)
+        
+        // If today is Monday (weekday = 2 in mondayFirst calendar), return today
+        if todayWeekday == 2 {
+            return calendar.startOfDay(for: self)
+        }
+        
+        // Otherwise, find the next Monday
+        let daysUntilMonday = (9 - todayWeekday) % 7
+        let nextMonday = calendar.date(byAdding: .day, value: daysUntilMonday, to: self) ?? self
+        return calendar.startOfDay(for: nextMonday)
+    }
 }
 
 // MARK: - DateFormatter Extensions

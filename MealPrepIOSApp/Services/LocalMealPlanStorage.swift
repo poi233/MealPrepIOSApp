@@ -47,8 +47,9 @@ class LocalMealPlanStorage {
     
     // MARK: - Storage Methods
     
-    /// Save weekly meal plan for a specific week
-    func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError> {
+    /// Save weekly meal plan using the grid's inherent date information
+    func saveWeeklyMealPlan(_ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError> {
+        let weekStartDate = weeklyGrid.getWeekStartDate()
         let normalizedDate = normalizeWeekStartDate(weekStartDate)
         let weekKey = generateWeekKey(for: normalizedDate)
         
@@ -72,7 +73,7 @@ class LocalMealPlanStorage {
     }
     
     
-    /// Load weekly meal plan for a specific week
+    /// Load weekly meal plan for a specific week (method kept for compatibility)
     func loadWeeklyMealPlan(for weekStartDate: Date) -> WeeklyMealGrid? {
         let normalizedDate = normalizeWeekStartDate(weekStartDate)
         let weekKey = generateWeekKey(for: normalizedDate)
@@ -85,7 +86,7 @@ class LocalMealPlanStorage {
         // Fallback to UserDefaults using user-scoped storage
         if let weeklyGrid: WeeklyMealGrid = userScopedStorage.getUserDefaultsValue(forKey: weekKey, type: WeeklyMealGrid.self) {
             // Save to file system for future use
-            _ = saveWeeklyMealPlan(for: normalizedDate, weeklyGrid)
+            _ = saveWeeklyMealPlan(weeklyGrid)
             return weeklyGrid
         }
         

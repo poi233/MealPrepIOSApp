@@ -187,7 +187,7 @@ struct WeekNavigationView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
         
-        let startDate = mealPlanStore.selectedWeekStartDate
+        let startDate = Date().startOfWeek()
         let endDate = Calendar.mondayFirst.date(byAdding: .day, value: 6, to: startDate) ?? startDate
         
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
@@ -197,9 +197,10 @@ struct WeekNavigationView: View {
         let calendar = Calendar.mondayFirst
         let now = Date()
         
-        if calendar.isDate(mealPlanStore.selectedWeekStartDate, equalTo: now, toGranularity: .weekOfYear) {
+        let currentWeekStart = Date().startOfWeek()
+        if calendar.isDate(currentWeekStart, equalTo: now, toGranularity: .weekOfYear) {
             return "This Week"
-        } else if mealPlanStore.selectedWeekStartDate < now {
+        } else if currentWeekStart < now {
             return "Past Week"
         } else {
             return "Future Week"
@@ -219,7 +220,7 @@ struct WeeklyMealGridView: View {
             .map { (dailyMeal: $0.element, dayOfWeek: $0.offset) }
         
         // Check if we're viewing the current week
-        let weekStart = mealPlanStore.selectedWeekStartDate
+        let weekStart = Date().startOfWeek()
         let isCurrentWeek = calendar.isDate(weekStart, equalTo: today, toGranularity: .weekOfYear)
         
         if isCurrentWeek {
@@ -235,11 +236,48 @@ struct WeeklyMealGridView: View {
         }
     }
     
+    private var sortedLightweightMeals: [(lightweightMeal: LightweightDailyMeal, dayOfWeek: Int)] {
+        let calendar = Calendar.mondayFirst
+        let today = Date()
+        let todayMondayBasedWeekday = today.mondayBasedWeekday()
+        
+        let lightweightMealsWithIndex = Array(mealPlanStore.lightweightDailyMeals.enumerated())
+            .map { (lightweightMeal: $0.element, dayOfWeek: $0.offset) }
+        
+        // Check if we're viewing the current week
+        let weekStart = Date().startOfWeek()
+        let isCurrentWeek = calendar.isDate(weekStart, equalTo: today, toGranularity: .weekOfYear)
+        
+        if isCurrentWeek {
+            // Current week: Today first, then future days, then past days
+            let todayMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek == todayMondayBasedWeekday }
+            let futureMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek > todayMondayBasedWeekday }
+            let pastMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek < todayMondayBasedWeekday }
+            
+            return todayMeals + futureMeals + pastMeals
+        } else {
+            // Past/future week: normal Monday-first order (Monday=0, Tuesday=1, etc.)
+            return lightweightMealsWithIndex
+        }
+    }
+    
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(sortedDailyMeals, id: \.dailyMeal.id) { item in
-                    DailyMealCard(dailyMeal: item.dailyMeal, dayOfWeek: item.dayOfWeek)
+                // Show lightweight meal suggestions if available
+                if mealPlanStore.hasLightweightMeals {
+                    ForEach(sortedLightweightMeals, id: \.lightweightMeal.id) { item in
+                        LightweightDailyMealCard(
+                            lightweightDailyMeal: item.lightweightMeal,
+                            dayOfWeek: item.dayOfWeek,
+                            date: Calendar.mondayFirst.date(byAdding: .day, value: item.dayOfWeek, to: Date().startOfWeek()) ?? Date()
+                        )
+                    }
+                } else {
+                    // Show traditional daily meal cards
+                    ForEach(sortedDailyMeals, id: \.dailyMeal.id) { item in
+                        DailyMealCard(dailyMeal: item.dailyMeal, dayOfWeek: item.dayOfWeek)
+                    }
                 }
             }
             .padding()

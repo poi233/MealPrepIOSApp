@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1A982FE12E2D9C4D00F65759 /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE02E2D9C4D00F65759 /* AnyCodable */; };
-		1A982FE42E2D9C6000F65759 /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE32E2D9C6000F65759 /* KeychainSwift */; };
-		1A982FE72E2D9C6F00F65759 /* Reachability in Frameworks */ = {isa = PBXBuildFile; productRef = 1A982FE62E2D9C6F00F65759 /* Reachability */; };
+		1A3B6DA72E3EE46D003DA68C /* KeychainSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 1A3B6DA62E3EE46D003DA68C /* KeychainSwift */; };
+		1A3B6DA92E3EE47A003DA68C /* Reachability in Frameworks */ = {isa = PBXBuildFile; productRef = 1A3B6DA82E3EE47A003DA68C /* Reachability */; };
+		1A3B6DAC2E3EE484003DA68C /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = 1A3B6DAB2E3EE484003DA68C /* AnyCodable */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,9 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1A982FE12E2D9C4D00F65759 /* AnyCodable in Frameworks */,
-				1A982FE72E2D9C6F00F65759 /* Reachability in Frameworks */,
-				1A982FE42E2D9C6000F65759 /* KeychainSwift in Frameworks */,
+				1A3B6DA72E3EE46D003DA68C /* KeychainSwift in Frameworks */,
+				1A3B6DAC2E3EE484003DA68C /* AnyCodable in Frameworks */,
+				1A3B6DA92E3EE47A003DA68C /* Reachability in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -135,9 +135,9 @@
 			);
 			name = MealPrepIOSApp;
 			packageProductDependencies = (
-				1A982FE02E2D9C4D00F65759 /* AnyCodable */,
-				1A982FE32E2D9C6000F65759 /* KeychainSwift */,
-				1A982FE62E2D9C6F00F65759 /* Reachability */,
+				1A3B6DA62E3EE46D003DA68C /* KeychainSwift */,
+				1A3B6DA82E3EE47A003DA68C /* Reachability */,
+				1A3B6DAB2E3EE484003DA68C /* AnyCodable */,
 			);
 			productName = MealPrepIOSApp;
 			productReference = 1A982FB02E2D9BEE00F65759 /* MealPrepIOSApp.app */;
@@ -222,9 +222,9 @@
 			mainGroup = 1A982FA72E2D9BEE00F65759;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */,
-				1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */,
-				1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */,
+				1A3B6DA42E3EE45C003DA68C /* XCRemoteSwiftPackageReference "Reachability.swift" */,
+				1A3B6DA52E3EE46D003DA68C /* XCRemoteSwiftPackageReference "keychain-swift" */,
+				1A3B6DAA2E3EE484003DA68C /* XCRemoteSwiftPackageReference "AnyCodable" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A982FB12E2D9BEE00F65759 /* Products */;
@@ -436,6 +436,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -443,9 +444,13 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mealprep.ios.app.MealPrepIOSApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -464,6 +469,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -471,9 +477,13 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mealprep.ios.app.MealPrepIOSApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -591,23 +601,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Flight-School/AnyCodable.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.6.7;
-			};
-		};
-		1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/evgenyneu/keychain-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 24.0.0;
-			};
-		};
-		1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */ = {
+		1A3B6DA42E3EE45C003DA68C /* XCRemoteSwiftPackageReference "Reachability.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ashleymills/Reachability.swift.git";
 			requirement = {
@@ -615,23 +609,39 @@
 				kind = branch;
 			};
 		};
+		1A3B6DA52E3EE46D003DA68C /* XCRemoteSwiftPackageReference "keychain-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/evgenyneu/keychain-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
+		1A3B6DAA2E3EE484003DA68C /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Flight-School/AnyCodable.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.7;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1A982FE02E2D9C4D00F65759 /* AnyCodable */ = {
+		1A3B6DA62E3EE46D003DA68C /* KeychainSwift */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1A982FDF2E2D9C4D00F65759 /* XCRemoteSwiftPackageReference "AnyCodable" */;
-			productName = AnyCodable;
-		};
-		1A982FE32E2D9C6000F65759 /* KeychainSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1A982FE22E2D9C6000F65759 /* XCRemoteSwiftPackageReference "keychain-swift" */;
+			package = 1A3B6DA52E3EE46D003DA68C /* XCRemoteSwiftPackageReference "keychain-swift" */;
 			productName = KeychainSwift;
 		};
-		1A982FE62E2D9C6F00F65759 /* Reachability */ = {
+		1A3B6DA82E3EE47A003DA68C /* Reachability */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1A982FE52E2D9C6F00F65759 /* XCRemoteSwiftPackageReference "Reachability.swift" */;
+			package = 1A3B6DA42E3EE45C003DA68C /* XCRemoteSwiftPackageReference "Reachability.swift" */;
 			productName = Reachability;
+		};
+		1A3B6DAB2E3EE484003DA68C /* AnyCodable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A3B6DAA2E3EE484003DA68C /* XCRemoteSwiftPackageReference "AnyCodable" */;
+			productName = AnyCodable;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -388,58 +388,7 @@ extension MealPlanTemplateSheet {
                 }
                 .padding()
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(availableMealPlans, id: \.id) { mealPlan in
-                            Button(action: {
-                                selectedExistingMealPlan = mealPlan
-                                // Auto-fill name and description when meal plan is selected
-                                templateName = mealPlan.name
-                                templateDescription = mealPlan.description ?? ""
-                            }) {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(mealPlan.name)
-                                            .font(.subheadline)
-                                            .fontWeight(.medium)
-                                            .foregroundColor(.primary)
-                                        
-                                        Text("Week of \(mealPlan.weekStartDate, style: .date)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        
-                                        if let itemsCount = mealPlan.itemsCount {
-                                            Text("\(itemsCount) meals")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    if selectedExistingMealPlan?.id == mealPlan.id {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(.primaryGreen)
-                                    } else {
-                                        Image(systemName: "circle")
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(selectedExistingMealPlan?.id == mealPlan.id ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(selectedExistingMealPlan?.id == mealPlan.id ? Color.primaryGreen : Color.clear, lineWidth: 1)
-                                        )
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-                .frame(maxHeight: 200)
+                mealPlansList
             }
         }
         .padding()
@@ -526,9 +475,86 @@ extension MealPlanTemplateSheet {
         }
     }
     
+    private var mealPlansList: some View {
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                ForEach(availableMealPlans, id: \.id) { mealPlan in
+                    mealPlanRow(mealPlan)
+                }
+            }
+        }
+        .frame(maxHeight: 200)
+    }
+    
+    private func mealPlanRow(_ mealPlan: MealPlan) -> some View {
+        Button(action: {
+            selectedExistingMealPlan = mealPlan
+            // Auto-fill name and description when meal plan is selected
+            templateName = mealPlan.name
+            templateDescription = mealPlan.description ?? ""
+        }) {
+            mealPlanRowContent(mealPlan)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func mealPlanRowContent(_ mealPlan: MealPlan) -> some View {
+        HStack {
+            mealPlanInfo(mealPlan)
+            Spacer()
+            selectionIndicator(mealPlan)
+        }
+        .padding()
+        .background(mealPlanBackground(mealPlan))
+    }
+    
+    private func mealPlanInfo(_ mealPlan: MealPlan) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(mealPlan.name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+            
+            Text("Week")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            if let itemsCount = mealPlan.itemsCount {
+                Text("\(itemsCount) meals")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func selectionIndicator(_ mealPlan: MealPlan) -> some View {
+        Group {
+            if selectedExistingMealPlan?.id == mealPlan.id {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.primaryGreen)
+            } else {
+                Image(systemName: "circle")
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func mealPlanBackground(_ mealPlan: MealPlan) -> some View {
+        let isSelected = selectedExistingMealPlan?.id == mealPlan.id
+        return RoundedRectangle(cornerRadius: 8)
+            .fill(isSelected ? Color.primaryGreen.opacity(0.1) : Color(.systemGray6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.primaryGreen : Color.clear, lineWidth: 1)
+            )
+    }
+    
     private func getSelectedWeekMeals() -> [DailyMealSlots] {
+        // Get current week start for comparison
+        let currentWeekStart = Date().startOfWeek()
+        
         // If selected week is current week, use current week's data
-        if Calendar.current.isDate(selectedWeekForSave, equalTo: mealPlanStore.selectedWeekStartDate, toGranularity: .weekOfYear) {
+        if Calendar.current.isDate(selectedWeekForSave, equalTo: currentWeekStart, toGranularity: .weekOfYear) {
             return mealPlanStore.weeklyGrid.dailyMeals
         } else {
             // Load data from local storage for the selected week
@@ -536,7 +562,7 @@ extension MealPlanTemplateSheet {
                 return storedGrid.dailyMeals
             } else {
                 // Return empty week if no stored data
-                return WeeklyMealGrid(weekStartDate: selectedWeekForSave).dailyMeals
+                return WeeklyMealGrid().dailyMeals
             }
         }
     }
@@ -836,8 +862,8 @@ extension MealPlanTemplateSheet {
             print("   🍽️ Total meals: \(templateDetail.meals.count)")
             
             // Create new weekly grid with the correct week start date
-            var newGrid = WeeklyMealGrid(weekStartDate: mealPlanStore.selectedWeekStartDate)
-            print("📅 [ApplyTemplate] Creating new meal plan for selected week starting: \(mealPlanStore.selectedWeekStartDate)")
+            var newGrid = WeeklyMealGrid()
+            print("📅 [ApplyTemplate] Creating new meal plan for current week starting: \(Date().startOfWeek())")
             
             var appliedMealsCount = 0
             // Apply template meals to new grid
@@ -878,7 +904,7 @@ extension MealPlanTemplateSheet {
             
             switch saveResult {
             case .success():
-                print("✅ [ApplyTemplate] Updated meal plan store for week: \(mealPlanStore.selectedWeekStartDate)")
+                print("✅ [ApplyTemplate] Updated meal plan store for current week: \(Date().startOfWeek())")
                 print("💾 [ApplyTemplate] Meal plan successfully persisted to local storage")
                 print("🎉 [ApplyTemplate] Template applied successfully!")
                 

@@ -16,7 +16,7 @@ struct MealPlanGenerationView: View {
     @State private var allergies: [String] = []
     @State private var dislikes: [String] = []
     @State private var calorieTarget: Double = 2000
-    @State private var weekStartDate = Date()
+    // weekStartDate removed - dates managed by WeeklyMealGrid
     @State private var additionalRequirements = ""
     @State private var selectedTemplate: MealPlanGenerationTemplate?
     
@@ -152,8 +152,9 @@ struct MealPlanGenerationView: View {
                 }
                 
                 Section("Week Planning") {
-                    DatePicker("Week Start Date", selection: $weekStartDate, displayedComponents: .date)
-                        .datePickerStyle(CompactDatePickerStyle())
+                    Text("Using current week dates")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
                 }
                 
                 Section("Additional Requirements") {
@@ -232,7 +233,7 @@ struct MealPlanGenerationView: View {
         let today = Date()
         let weekday = calendar.component(.weekday, from: today)
         let daysUntilMonday = (9 - weekday) % 7
-        weekStartDate = calendar.date(byAdding: .day, value: daysUntilMonday, to: today) ?? today
+        // weekStartDate initialization removed
     }
     
     private func addAllergy() {
@@ -262,7 +263,7 @@ struct MealPlanGenerationView: View {
                 allergies: allergies,
                 dislikes: dislikes,
                 calorieTarget: Int(calorieTarget),
-                weekStartDate: weekStartDate,
+                // weekStartDate parameter removed
                 additionalRequirements: additionalReqs.isEmpty ? nil : additionalReqs
             )
             

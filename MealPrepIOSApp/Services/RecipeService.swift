@@ -227,4 +227,28 @@ class RecipeService {
         // Return the extracted recipe from the nested response
         return response.recipe
     }
+    
+    /// Apply a RecipeStub to user's meal plan by converting it to a complete Recipe
+    func applyMealToPlan(_ request: ApplyMealRequest) async throws -> ApplyMealResponse {
+        print("[DEBUG] RecipeService.applyMealToPlan - About to send apply meal request")
+        print("[DEBUG] RecipeService.applyMealToPlan - Recipe stub name: '\(request.recipeStub.name)'")
+        print("[DEBUG] RecipeService.applyMealToPlan - Day of week: \(request.dayOfWeek)")
+        print("[DEBUG] RecipeService.applyMealToPlan - Meal type: \(request.mealType)")
+        
+        let response = try await networkManager.post(
+            "/ai/apply-meal-to-plan/",
+            body: request,
+            responseType: ApplyMealResponse.self,
+            requiresAuth: true
+        )
+        
+        print("[DEBUG] RecipeService.applyMealToPlan - Received apply meal response:")
+        print("[DEBUG] RecipeService.applyMealToPlan - Success: \(response.success)")
+        print("[DEBUG] RecipeService.applyMealToPlan - Message: \(response.message ?? "nil")")
+        if let recipe = response.recipe {
+            print("[DEBUG] RecipeService.applyMealToPlan - Created recipe: \(recipe.name)")
+        }
+        
+        return response
+    }
 }

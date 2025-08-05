@@ -133,7 +133,8 @@ class MealPlanTemplateService {
             print("   \(index + 1). ID: \(mealPlan.id)")
             print("      Name: '\(mealPlan.name)'")
             print("      Description: '\(mealPlan.description ?? "null")'")
-            print("      Week Start Date: \(mealPlan.weekStartDate.description)")
+            // Week start date computation moved to WeeklyMealGrid - skipping for template service
+            print("      Week Start Date: computed from daily meals (not directly available in MealPlan)")
             print("      User ID: \(mealPlan.userId ?? "null")")
             print("      Is Active: \(mealPlan.isActive)")
             print("      Items Count: \(mealPlan.items?.count ?? 0)")
@@ -327,7 +328,7 @@ class MealPlanTemplateService {
         
         // Create new meal plan from template
         let newMealPlanRequest = CreateMealPlanRequest(
-            name: "Week of \(DateFormatter.shortDate.string(from: weekStartDate))",
+            name: "Week of \(weekStartDate.formatted(date: .abbreviated, time: .omitted))",
             description: "Created from template: \(templateMealPlan.name)",
             startDate: weekStartDate,
             endDate: Calendar.current.date(byAdding: .day, value: 6, to: weekStartDate) ?? weekStartDate,

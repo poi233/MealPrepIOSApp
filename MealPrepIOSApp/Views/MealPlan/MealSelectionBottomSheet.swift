@@ -637,7 +637,7 @@ extension MealSelectionBottomSheet {
             )
             
             // Add to recent meals
-            await mealPlanStore.addToRecentMeals(recipe)
+            mealPlanStore.addToRecentMeals(recipe)
             
             // No need to reload from backend - addMealToWeek already updates the local data
             print("✅ Recipe \(recipe.name) added successfully to \(mealType.rawValue)")

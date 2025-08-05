@@ -21,8 +21,7 @@ class AIWorkflowCoordinator: ObservableObject {
     
     // MARK: - Workflow Data
     @Published var generationRequest: AIGenerationRequest?
-    @Published var generatedMealPlan: MealPlan?
-    @Published var previewGrid: WeeklyMealGrid?
+    // REMOVED: Local state variables - now using AIGenerationService as single source of truth
     
     // MARK: - Dependencies
     private var mealPlanStore: MealPlanStore
@@ -52,8 +51,8 @@ class AIWorkflowCoordinator: ObservableObject {
         // Clear existing observers
         cancellables.removeAll()
         
-        // Observe meal plan store AI generation state
-        mealPlanStore.$aiGenerationState
+        // Observe AI generation service state directly
+        mealPlanStore.aiGenerationService.$aiGenerationState
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 print("🔔 [AIWorkflowCoordinator] State observer triggered: \(state)")
@@ -61,8 +60,8 @@ class AIWorkflowCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
         
-        // Observe preview meal plan changes
-        mealPlanStore.$previewMealPlan
+        // Observe preview meal plan changes from service
+        mealPlanStore.aiGenerationService.$previewMealPlan
             .sink { [weak self] mealPlan in
                 self?.handlePreviewMealPlanChange(mealPlan)
             }
@@ -94,7 +93,6 @@ class AIWorkflowCoordinator: ObservableObject {
                 allergies: request.allergies,
                 dislikes: request.dislikes,
                 calorieTarget: request.calorieTarget,
-                weekStartDate: request.weekStartDate,
                 additionalRequirements: request.additionalRequirements
             )
             
@@ -124,29 +122,26 @@ class AIWorkflowCoordinator: ObservableObject {
     
     /// Move to preview step with generated meal plan
     func proceedToPreview() {
-        // Try to get meal plan from store first, then from local state
-        let mealPlan = mealPlanStore.previewMealPlan ?? generatedMealPlan
-        
-        guard let mealPlan = mealPlan else {
-            print("❌ [AIWorkflowCoordinator] No meal plan available for preview")
+        // Check if AIGenerationService has preview data ready
+        guard let mealPlan = mealPlanStore.aiGenerationService.previewMealPlan,
+              let previewGrid = mealPlanStore.aiGenerationService.previewWeeklyGrid else {
+            print("❌ [AIWorkflowCoordinator] No preview data available in AIGenerationService")
+            print("🔍 [AIWorkflowCoordinator] Service previewMealPlan: \(mealPlanStore.aiGenerationService.previewMealPlan?.name ?? "nil")")
+            print("🔍 [AIWorkflowCoordinator] Service previewWeeklyGrid: \(mealPlanStore.aiGenerationService.previewWeeklyGrid != nil)")
+            print("🔍 [AIWorkflowCoordinator] Service AI generation state: \(mealPlanStore.aiGenerationService.aiGenerationState)")
             handleWorkflowError(.previewUnavailable)
             return
         }
         
         print("📋 [AIWorkflowCoordinator] Moving to preview step with meal plan: \(mealPlan.name)")
-        print("📋 [AIWorkflowCoordinator] Meal plan has dailyMeals: \(mealPlan.dailyMeals != nil)")
-        print("📋 [AIWorkflowCoordinator] Daily meals count: \(mealPlan.dailyMeals?.count ?? 0)")
+        print("📋 [AIWorkflowCoordinator] Preview grid has \(previewGrid.dailyMeals.count) days")
         
-        generatedMealPlan = mealPlan
-        previewGrid = convertMealPlanToGrid(mealPlan)
+        // Log preview data for debugging
+        for (index, day) in previewGrid.dailyMeals.enumerated() {
+            print("📋 [AIWorkflowCoordinator] Preview Grid Day \(index) (\(day.day)): \(day.breakfast.count) breakfast, \(day.lunch.count) lunch, \(day.dinner.count) dinner")
+        }
         
-        // CRITICAL: Also set the preview data in the store for confirmPreviewMealPlan to work
-        mealPlanStore.previewMealPlan = mealPlan
-        mealPlanStore.previewWeeklyGrid = previewGrid
-        
-        print("✅ [AIWorkflowCoordinator] Set both local and store preview data")
-        print("🔍 [AIWorkflowCoordinator] Store preview meal plan: \(mealPlanStore.previewMealPlan?.name ?? "nil")")
-        print("🔍 [AIWorkflowCoordinator] Store preview grid days: \(mealPlanStore.previewWeeklyGrid?.dailyMeals.count ?? 0)")
+        print("✅ [AIWorkflowCoordinator] Preview data validated successfully")
         
         currentStep = .preview
         isLoading = false
@@ -155,8 +150,9 @@ class AIWorkflowCoordinator: ObservableObject {
     
     /// Apply the previewed meal plan
     func applyMealPlan() {
-        guard generatedMealPlan != nil else {
-            handleWorkflowError(.applyFailed("No meal plan available to apply"))
+        guard mealPlanStore.aiGenerationService.previewMealPlan != nil,
+              mealPlanStore.aiGenerationService.previewWeeklyGrid != nil else {
+            handleWorkflowError(.applyFailed("No preview data available to apply"))
             return
         }
         
@@ -168,23 +164,6 @@ class AIWorkflowCoordinator: ObservableObject {
         
         Task {
             do {
-                // First, ensure the preview meal plan AND grid are set in the store
-                if let mealPlan = generatedMealPlan {
-                    await MainActor.run {
-                        print("🔄 [AIWorkflowCoordinator] Setting preview meal plan and generating weekly grid...")
-                        mealPlanStore.previewMealPlan = mealPlan
-                        
-                        // CRITICAL: Generate the weekly grid from the meal plan
-                        let weeklyGrid = convertMealPlanToGrid(mealPlan)
-                        mealPlanStore.previewWeeklyGrid = weeklyGrid
-                        
-                        print("✅ [AIWorkflowCoordinator] Preview meal plan and weekly grid set successfully")
-                        print("🔍 [AIWorkflowCoordinator] Weekly grid has \(weeklyGrid.dailyMeals.count) days")
-                        
-                        // DO NOT set aiGenerationState here - it should already be .previewing
-                        // Setting it here causes race conditions and interferes with proper state transitions
-                    }
-                }
                 
                 print("🔄 [AIWorkflowCoordinator] Starting confirmPreviewMealPlan...")
                 print("🔍 [AIWorkflowCoordinator] State before confirmPreviewMealPlan: \(mealPlanStore.aiGenerationState)")
@@ -266,9 +245,8 @@ class AIWorkflowCoordinator: ObservableObject {
         
         print("🔄 [AIWorkflowCoordinator] Regenerating meal plan")
         
-        // Clear previous results
-        generatedMealPlan = nil
-        previewGrid = nil
+        // Clear previous results in service
+        mealPlanStore.aiGenerationService.resetAIGenerationState()
         
         // Restart generation
         startGeneration(with: request)
@@ -314,13 +292,11 @@ class AIWorkflowCoordinator: ObservableObject {
         errorMessage = nil
         showingError = false
         generationRequest = nil
-        generatedMealPlan = nil
-        previewGrid = nil
         workflowStartTime = nil
         canCancel = true
         
         // Reset store state
-        mealPlanStore.resetAIGeneration()
+        mealPlanStore.resetAIGenerationState()
     }
     
     /// Handle workflow errors with enhanced error handling
@@ -398,61 +374,21 @@ class AIWorkflowCoordinator: ObservableObject {
     private func handlePreviewMealPlanChange(_ mealPlan: MealPlan?) {
         print("📋 [AIWorkflowCoordinator] Preview meal plan changed: \(mealPlan?.name ?? "nil"), current step: \(currentStep)")
         
-        if let mealPlan = mealPlan, currentStep == .generating {
-            generatedMealPlan = mealPlan
-            previewGrid = convertMealPlanToGrid(mealPlan)
+        if let _ = mealPlan, currentStep == .generating {
+            print("📋 [AIWorkflowCoordinator] Meal plan available, checking if weekly grid is also ready...")
             
-            // CRITICAL: Ensure the store also has the weekly grid
-            mealPlanStore.previewWeeklyGrid = previewGrid
-            
-            print("📋 [AIWorkflowCoordinator] Meal plan stored with weekly grid")
-            print("🔍 [AIWorkflowCoordinator] Weekly grid has \(previewGrid!.dailyMeals.count) days")
-            // Don't call proceedToPreview here to avoid double calls
-            print("📋 [AIWorkflowCoordinator] Waiting for state change to proceed to preview")
+            // Check if weekly grid is also available
+            if let weeklyGrid = mealPlanStore.aiGenerationService.previewWeeklyGrid {
+                print("📋 [AIWorkflowCoordinator] Weekly grid is ready with \(weeklyGrid.dailyMeals.count) days")
+                print("📋 [AIWorkflowCoordinator] Waiting for state change to proceed to preview")
+            } else {
+                print("⚠️ [AIWorkflowCoordinator] Weekly grid not yet available, waiting...")
+            }
         }
     }
     
     // MARK: - Helper Methods
-    
-    private func convertMealPlanToGrid(_ mealPlan: MealPlan) -> WeeklyMealGrid {
-        var grid = WeeklyMealGrid(weekStartDate: mealPlan.weekStartDate)
-        
-        // Handle AI-generated meal plans with dailyMeals
-        if let dailyMeals = mealPlan.dailyMeals {
-            for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
-                if dayIndex < grid.dailyMeals.count {
-                    // Now dailyMeal contains Recipe objects directly
-                    grid.dailyMeals[dayIndex].breakfast = dailyMeal.breakfast
-                    grid.dailyMeals[dayIndex].lunch = dailyMeal.lunch
-                    grid.dailyMeals[dayIndex].dinner = dailyMeal.dinner
-                }
-            }
-            return grid
-        }
-        
-        // Handle regular meal plans with items
-        if let items = mealPlan.items {
-            for item in items {
-                guard let recipe = item.recipe,
-                      item.dayOfWeek < grid.dailyMeals.count else { continue }
-                
-                switch item.mealType.lowercased() {
-                case "breakfast":
-                    grid.dailyMeals[item.dayOfWeek].breakfast.append(recipe)
-                case "lunch":
-                    grid.dailyMeals[item.dayOfWeek].lunch.append(recipe)
-                case "dinner":
-                    grid.dailyMeals[item.dayOfWeek].dinner.append(recipe)
-                default:
-                    break
-                }
-            }
-        }
-        
-        return grid
-    }
-    
-    // REMOVED: createRecipeFromMealItem - no longer needed as dailyMeals now contains Recipe objects directly
+    // REMOVED: convertMealPlanToGrid - now centralized in AIGenerationService
     
     // MARK: - Computed Properties
     
@@ -461,7 +397,7 @@ class AIWorkflowCoordinator: ObservableObject {
         case .input:
             return generationRequest != nil
         case .preview:
-            return generatedMealPlan != nil && !isLoading
+            return mealPlanStore.aiGenerationService.previewMealPlan != nil && !isLoading
         default:
             return false
         }
@@ -553,7 +489,7 @@ struct AIGenerationRequest {
     let allergies: [String]
     let dislikes: [String]
     let calorieTarget: Int?
-    let weekStartDate: Date
+    // weekStartDate removed - dates will be determined by WeeklyMealGrid structure
     let additionalRequirements: String?
     
     init(
@@ -562,7 +498,7 @@ struct AIGenerationRequest {
         allergies: [String] = [],
         dislikes: [String] = [],
         calorieTarget: Int? = nil,
-        weekStartDate: Date = Date(),
+        // weekStartDate parameter removed
         additionalRequirements: String? = nil
     ) {
         self.description = description
@@ -570,7 +506,7 @@ struct AIGenerationRequest {
         self.allergies = allergies
         self.dislikes = dislikes
         self.calorieTarget = calorieTarget
-        self.weekStartDate = weekStartDate
+        // weekStartDate assignment removed
         self.additionalRequirements = additionalRequirements
     }
 }

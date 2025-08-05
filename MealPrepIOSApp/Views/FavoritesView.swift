@@ -198,7 +198,7 @@ struct FavoritesView: View {
             .sheet(item: $selectedFavorite) { favorite in
                 NavigationView {
                     RecipeDetailView(recipe: favorite.recipe, isFromMealPlan: false)
-                        .environmentObject(recipeStore ?? RecipeStore())
+                        .environmentObject(recipeStore)
                         .environmentObject(favoritesStore)
                 }
             }

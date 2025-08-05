@@ -90,6 +90,28 @@ struct AIGeneratedRecipe: Codable {
         print("[DEBUG] AIGeneratedRecipe decoded - final imageUrl: '\(imageUrl ?? "nil")'")
         print("[DEBUG] AIGeneratedRecipe decoded - name: '\(name)'")
     }
+    
+    /// Custom encoding to ensure image_url field is always included for backend validation
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(name, forKey: .name)
+        try container.encode(description, forKey: .description)
+        try container.encode(cuisine, forKey: .cuisine)
+        try container.encode(difficulty, forKey: .difficulty)
+        try container.encode(prepTime, forKey: .prepTime)
+        try container.encode(cookTime, forKey: .cookTime)
+        
+        // Always encode image_url, even if nil - use empty string for backend compatibility
+        try container.encode(imageUrl ?? "", forKey: .imageUrl)
+        
+        try container.encode(ingredients, forKey: .ingredients)
+        try container.encode(instructions, forKey: .instructions)
+        try container.encode(nutritionInfo, forKey: .nutritionInfo)
+        try container.encode(tags, forKey: .tags)
+        
+        print("[DEBUG] AIGeneratedRecipe encoded - imageUrl field: '\(imageUrl ?? "")'")
+    }
 }
 
 struct AIIngredient: Codable {
