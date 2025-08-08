@@ -187,7 +187,7 @@ struct WeekNavigationView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
         
-        let startDate = Date().startOfWeek()
+        let startDate = mealPlanStore.selectedWeekStartDate
         let endDate = Calendar.mondayFirst.date(byAdding: .day, value: 6, to: startDate) ?? startDate
         
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
@@ -196,11 +196,12 @@ struct WeekNavigationView: View {
     private var weekSubtitle: String {
         let calendar = Calendar.mondayFirst
         let now = Date()
+        let currentWeekStart = now.startOfWeek()
+        let selectedWeekStart = mealPlanStore.selectedWeekStartDate
         
-        let currentWeekStart = Date().startOfWeek()
-        if calendar.isDate(currentWeekStart, equalTo: now, toGranularity: .weekOfYear) {
+        if calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear) {
             return "This Week"
-        } else if currentWeekStart < now {
+        } else if selectedWeekStart < currentWeekStart {
             return "Past Week"
         } else {
             return "Future Week"
@@ -220,8 +221,9 @@ struct WeeklyMealGridView: View {
             .map { (dailyMeal: $0.element, dayOfWeek: $0.offset) }
         
         // Check if we're viewing the current week
-        let weekStart = Date().startOfWeek()
-        let isCurrentWeek = calendar.isDate(weekStart, equalTo: today, toGranularity: .weekOfYear)
+        let currentWeekStart = today.startOfWeek()
+        let selectedWeekStart = mealPlanStore.selectedWeekStartDate
+        let isCurrentWeek = calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear)
         
         if isCurrentWeek {
             // Current week: Today first, then future days, then past days
@@ -245,8 +247,9 @@ struct WeeklyMealGridView: View {
             .map { (lightweightMeal: $0.element, dayOfWeek: $0.offset) }
         
         // Check if we're viewing the current week
-        let weekStart = Date().startOfWeek()
-        let isCurrentWeek = calendar.isDate(weekStart, equalTo: today, toGranularity: .weekOfYear)
+        let currentWeekStart = today.startOfWeek()
+        let selectedWeekStart = mealPlanStore.selectedWeekStartDate
+        let isCurrentWeek = calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear)
         
         if isCurrentWeek {
             // Current week: Today first, then future days, then past days
@@ -270,7 +273,7 @@ struct WeeklyMealGridView: View {
                         LightweightDailyMealCard(
                             lightweightDailyMeal: item.lightweightMeal,
                             dayOfWeek: item.dayOfWeek,
-                            date: Calendar.mondayFirst.date(byAdding: .day, value: item.dayOfWeek, to: Date().startOfWeek()) ?? Date()
+                            date: Calendar.mondayFirst.date(byAdding: .day, value: item.dayOfWeek, to: mealPlanStore.selectedWeekStartDate) ?? Date()
                         )
                     }
                 } else {
