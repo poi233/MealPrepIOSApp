@@ -13,20 +13,20 @@ struct AIWeeklyWorkflowView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
-    
+
     // MARK: - Workflow Coordinator - Initialize with empty stores, update in onAppear
     @StateObject private var coordinator = AIWorkflowCoordinator(
         mealPlanStore: MealPlanStore(),
         recipeStore: RecipeStore()
     )
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 // Background
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
-                
+
                 // Main content based on current step
                 switch coordinator.currentStep {
                 case .input:
@@ -52,7 +52,7 @@ struct AIWeeklyWorkflowView: View {
                         }
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if coordinator.canGoBack {
                         Button("Back") {
@@ -78,7 +78,7 @@ struct AIWeeklyWorkflowView: View {
             coordinator.updateDependencies(mealPlanStore: mealPlanStore, recipeStore: recipeStore)
         }
     }
-    
+
     // MARK: - Input Step
     private var inputStepView: some View {
         EnhancedAIGenerationInputView(
@@ -93,7 +93,7 @@ struct AIWeeklyWorkflowView: View {
         .environmentObject(mealPlanStore)
         .environmentObject(recipeStore)
     }
-    
+
     // MARK: - Generating Step
     private var generatingStepView: some View {
         VStack(spacing: 32) {
@@ -103,28 +103,28 @@ struct AIWeeklyWorkflowView: View {
                     .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
                     .scaleEffect(y: 2)
                     .padding(.horizontal, 40)
-                
+
                 Text("Step \(coordinator.currentStep.stepNumber) of \(coordinator.currentStep.totalSteps)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             // AI Generation Animation
             AIGenerationLoadingView()
-            
+
             VStack(spacing: 12) {
                 Text(coordinator.stepTitle)
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Text(coordinator.stepDescription)
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
             }
-            
+
             // Status indicator
             if coordinator.isLoading {
                 HStack(spacing: 8) {
@@ -136,9 +136,9 @@ struct AIWeeklyWorkflowView: View {
                 }
                 .padding(.top, 16)
             }
-            
+
             Spacer(minLength: 20)
-            
+
             // Cancel button
             if coordinator.canCancel {
                 Button("Cancel Generation") {
@@ -151,7 +151,7 @@ struct AIWeeklyWorkflowView: View {
         .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     // MARK: - Preview Step
     private var previewStepView: some View {
         Group {
@@ -168,7 +168,7 @@ struct AIWeeklyWorkflowView: View {
             }
         }
     }
-    
+
     // MARK: - Confirming Step
     private var confirmingStepView: some View {
         VStack(spacing: 32) {
@@ -178,51 +178,51 @@ struct AIWeeklyWorkflowView: View {
                     .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
                     .scaleEffect(y: 2)
                     .padding(.horizontal, 40)
-                
+
                 Text("Step \(coordinator.currentStep.stepNumber) of \(coordinator.currentStep.totalSteps)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             // Success animation
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.primaryGreen)
                 .symbolEffect(.bounce, options: .repeating)
-            
+
             VStack(spacing: 12) {
                 Text(coordinator.stepTitle)
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Text(coordinator.stepDescription)
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
             }
-            
+
             // Loading indicator
             if coordinator.isLoading {
                 VStack(spacing: 8) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .primaryGreen))
                         .scaleEffect(1.2)
-                    
+
                     Text("Please wait...")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 16)
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     // MARK: - Completed Step
     private var completedStepView: some View {
         VStack(spacing: 32) {
@@ -232,41 +232,41 @@ struct AIWeeklyWorkflowView: View {
                     .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
                     .scaleEffect(y: 2)
                     .padding(.horizontal, 40)
-                
+
                 Text("Completed!")
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.primaryGreen)
             }
-            
+
             // Success animation
             Image(systemName: "party.popper.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.primaryGreen)
                 .symbolEffect(.bounce)
-            
+
             VStack(spacing: 12) {
                 Text(coordinator.stepTitle)
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Text(coordinator.stepDescription)
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
             }
-            
+
             Spacer(minLength: 20)
-            
+
             // Action buttons
             VStack(spacing: 12) {
                 Button("View Meal Plan") {
                     dismiss()
                 }
                 .primaryGreenButton()
-                
+
                 Button("Generate Another") {
                     coordinator.resetWorkflow()
                 }
@@ -276,20 +276,20 @@ struct AIWeeklyWorkflowView: View {
         .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     // MARK: - Supporting Views
-    
+
     private var previewBottomBar: some View {
         VStack(spacing: 0) {
             Divider()
-            
+
             HStack(spacing: 16) {
                 Button("Regenerate") {
                     coordinator.regenerateMealPlan()
                 }
                 .subtleGreenButton()
                 .frame(maxWidth: .infinity)
-                
+
                 Button(coordinator.isLoading ? "Applying..." : "Apply Plan") {
                     coordinator.applyMealPlan()
                 }
@@ -310,9 +310,9 @@ struct AIWeeklyWorkflowView: View {
 struct EnhancedAIGenerationInputView: View {
     let onGenerationStart: (AIGenerationRequest) -> Void
     let onCancel: () -> Void
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    
+
     var body: some View {
         // We'll create a custom input view or enhance the existing one
         AIWeeklyGenerationViewWithCallbacks(
@@ -327,7 +327,7 @@ struct EnhancedAIGenerationInputView: View {
 struct AIGenerationLoadingView: View {
     @State private var animateGradient = false
     @State private var rotationAngle: Double = 0
-    
+
     var body: some View {
         ZStack {
             // Background gradient
@@ -345,14 +345,14 @@ struct AIGenerationLoadingView: View {
                 )
                 .frame(width: 200, height: 200)
                 .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: animateGradient)
-            
+
             // AI brain icon with rotation
             Image(systemName: "brain")
                 .font(.system(size: 60))
                 .foregroundColor(.primaryGreen)
                 .rotationEffect(.degrees(rotationAngle))
                 .animation(.linear(duration: 3).repeatForever(autoreverses: false), value: rotationAngle)
-            
+
             // Floating particles
             ForEach(0..<5, id: \.self) { index in
                 Circle()

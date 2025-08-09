@@ -14,10 +14,10 @@ struct LightweightMealSlotView: View {
     let mealType: MealType
     let dayOfWeek: Int
     let date: Date
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @State private var showingMealSelection = false
-    
+
     private var mealIcon: String {
         switch mealType {
         case .breakfast: return "sunrise"
@@ -25,7 +25,7 @@ struct LightweightMealSlotView: View {
         case .dinner: return "moon"
         }
     }
-    
+
     private var mealColor: Color {
         switch mealType {
         case .breakfast: return .orange
@@ -33,7 +33,7 @@ struct LightweightMealSlotView: View {
         case .dinner: return .purple
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Meal type header
@@ -42,12 +42,12 @@ struct LightweightMealSlotView: View {
                     Image(systemName: mealIcon)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(mealColor)
-                    
+
                     Text(title)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
-                    
+
                     // AI suggestions badge
                     if !recipeStubs.isEmpty {
                         HStack(spacing: 4) {
@@ -65,9 +65,9 @@ struct LightweightMealSlotView: View {
                         )
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Add button for traditional meal selection
                 Button(action: {
                     showingMealSelection = true
@@ -79,19 +79,19 @@ struct LightweightMealSlotView: View {
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 32, height: 32)
             }
-            
+
             // RecipeStub cards or empty state
             if recipeStubs.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "fork.knife.circle")
                         .font(.title2)
                         .foregroundColor(.secondary.opacity(0.6))
-                    
+
                     Text("暂无AI推荐")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .italic()
-                    
+
                     Text("点击 + 手动添加菜谱")
                         .font(.caption2)
                         .foregroundColor(.secondary.opacity(0.8))

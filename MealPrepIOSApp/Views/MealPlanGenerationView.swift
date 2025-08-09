@@ -10,7 +10,7 @@ import SwiftUI
 struct MealPlanGenerationView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var planDescription = ""
     @State private var selectedDietType: DietType?
     @State private var allergies: [String] = []
@@ -19,14 +19,14 @@ struct MealPlanGenerationView: View {
     // weekStartDate removed - dates managed by WeeklyMealGrid
     @State private var additionalRequirements = ""
     @State private var selectedTemplate: MealPlanGenerationTemplate?
-    
+
     @State private var newAllergy = ""
     @State private var newDislike = ""
     @State private var showingTemplates = false
-    
+
     private let commonAllergies = ["Nuts", "Shellfish", "Dairy", "Eggs", "Soy", "Gluten", "Fish"]
     private let commonDislikes = ["Mushrooms", "Onions", "Spicy Food", "Seafood", "Vegetables", "Meat"]
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -37,7 +37,7 @@ struct MealPlanGenerationView: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                
+
                 Section("Dietary Preferences") {
                     Picker("Diet Type", selection: $selectedDietType) {
                         Text("No Preference").tag(nil as DietType?)
@@ -45,14 +45,14 @@ struct MealPlanGenerationView: View {
                             Text(dietType.displayName).tag(dietType as DietType?)
                         }
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Daily Calorie Target: \(Int(calorieTarget))")
                             .font(.subheadline)
                         Slider(value: $calorieTarget, in: 1200...3500, step: 50)
                     }
                 }
-                
+
                 Section("Allergies & Restrictions") {
                     // Current allergies
                     if !allergies.isEmpty {
@@ -68,7 +68,7 @@ struct MealPlanGenerationView: View {
                             }
                         }
                     }
-                    
+
                     // Add allergy
                     HStack {
                         TextField("Add allergy", text: $newAllergy)
@@ -79,7 +79,7 @@ struct MealPlanGenerationView: View {
                         }
                         .disabled(newAllergy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    
+
                     // Common allergies
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -101,7 +101,7 @@ struct MealPlanGenerationView: View {
                         .padding(.horizontal)
                     }
                 }
-                
+
                 Section("Dislikes") {
                     // Current dislikes
                     if !dislikes.isEmpty {
@@ -117,7 +117,7 @@ struct MealPlanGenerationView: View {
                             }
                         }
                     }
-                    
+
                     // Add dislike
                     HStack {
                         TextField("Add dislike", text: $newDislike)
@@ -128,7 +128,7 @@ struct MealPlanGenerationView: View {
                         }
                         .disabled(newDislike.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    
+
                     // Common dislikes
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -150,13 +150,13 @@ struct MealPlanGenerationView: View {
                         .padding(.horizontal)
                     }
                 }
-                
+
                 Section("Week Planning") {
                     Text("Using current week dates")
                         .foregroundColor(.secondary)
                         .font(.caption)
                 }
-                
+
                 Section("Additional Requirements") {
                     TextField("Any special requirements or preferences...", text: $additionalRequirements, axis: .vertical)
                         .lineLimit(2...4)
@@ -164,28 +164,28 @@ struct MealPlanGenerationView: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                
+
                 Section("Templates") {
                     Button("Choose from Templates") {
                         showingTemplates = true
                     }
                     .foregroundColor(.primaryGreen)
-                    
+
                     if let template = selectedTemplate {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(template.name)
                                     .font(.subheadline)
                                     .fontWeight(.medium)
-                                
+
                                 Text(template.description)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(2)
                             }
-                            
+
                             Spacer()
-                            
+
                             Button("Remove") {
                                 selectedTemplate = nil
                             }
@@ -204,7 +204,7 @@ struct MealPlanGenerationView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Generate") {
                         generateMealPlan()
@@ -222,11 +222,11 @@ struct MealPlanGenerationView: View {
             }
         }
     }
-    
+
     private var isFormValid: Bool {
         !planDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
+
     private func setupInitialValues() {
         // Set week start date to next Monday
         let calendar = Calendar.current
@@ -235,7 +235,7 @@ struct MealPlanGenerationView: View {
         let daysUntilMonday = (9 - weekday) % 7
         // weekStartDate initialization removed
     }
-    
+
     private func addAllergy() {
         let trimmed = newAllergy.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty && !allergies.contains(trimmed) {
@@ -243,7 +243,7 @@ struct MealPlanGenerationView: View {
             newAllergy = ""
         }
     }
-    
+
     private func addDislike() {
         let trimmed = newDislike.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty && !dislikes.contains(trimmed) {
@@ -251,11 +251,11 @@ struct MealPlanGenerationView: View {
             newDislike = ""
         }
     }
-    
+
     private func generateMealPlan() {
         let description = planDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         let additionalReqs = additionalRequirements.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         Task {
             let success = await mealPlanStore.generateCustomMealPlan(
                 description: description,
@@ -266,7 +266,7 @@ struct MealPlanGenerationView: View {
                 // weekStartDate parameter removed
                 additionalRequirements: additionalReqs.isEmpty ? nil : additionalReqs
             )
-            
+
             await MainActor.run {
                 if success {
                     dismiss()
@@ -281,7 +281,7 @@ struct MealPlanGenerationView: View {
 struct MealPlanTemplatesView: View {
     @Binding var selectedTemplate: MealPlanGenerationTemplate?
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             List {
@@ -312,7 +312,7 @@ struct TemplateRow: View {
     let template: MealPlanGenerationTemplate
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack {
@@ -321,12 +321,12 @@ struct TemplateRow: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    
+
                     Text(template.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
-                    
+
                     // Tags
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -342,9 +342,9 @@ struct TemplateRow: View {
                         }
                     }
                 }
-                
+
                 Spacer()
-                
+
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.primaryGreen)
@@ -364,7 +364,7 @@ struct MealPlanGenerationTemplate: Identifiable {
     let name: String
     let description: String
     let tags: [String]
-    
+
     static let allTemplates: [MealPlanGenerationTemplate] = [
         MealPlanGenerationTemplate(
             id: "balanced-week",

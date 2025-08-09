@@ -19,45 +19,45 @@ class MealPlanStore: ObservableObject {
     @Published var selectedWeekStartDate = Date()
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+
     // Recent meals and AI recommendations
     @Published var recentMeals: [Recipe] = []
     @Published var aiRecommendedRecipes: [Recipe] = []
-    
+
     // Pagination
     @Published var currentPage = 1
     @Published var totalPages = 1
     @Published var hasMorePages = false
     @Published var totalCount = 0
-    
+
     // UI State
     @Published var showingGenerationView = false
     @Published var showingAnalysisView = false
-    
+
     // MARK: - Lightweight Meal Plan Support
     @Published var hasLightweightMeals = false
     @Published var lightweightDailyMeals: [LightweightDailyMeal] = []
-    
+
     // MARK: - Service Dependencies
     let aiGenerationService = AIGenerationService()
     let localStorageService = MealPlanLocalStorageService()
     let shoppingListService = ShoppingListService()
     let nutritionAnalysisService = NutritionAnalysisService()
-    
+
     let mealPlanService = MealPlanService()
     private var cancellables = Set<AnyCancellable>()
     let pageSize = 20
-    
+
     // MARK: - Initialization
-    
+
     init() {
         setupSelectedWeek()
         setupNotificationObservers()
         // Don't load initial data immediately - wait for user authentication
     }
-    
+
     // MARK: - Initial Setup
-    
+
     private func setupNotificationObservers() {
         // Listen for recipe deletion notifications
         NotificationCenter.default.addObserver(
@@ -71,7 +71,7 @@ class MealPlanStore: ObservableObject {
                 }
             }
         }
-        
+
         // Listen for user login to load cached data
         NotificationCenter.default.addObserver(
             forName: .userLoggedIn,
@@ -85,7 +85,7 @@ class MealPlanStore: ObservableObject {
                 }
             }
         }
-        
+
         // Listen for user logout to clear data
         NotificationCenter.default.addObserver(
             forName: .userLoggedOut,
@@ -97,31 +97,31 @@ class MealPlanStore: ObservableObject {
             }
         }
     }
-    
+
     private func setupSelectedWeek() {
         let now = Date()
         // Get the start of the current week (Monday) using our Monday-first calendar
         selectedWeekStartDate = localStorageService.normalizeWeekStartDate(now.startOfWeek())
-        
+
         // Always initialize with an empty weekly grid for the current week
         weeklyGrid = WeeklyMealGrid()
     }
-    
+
     /// Initialize data loading when user authentication is ready
     func initializeData() {
         loadInitialData()
     }
-    
+
     private func loadInitialData() {
         // Clean up any invalid stored weeks first
         localStorageService.cleanupInvalidStoredWeeks()
-        
+
         // Load local stored meal plan instead of fetching from backend
         loadLocalMealPlan()
     }
-    
+
     // MARK: - Local Storage Integration
-    
+
     func loadLocalMealPlan() {
         // Load meal plan for the currently selected week
         if let storedGrid = localStorageService.loadMealPlan(for: selectedWeekStartDate) {
@@ -131,34 +131,34 @@ class MealPlanStore: ObservableObject {
             weeklyGrid = WeeklyMealGrid()
         }
     }
-    
+
     func saveLocalMealPlan() -> Result<Void, LocalStorageError> {
         return localStorageService.saveMealPlan(weeklyGrid)
     }
-    
+
     // MARK: - Navigation Helper Methods
-    
+
     var canNavigateToPreviousWeek: Bool {
         let calendar = Calendar.mondayFirst
         let previousWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         return isWithinAllowedWeekRange(previousWeek)
     }
-    
+
     var canNavigateToNextWeek: Bool {
         let calendar = Calendar.mondayFirst
         let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         return isWithinAllowedWeekRange(nextWeek)
     }
-    
+
     func isWithinAllowedWeekRange(_ date: Date) -> Bool {
         let calendar = Calendar.mondayFirst
         let currentWeekStart = Date().startOfWeek()
         let weekDifference = calendar.dateComponents([.weekOfYear], from: currentWeekStart, to: date).weekOfYear ?? 0
         return abs(weekDifference) <= 4
     }
-    
+
     // MARK: - Data Management
-    
+
     func clearAllData() {
         mealPlans = []
         currentMealPlan = nil
@@ -168,61 +168,61 @@ class MealPlanStore: ObservableObject {
         aiRecommendedRecipes = []
         hasLightweightMeals = false
         lightweightDailyMeals = []
-        
+
         // Clear service data
         aiGenerationService.resetAIGenerationState()
         shoppingListService.clearShoppingList()
         nutritionAnalysisService.clearNutritionAnalysis()
         localStorageService.clearAllData()
-        
+
         print("🧹 [MealPlanStore] All data cleared")
     }
-    
+
     private func removeDeletedRecipe(recipeId: String) {
         // Remove from recent meals
         recentMeals.removeAll { $0.id == recipeId }
-        
+
         // Remove from AI recommendations
         aiRecommendedRecipes.removeAll { $0.id == recipeId }
-        
+
         // Remove from weekly grid
         weeklyGrid.removeRecipe(recipeId)
-        
+
         // Save changes
         _ = saveLocalMealPlan()
-        
+
         print("🗑️ [MealPlanStore] Removed deleted recipe: \\(recipeId)")
     }
-    
+
     // MARK: - Computed Properties
-    
+
     var hasAnyMealsThisWeek: Bool {
         weeklyGrid.hasAnyMeals
     }
-    
+
     var mealsCountThisWeek: Int {
         weeklyGrid.totalMealsCount
     }
-    
+
     var currentWeekDateRange: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
-        
+
         let startDate = selectedWeekStartDate
         let endDate = Calendar.mondayFirst.date(byAdding: .day, value: 6, to: startDate) ?? startDate
-        
+
         let startString = formatter.string(from: startDate)
         let endString = formatter.string(from: endDate)
-        
+
         return "\(startString) - \(endString)"
     }
-    
+
     var isCurrentWeek: Bool {
         let calendar = Calendar.mondayFirst
         let currentWeekStart = Date().startOfWeek()
         let normalizedCurrent = localStorageService.normalizeWeekStartDate(currentWeekStart)
         let normalizedSelected = localStorageService.normalizeWeekStartDate(selectedWeekStartDate)
-        
+
         return calendar.isDate(normalizedCurrent, equalTo: normalizedSelected, toGranularity: .day)
     }
 }
@@ -234,36 +234,36 @@ extension MealPlanStore {
     var aiGenerationState: AIGenerationState {
         aiGenerationService.aiGenerationState
     }
-    
+
     var previewMealPlan: MealPlan? {
         aiGenerationService.previewMealPlan
     }
-    
+
     var previewWeeklyGrid: WeeklyMealGrid? {
         aiGenerationService.previewWeeklyGrid
     }
-    
+
     var showingAIPreview: Bool {
         aiGenerationService.showingAIPreview
     }
-    
+
     var isGenerating: Bool {
         aiGenerationService.isGenerating
     }
-    
+
     // Shopping List Service Properties
     var shoppingList: [ShoppingListItem] {
         shoppingListService.shoppingList
     }
-    
+
     var isLoadingShoppingList: Bool {
         shoppingListService.isLoadingShoppingList
     }
-    
+
     // Nutrition Analysis Service Properties
     var nutritionAnalysis: MealPlanAnalysis? {
         get { nutritionAnalysisService.nutritionAnalysis }
-        set { 
+        set {
             if newValue == nil {
                 nutritionAnalysisService.clearNutritionAnalysis()
             } else {
@@ -271,7 +271,7 @@ extension MealPlanStore {
             }
         }
     }
-    
+
     var isAnalyzing: Bool {
         nutritionAnalysisService.isAnalyzing
     }

@@ -18,7 +18,7 @@ enum AIWorkflowError: LocalizedError, Equatable {
     case timeout
     case cancelled
     case unknown(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .networkError(let message):
@@ -39,7 +39,7 @@ enum AIWorkflowError: LocalizedError, Equatable {
             return "Unexpected error: \(message)"
         }
     }
-    
+
     var recoverySuggestion: String? {
         switch self {
         case .networkError:
@@ -60,7 +60,7 @@ enum AIWorkflowError: LocalizedError, Equatable {
             return "Please try again or contact support if the problem persists."
         }
     }
-    
+
     var canRetry: Bool {
         switch self {
         case .networkError, .generationFailed, .applyFailed, .timeout, .unknown:
@@ -69,7 +69,7 @@ enum AIWorkflowError: LocalizedError, Equatable {
             return false
         }
     }
-    
+
     var shouldResetWorkflow: Bool {
         switch self {
         case .previewUnavailable, .invalidRequest:
@@ -88,7 +88,7 @@ enum AIWorkflowRecoveryAction {
     case goBack
     case startOver
     case dismiss
-    
+
     var title: String {
         switch self {
         case .retry:
@@ -103,7 +103,7 @@ enum AIWorkflowRecoveryAction {
             return "Cancel"
         }
     }
-    
+
     var isDestructive: Bool {
         switch self {
         case .startOver, .dismiss:
@@ -120,32 +120,32 @@ struct AIWorkflowErrorAlertConfig {
     let error: AIWorkflowError
     let primaryAction: AIWorkflowRecoveryAction
     let secondaryAction: AIWorkflowRecoveryAction?
-    
+
     init(error: AIWorkflowError, currentStep: AIWorkflowStep) {
         self.error = error
-        
+
         // Determine appropriate actions based on error type and current step
         switch (error, currentStep) {
         case (.networkError, .generating), (.generationFailed, .generating), (.timeout, .generating):
             self.primaryAction = .retry
             self.secondaryAction = .startOver
-            
+
         case (.networkError, .confirming), (.applyFailed, .confirming):
             self.primaryAction = .retry
             self.secondaryAction = .goBack
-            
+
         case (.previewUnavailable, _):
             self.primaryAction = .regenerate
             self.secondaryAction = .startOver
-            
+
         case (.invalidRequest, _):
             self.primaryAction = .goBack
             self.secondaryAction = .startOver
-            
+
         case (.cancelled, _):
             self.primaryAction = .startOver
             self.secondaryAction = .dismiss
-            
+
         default:
             self.primaryAction = .retry
             self.secondaryAction = .startOver
@@ -158,13 +158,13 @@ struct AIWorkflowErrorAlertConfig {
 struct AIWorkflowErrorView: View {
     let error: AIWorkflowError
     let onAction: (AIWorkflowRecoveryAction) -> Void
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     private var config: AIWorkflowErrorAlertConfig {
         AIWorkflowErrorAlertConfig(error: error, currentStep: .input) // Default step for standalone view
     }
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Error Icon
@@ -172,20 +172,20 @@ struct AIWorkflowErrorView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.error)
                 .symbolEffect(.bounce)
-            
+
             // Error Message
             VStack(spacing: 12) {
                 Text("Something went wrong")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Text(error.localizedDescription)
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
-                
+
                 if let suggestion = error.recoverySuggestion {
                     Text(suggestion)
                         .font(.caption)
@@ -195,14 +195,14 @@ struct AIWorkflowErrorView: View {
                         .padding(.top, 4)
                 }
             }
-            
+
             // Action Buttons
             VStack(spacing: 12) {
                 Button(config.primaryAction.title) {
                     onAction(config.primaryAction)
                 }
                 .primaryGreenButton()
-                
+
                 if let secondaryAction = config.secondaryAction {
                     Button(secondaryAction.title) {
                         onAction(secondaryAction)
@@ -215,7 +215,7 @@ struct AIWorkflowErrorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
     }
-    
+
     private var errorIcon: String {
         switch error {
         case .networkError, .timeout:
@@ -239,28 +239,28 @@ struct AIWorkflowErrorView: View {
 struct AIWorkflowErrorToast: View {
     let error: AIWorkflowError
     let onDismiss: () -> Void
-    
+
     @State private var isVisible = false
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.circle.fill")
                 .foregroundColor(.error)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text("Error")
                     .font(.callout)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
-                
+
                 Text(error.localizedDescription)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
-            
+
             Spacer()
-            
+
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.caption)
@@ -279,7 +279,7 @@ struct AIWorkflowErrorToast: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isVisible)
         .onAppear {
             isVisible = true
-            
+
             // Auto-dismiss after 5 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                 withAnimation {
@@ -296,15 +296,15 @@ struct AIWorkflowErrorToast: View {
 // MARK: - Error Extension for AIWorkflowCoordinator
 
 extension AIWorkflowCoordinator {
-    
+
     /// Handle error with appropriate recovery actions
     func handleWorkflowError(_ error: AIWorkflowError) {
         print("❌ [AIWorkflowCoordinator] Workflow error: \(error)")
-        
+
         errorMessage = error.localizedDescription
         showingError = true
         isLoading = false
-        
+
         // Determine appropriate step based on error and recovery options
         if error.shouldResetWorkflow {
             currentStep = .input
@@ -324,7 +324,7 @@ extension AIWorkflowCoordinator {
             }
         }
     }
-    
+
     /// Get available recovery actions for current error and step
     func getRecoveryActions(for error: AIWorkflowError) -> [AIWorkflowRecoveryAction] {
         let config = AIWorkflowErrorAlertConfig(error: error, currentStep: currentStep)
@@ -334,12 +334,12 @@ extension AIWorkflowCoordinator {
         }
         return actions
     }
-    
+
     /// Execute recovery action
     func executeRecoveryAction(_ action: AIWorkflowRecoveryAction) {
         showingError = false
         errorMessage = nil
-        
+
         switch action {
         case .retry:
             retryCurrentOperation()

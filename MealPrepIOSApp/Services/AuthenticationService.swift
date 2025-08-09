@@ -10,28 +10,28 @@ import Foundation
 // MARK: - Authentication Service
 class AuthenticationService {
     private let networkManager = NetworkManager.shared
-    
+
     // MARK: - Authentication Methods
-    
+
     /// Login with email and password
     func login(email: String, password: String) async throws -> AuthResponse {
         let loginRequest = LoginRequest(email: email, password: password)
-        
+
         let response: AuthResponse = try await networkManager.post(
             "/auth/login/",
             body: loginRequest,
             responseType: AuthResponse.self,
             requiresAuth: false
         )
-        
+
         // Store tokens in NetworkManager
         await MainActor.run {
             networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
         }
-        
+
         return response
     }
-    
+
     /// Register new user account
     func register(userData: RegisterRequest) async throws -> AuthResponse {
         let response: AuthResponse = try await networkManager.post(
@@ -40,15 +40,15 @@ class AuthenticationService {
             responseType: AuthResponse.self,
             requiresAuth: false
         )
-        
+
         // Store tokens in NetworkManager
         await MainActor.run {
             networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
         }
-        
+
         return response
     }
-    
+
     /// Logout user
     func logout() async throws {
         // Call logout endpoint to invalidate refresh token on server
@@ -63,13 +63,13 @@ class AuthenticationService {
             // Continue with local logout even if server call fails
             print("Server logout failed: \(error.localizedDescription)")
         }
-        
+
         // Clear local tokens
         await MainActor.run {
             networkManager.clearTokens()
         }
     }
-    
+
     /// Get current user information
     func getCurrentUser() async throws -> User {
         return try await networkManager.get(
@@ -78,7 +78,7 @@ class AuthenticationService {
             requiresAuth: true
         )
     }
-    
+
     /// Update user profile
     func updateProfile(updates: UserProfileUpdateRequest) async throws -> User {
         return try await networkManager.patch(
@@ -88,7 +88,7 @@ class AuthenticationService {
             requiresAuth: true
         )
     }
-    
+
     /// Change password
     func changePassword(currentPassword: String, newPassword: String) async throws {
         let request = ChangePasswordRequest(
@@ -96,7 +96,7 @@ class AuthenticationService {
             newPassword: newPassword,
             newPasswordConfirm: newPassword
         )
-        
+
         let _: EmptyResponse = try await networkManager.post(
             "/auth/change-password/",
             body: request,
@@ -104,11 +104,11 @@ class AuthenticationService {
             requiresAuth: true
         )
     }
-    
+
     /// Request password reset
     func requestPasswordReset(email: String) async throws {
         let request = PasswordResetRequest(email: email)
-        
+
         let _: EmptyResponse = try await networkManager.post(
             "/auth/password-reset/",
             body: request,
@@ -116,7 +116,7 @@ class AuthenticationService {
             requiresAuth: false
         )
     }
-    
+
     /// Confirm password reset
     func confirmPasswordReset(token: String, newPassword: String) async throws {
         let request = PasswordResetConfirmRequest(
@@ -124,7 +124,7 @@ class AuthenticationService {
             newPassword: newPassword,
             newPasswordConfirm: newPassword
         )
-        
+
         let _: EmptyResponse = try await networkManager.post(
             "/auth/password-reset-confirm/",
             body: request,
@@ -132,7 +132,7 @@ class AuthenticationService {
             requiresAuth: false
         )
     }
-    
+
     /// Refresh authentication token
     func refreshToken() async throws -> TokenRefreshResponse {
         // This is handled automatically by NetworkManager
@@ -140,7 +140,7 @@ class AuthenticationService {
         try await networkManager.refreshTokenIfNeeded()
         return TokenRefreshResponse(access: "refreshed") // Placeholder
     }
-    
+
     /// Check if user is authenticated
     @MainActor
     var isAuthenticated: Bool {
@@ -157,7 +157,7 @@ private struct ChangePasswordRequest: Codable {
     let currentPassword: String
     let newPassword: String
     let newPasswordConfirm: String
-    
+
     enum CodingKeys: String, CodingKey {
         case currentPassword = "current_password"
         case newPassword = "new_password"
@@ -173,7 +173,7 @@ private struct PasswordResetConfirmRequest: Codable {
     let token: String
     let newPassword: String
     let newPasswordConfirm: String
-    
+
     enum CodingKeys: String, CodingKey {
         case token
         case newPassword = "new_password"

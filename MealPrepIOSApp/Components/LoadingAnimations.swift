@@ -14,11 +14,11 @@ struct TemplateSavingLoader: View {
     let progress: Double // 0.0 to 1.0
     let statusText: String
     let currentStep: String
-    
+
     @State private var rotation: Double = 0
     @State private var scale: Double = 1.0
     @State private var opacity: Double = 1.0
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Circular Progress Ring with Animated Center
@@ -27,7 +27,7 @@ struct TemplateSavingLoader: View {
                 Circle()
                     .stroke(Color.gray.opacity(0.2), lineWidth: 8)
                     .frame(width: 80, height: 80)
-                
+
                 // Progress circle
                 Circle()
                     .trim(from: 0, to: progress)
@@ -42,7 +42,7 @@ struct TemplateSavingLoader: View {
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90)) // Start from top
                     .animation(.easeInOut(duration: 0.5), value: progress)
-                
+
                 // Animated center icon
                 ZStack {
                     // Pulsing background
@@ -51,7 +51,7 @@ struct TemplateSavingLoader: View {
                         .frame(width: 50, height: 50)
                         .scaleEffect(scale)
                         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: scale)
-                    
+
                     // Rotating icon
                     Image(systemName: "folder.badge.plus")
                         .font(.title2)
@@ -60,7 +60,7 @@ struct TemplateSavingLoader: View {
                         .animation(.linear(duration: 2.0).repeatForever(autoreverses: false), value: rotation)
                 }
             }
-            
+
             // Status text with fade animation
             VStack(spacing: 8) {
                 Text(statusText)
@@ -69,7 +69,7 @@ struct TemplateSavingLoader: View {
                     .foregroundColor(.primary)
                     .opacity(opacity)
                     .animation(.easeInOut(duration: 0.3), value: opacity)
-                
+
                 Text(currentStep)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -77,7 +77,7 @@ struct TemplateSavingLoader: View {
                     .opacity(opacity)
                     .animation(.easeInOut(duration: 0.3), value: opacity)
             }
-            
+
             // Animated dots
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { index in
@@ -115,21 +115,21 @@ struct CircularProgress: View {
     let size: CGFloat
     let lineWidth: CGFloat
     let accentColor: Color
-    
+
     init(progress: Double, size: CGFloat = 40, lineWidth: CGFloat = 4, accentColor: Color = .primaryGreen) {
         self.progress = progress
         self.size = size
         self.lineWidth = lineWidth
         self.accentColor = accentColor
     }
-    
+
     var body: some View {
         ZStack {
             // Background circle
             Circle()
                 .stroke(Color.gray.opacity(0.2), lineWidth: lineWidth)
                 .frame(width: size, height: size)
-            
+
             // Progress circle
             Circle()
                 .trim(from: 0, to: progress)
@@ -148,13 +148,13 @@ struct OrbitingCircles: View {
     let size: CGFloat
     let circleCount: Int
     let duration: Double
-    
+
     init(size: CGFloat = 60, circleCount: Int = 3, duration: Double = 2.0) {
         self.size = size
         self.circleCount = circleCount
         self.duration = duration
     }
-    
+
     var body: some View {
         ZStack {
             ForEach(0..<circleCount, id: \.self) { index in
@@ -180,12 +180,12 @@ struct ParticlesEffect: View {
     @State private var particles: [Particle] = []
     let particleCount: Int
     let bounds: CGRect
-    
+
     init(particleCount: Int = 20, bounds: CGRect = CGRect(x: 0, y: 0, width: 200, height: 200)) {
         self.particleCount = particleCount
         self.bounds = bounds
     }
-    
+
     var body: some View {
         ZStack {
             ForEach(particles.indices, id: \.self) { index in
@@ -202,7 +202,7 @@ struct ParticlesEffect: View {
             startAnimation()
         }
     }
-    
+
     private func generateParticles() {
         particles = (0..<particleCount).map { _ in
             Particle(
@@ -216,7 +216,7 @@ struct ParticlesEffect: View {
             )
         }
     }
-    
+
     private func startAnimation() {
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
             for index in particles.indices {
@@ -246,7 +246,7 @@ enum TemplateSavingState {
     case savingTemplate
     case completed
     case error(String)
-    
+
     var progress: Double {
         switch self {
         case .validating: return 0.25
@@ -256,7 +256,7 @@ enum TemplateSavingState {
         case .error: return 0.0
         }
     }
-    
+
     var statusText: String {
         switch self {
         case .validating: return "Validating Recipes"
@@ -266,7 +266,7 @@ enum TemplateSavingState {
         case .error: return "Error Occurred"
         }
     }
-    
+
     var currentStep: String {
         switch self {
         case .validating: return "Checking recipe database..."
@@ -287,9 +287,9 @@ enum TemplateSavingState {
             statusText: "Creating Recipes",
             currentStep: "Creating missing recipes in backend..."
         )
-        
+
         CircularProgress(progress: 0.75)
-        
+
         OrbitingCircles()
     }
     .padding()

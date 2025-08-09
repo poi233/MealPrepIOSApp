@@ -10,7 +10,7 @@ import SwiftUI
 struct RecipeFiltersView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var selectedCuisine: String?
     @State private var selectedDifficulty: Difficulty?
     @State private var selectedMealType: MealType?
@@ -18,10 +18,10 @@ struct RecipeFiltersView: View {
     @State private var maxCookTime: Double = 180
     @State private var minRating: Double = 0
     @State private var showMyRecipesOnly: Bool = false
-    
+
     private let cuisines = ["Italian", "Asian", "Mexican", "American", "French", "Indian", "Mediterranean", "Thai", "Japanese", "Chinese"]
     private let difficulties = Difficulty.allCases
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -40,7 +40,7 @@ struct RecipeFiltersView: View {
                         .padding(.horizontal)
                     }
                 }
-                
+
                 Section("Difficulty") {
                     HStack(spacing: 12) {
                         ForEach(difficulties, id: \.self) { difficulty in
@@ -54,7 +54,7 @@ struct RecipeFiltersView: View {
                         Spacer()
                     }
                 }
-                
+
                 Section("Meal Type") {
                     HStack(spacing: 12) {
                         ForEach(MealType.allCases, id: \.self) { mealType in
@@ -68,7 +68,7 @@ struct RecipeFiltersView: View {
                         Spacer()
                     }
                 }
-                
+
                 Section("Time Limits") {
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 8) {
@@ -76,7 +76,7 @@ struct RecipeFiltersView: View {
                                 .font(.subheadline)
                             Slider(value: $maxPrepTime, in: 5...120, step: 5)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Max Cook Time: \(Int(maxCookTime)) minutes")
                                 .font(.subheadline)
@@ -84,7 +84,7 @@ struct RecipeFiltersView: View {
                         }
                     }
                 }
-                
+
                 Section("Rating") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Minimum Rating: \(minRating, specifier: "%.1f") stars")
@@ -92,7 +92,7 @@ struct RecipeFiltersView: View {
                         Slider(value: $minRating, in: 0...5, step: 0.5)
                     }
                 }
-                
+
                 Section("Other") {
                     Toggle("My Recipes Only", isOn: $showMyRecipesOnly)
                 }
@@ -105,7 +105,7 @@ struct RecipeFiltersView: View {
                         clearAllFilters()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Apply") {
                         applyFilters()
@@ -119,24 +119,24 @@ struct RecipeFiltersView: View {
             }
         }
     }
-    
+
     private func loadCurrentFilters() {
         selectedCuisine = recipeStore.selectedCuisine
         selectedDifficulty = recipeStore.selectedDifficulty
         selectedMealType = recipeStore.selectedMealType
         showMyRecipesOnly = recipeStore.showMyRecipesOnly
-        
+
         maxPrepTime = Double(recipeStore.filters.prepTimeMax ?? 120)
         maxCookTime = Double(recipeStore.filters.cookTimeMax ?? 180)
         minRating = recipeStore.filters.avgRatingMin ?? 0
     }
-    
+
     private func applyFilters() {
         recipeStore.selectedCuisine = selectedCuisine
         recipeStore.selectedDifficulty = selectedDifficulty
         recipeStore.selectedMealType = selectedMealType
         recipeStore.showMyRecipesOnly = showMyRecipesOnly
-        
+
         recipeStore.filters = RecipeFilters(
             search: recipeStore.searchQuery.isEmpty ? nil : recipeStore.searchQuery,
             cuisine: selectedCuisine,
@@ -149,12 +149,12 @@ struct RecipeFiltersView: View {
             mealType: selectedMealType,
             myRecipes: showMyRecipesOnly
         )
-        
+
         Task {
             await recipeStore.applyFilters()
         }
     }
-    
+
     private func clearAllFilters() {
         selectedCuisine = nil
         selectedDifficulty = nil
@@ -170,7 +170,7 @@ struct FilterButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)

@@ -12,33 +12,33 @@ struct LightweightDailyMealCard: View {
     let lightweightDailyMeal: LightweightDailyMeal
     let dayOfWeek: Int
     let date: Date
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @State private var isExpanded = false
-    
+
     private var dayName: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE"
         return formatter.string(from: date)
     }
-    
+
     private var dayNumber: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d"
         return formatter.string(from: date)
     }
-    
+
     private var totalRecipeStubs: Int {
-        lightweightDailyMeal.breakfast.count + 
-        lightweightDailyMeal.lunch.count + 
+        lightweightDailyMeal.breakfast.count +
+        lightweightDailyMeal.lunch.count +
         lightweightDailyMeal.dinner.count
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Day header
             dayHeader
-            
+
             if isExpanded {
                 // Meal slots
                 VStack(spacing: 12) {
@@ -51,7 +51,7 @@ struct LightweightDailyMealCard: View {
                             date: date
                         )
                     }
-                    
+
                     if !lightweightDailyMeal.lunch.isEmpty {
                         LightweightMealSlotView(
                             title: "午餐",
@@ -61,7 +61,7 @@ struct LightweightDailyMealCard: View {
                             date: date
                         )
                     }
-                    
+
                     if !lightweightDailyMeal.dinner.isEmpty {
                         LightweightMealSlotView(
                             title: "晚餐",
@@ -87,7 +87,7 @@ struct LightweightDailyMealCard: View {
             }
         }
     }
-    
+
     private var dayHeader: some View {
         HStack {
             // Day circle
@@ -96,7 +96,7 @@ struct LightweightDailyMealCard: View {
                     .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundColor(.secondary)
-                
+
                 Text(dayNumber)
                     .font(.title2)
                     .fontWeight(.semibold)
@@ -107,12 +107,12 @@ struct LightweightDailyMealCard: View {
                 Circle()
                     .fill(Color(.systemGray6))
             )
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(dayName)
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 if totalRecipeStubs > 0 {
                     Text("\(totalRecipeStubs) 个建议菜谱")
                         .font(.caption)
@@ -123,9 +123,9 @@ struct LightweightDailyMealCard: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             Spacer()
-            
+
             // Expand/collapse indicator
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 14, weight: .medium))

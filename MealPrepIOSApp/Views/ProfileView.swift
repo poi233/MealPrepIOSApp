@@ -3,7 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var userProfileStore: UserProfileStore
-    
+
     var body: some View {
         NavigationView {
             List {
@@ -14,29 +14,29 @@ struct ProfileView: View {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 50))
                                 .foregroundColor(Color(red: 77/255, green: 182/255, blue: 172/255))
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(user.fullDisplayName)
                                     .font(.headline)
                                     .fontWeight(.semibold)
-                                
+
                                 Text(user.email)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                
+
                                 Text("@\(user.username)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                
+
                                 Text("Member since \(user.createdAt, style: .date)")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             Spacer()
                         }
                         .padding(.vertical, 12)
-                        
+
                         // Display dietary preferences if available
                         if let dietaryPrefs = user.dietaryPreferences {
                             VStack(alignment: .leading, spacing: 8) {
@@ -48,7 +48,7 @@ struct ProfileView: View {
                                             .font(.subheadline)
                                     }
                                 }
-                                
+
                                 if let calorieTarget = dietaryPrefs.calorieTarget {
                                     HStack {
                                         Image(systemName: "flame.fill")
@@ -57,7 +57,7 @@ struct ProfileView: View {
                                             .font(.subheadline)
                                     }
                                 }
-                                
+
                                 if let allergies = dietaryPrefs.allergies, !allergies.isEmpty {
                                     HStack(alignment: .top) {
                                         Image(systemName: "exclamationmark.triangle.fill")
@@ -72,7 +72,7 @@ struct ProfileView: View {
                                         }
                                     }
                                 }
-                                
+
                                 if let dislikes = dietaryPrefs.dislikes, !dislikes.isEmpty {
                                     HStack(alignment: .top) {
                                         Image(systemName: "hand.raised.fill")
@@ -101,33 +101,33 @@ struct ProfileView: View {
                         .padding(.vertical, 20)
                     }
                 }
-                
+
                 // Profile Settings
                 Section("Preferences") {
                     NavigationLink(destination: DietaryPreferencesView()) {
                         Label("Dietary Preferences", systemImage: "leaf")
                     }
-                    
+
                     NavigationLink(destination: AllergiesView()) {
                         Label("Allergies", systemImage: "exclamationmark.triangle")
                     }
-                    
+
                     NavigationLink(destination: CuisinePreferencesView()) {
                         Label("Cuisine Preferences", systemImage: "globe")
                     }
                 }
-                
+
                 // App Settings
                 Section("Settings") {
                     NavigationLink(destination: NotificationSettingsView()) {
                         Label("Notifications", systemImage: "bell")
                     }
-                    
+
                     NavigationLink(destination: AboutView()) {
                         Label("About", systemImage: "info.circle")
                     }
                 }
-                
+
                 // Logout
                 Section {
                     Button(action: {
@@ -186,20 +186,20 @@ struct AboutView: View {
             Image(systemName: "fork.knife.circle.fill")
                 .font(.system(size: 80))
                 .foregroundColor(Color(red: 77/255, green: 182/255, blue: 172/255))
-            
+
             Text("MealPrep AI")
                 .font(.title)
                 .fontWeight(.bold)
-            
+
             Text("Version 1.0.0")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
+
             Text("AI-powered meal planning made simple")
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            
+
             Spacer()
         }
         .padding()

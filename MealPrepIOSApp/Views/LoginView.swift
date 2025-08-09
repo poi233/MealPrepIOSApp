@@ -6,14 +6,14 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showingRegister = false
     @State private var loginTask: Task<Void, Never>?
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                     // Top spacer - fixed height
                     Spacer()
                         .frame(height: 30)
-                    
+
                     // Logo/Title - static, no animations or click interactions
                     VStack(spacing: 12) {
                         Image(systemName: "fork.knife.circle.fill")
@@ -26,21 +26,21 @@ struct LoginView: View {
                                 )
                             )
                             .shadow(color: .primaryGreen.opacity(0.3), radius: 10)
-                        
+
                         Text("MealPrep AI")
                             .font(.title2)
                             .fontWeight(.bold)
-                        
+
                         Text("Your personal cooking companion")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     // Middle spacer
                     Spacer()
                         .frame(height: 15)
-                    
+
                     // Login Form in Fixed Size Card
                     VStack(spacing: 20) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -52,13 +52,13 @@ struct LoginView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        
+
                         VStack(spacing: 16) {
                             StaticTextField("Email", text: $email, keyboardType: .emailAddress)
                                 .textInputAutocapitalization(.never)
-                            
+
                             StaticTextField("Password", text: $password, isSecure: true)
-                            
+
                             if let errorMessage = authStore.errorMessage {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
@@ -69,7 +69,7 @@ struct LoginView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        
+
                         VStack(spacing: 12) {
                             StaticButton(
                                 "Sign In",
@@ -78,13 +78,13 @@ struct LoginView: View {
                             ) {
                                 // Cancel any existing login task
                                 loginTask?.cancel()
-                                
+
                                 loginTask = Task { @MainActor in
                                     await authStore.login(email: email, password: password)
                                     loginTask = nil
                                 }
                             }
-                            
+
                             Button("Forgot password?") {
                                 // TODO: Implement forgot password
                             }
@@ -99,11 +99,11 @@ struct LoginView: View {
                             .fill(Color(.systemBackground))
                             .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                     )
-                    
+
                     // Bottom spacer
                     Spacer()
                         .frame(height: 15)
-                    
+
                     // Register Link
                     VStack(spacing: 12) {
                         HStack {
@@ -120,13 +120,13 @@ struct LoginView: View {
                                 .frame(minWidth: 20)
                                 .foregroundColor(.secondary.opacity(0.3))
                         }
-                        
+
                         StaticOutlineButton("Create new account", style: .outline) {
                             showingRegister = true
                         }
                         .frame(width: 350)
                     }
-                    
+
                     // Bottom spacer
                     Spacer()
                         .frame(height: 30)

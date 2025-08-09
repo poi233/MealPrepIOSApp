@@ -12,7 +12,7 @@ import Foundation
  * Lightweight recipe representation for meal plan generation phase.
  * Contains minimal information needed for initial display before user applies to meal plan.
  * Unified format between iOS frontend and backend generateMealPlan response.
- * 
+ *
  * Optimized for fast AI generation with reduced optional fields and better defaults.
  */
 struct RecipeStub: Codable, Identifiable, Hashable {
@@ -26,7 +26,7 @@ struct RecipeStub: Codable, Identifiable, Hashable {
     let tags: [String]                 // Recipe tags for filtering and display
     let difficulty: Difficulty         // Recipe difficulty level
     let isAIGenerated: Bool            // Track if this is AI-generated or existing recipe
-    
+
     // Custom coding keys to match backend RecipeStubSerializer exactly
     enum CodingKeys: String, CodingKey {
         case id
@@ -41,7 +41,7 @@ struct RecipeStub: Codable, Identifiable, Hashable {
         case difficulty
         case isAIGenerated = "is_ai_generated"
     }
-    
+
     init(
         id: String? = nil,
         name: String,
@@ -65,14 +65,14 @@ struct RecipeStub: Codable, Identifiable, Hashable {
         self.difficulty = difficulty
         self.isAIGenerated = isAIGenerated
     }
-    
+
     /// Initialize from backend API response (RecipeStubSerializer)
     /// Handles the exact backend contract with proper null/optional field handling
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Handle id field - backend allows null, but we need a valid ID
-        if let idString = try? container.decodeIfPresent(String.self, forKey: .id), 
+        if let idString = try? container.decodeIfPresent(String.self, forKey: .id),
            !idString.isEmpty {
             id = idString
         } else if let idInt = try? container.decodeIfPresent(Int.self, forKey: .id) {
@@ -81,10 +81,10 @@ struct RecipeStub: Codable, Identifiable, Hashable {
             // Generate UUID for AI-generated recipes when id is null/missing
             id = UUID().uuidString
         }
-        
+
         // Required field in backend contract
         name = try container.decode(String.self, forKey: .name)
-        
+
         // Optional fields with proper defaults (backend allows null)
         if let cuisineValue = try container.decodeIfPresent(String.self, forKey: .cuisine),
            !cuisineValue.isEmpty {
@@ -92,36 +92,36 @@ struct RecipeStub: Codable, Identifiable, Hashable {
         } else {
             cuisine = "国际"  // Default cuisine
         }
-        
+
         if let descValue = try container.decodeIfPresent(String.self, forKey: .description),
            !descValue.isEmpty {
             description = descValue
         } else {
             description = "美味的\(name)"  // Generate default description
         }
-        
+
         estimatedCalories = try container.decodeIfPresent(Int.self, forKey: .estimatedCalories) ?? 300
         estimatedPrepTime = try container.decodeIfPresent(Int.self, forKey: .estimatedPrepTime) ?? 30
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
-        
+
         // iOS-only fields with defaults (not in backend contract)
         difficulty = try container.decodeIfPresent(Difficulty.self, forKey: .difficulty) ?? .medium
         isAIGenerated = try container.decodeIfPresent(Bool.self, forKey: .isAIGenerated) ?? true
     }
-    
+
     /// Encode to backend API format
     /// Only includes fields that are part of the backend RecipeStubSerializer contract
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         // Only encode id if it's not a generated UUID (backend expects null for AI-generated)
         if !isAIGenerated || !id.contains("-") {
             try container.encode(id, forKey: .id)
         } else {
             try container.encodeNil(forKey: .id)  // Send null for AI-generated recipes
         }
-        
+
         try container.encode(name, forKey: .name)
         try container.encode(cuisine.isEmpty ? nil : cuisine, forKey: .cuisine)
         try container.encode(description.isEmpty ? nil : description, forKey: .description)
@@ -129,39 +129,39 @@ struct RecipeStub: Codable, Identifiable, Hashable {
         try container.encode(estimatedPrepTime, forKey: .estimatedPrepTime)
         try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
         try container.encode(tags.isEmpty ? nil : tags, forKey: .tags)
-        
+
         // iOS-only fields - include for internal iOS communication
         try container.encode(difficulty, forKey: .difficulty)
         try container.encode(isAIGenerated, forKey: .isAIGenerated)
     }
-    
+
     // MARK: - Computed Properties
-    
+
     /// Display string for estimated prep time
     var prepTimeDisplay: String {
         return "\(estimatedPrepTime)分钟"
     }
-    
+
     /// Display string for estimated calories
     var caloriesDisplay: String {
         return "\(estimatedCalories) 卡路里"
     }
-    
+
     /// Cuisine display (no fallback needed as it's non-optional)
     var cuisineDisplay: String {
         return cuisine
     }
-    
+
     /// Tags display (no fallback needed as it's non-optional)
     var tagsDisplay: [String] {
         return tags
     }
-    
+
     /// Description display (no fallback needed as it's non-optional)
     var descriptionDisplay: String {
         return description
     }
-    
+
     /// Difficulty display string
     var difficultyDisplay: String {
         switch difficulty {
@@ -170,13 +170,13 @@ struct RecipeStub: Codable, Identifiable, Hashable {
         case .hard: return "困难"
         }
     }
-    
+
     // MARK: - Hashable Implementation
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(name)
     }
-    
+
     static func == (lhs: RecipeStub, rhs: RecipeStub) -> Bool {
         return lhs.id == rhs.id
     }
@@ -189,7 +189,7 @@ extension RecipeStub {
     var isExistingRecipe: Bool {
         return !isAIGenerated
     }
-    
+
     /// Create a RecipeStub from a full Recipe object
     static func fromRecipe(_ recipe: Recipe) -> RecipeStub {
         return RecipeStub(
@@ -212,7 +212,7 @@ extension RecipeStub {
             isAIGenerated: false
         )
     }
-    
+
     /// Create a basic AI-generated RecipeStub with just name and cuisine
     static func aiGenerated(name: String, cuisine: String = "国际") -> RecipeStub {
         return RecipeStub(
@@ -221,7 +221,7 @@ extension RecipeStub {
             isAIGenerated: true
         )
     }
-    
+
     /// Convert RecipeStub to full Recipe object for WeeklyMealGrid compatibility
     /// Used when applying AI-generated meal plans to the weekly grid
     /// Only provides basic nutritional info as placeholder - real nutrition comes from backend AI
@@ -256,7 +256,7 @@ extension RecipeStub {
             updatedAt: Date()
         )
     }
-    
+
     /// Convert RecipeStub to AIGeneratedRecipe for create-recipe-from-ai API
     /// Used when generating full recipe details from AI meal plan stubs
     /// Let backend AI completely generate all nutritional information
@@ -266,7 +266,7 @@ extension RecipeStub {
             AIIngredient(name: "主要食材", amount: "适量"),
             AIIngredient(name: "调料", amount: "适量")
         ]
-        
+
         // IMPORTANT: Send minimal nutritional info to let backend AI generate realistic values
         // Only provide estimated calories as a hint, let AI calculate all other nutrition facts
         let minimalNutrition = AINutritionInfo(
@@ -279,14 +279,14 @@ extension RecipeStub {
             sugar: nil,         // Let AI calculate realistic sugar content
             servings: 1
         )
-        
+
         // Create basic instruction placeholder - will be enhanced by AI
         let basicInstructions = [
             "1. 准备所需食材",
             "2. 按照传统做法烹饪",
             "3. 调味并完成制作"
         ]
-        
+
         return AIGeneratedRecipe(
             name: self.name,
             description: self.description,
@@ -301,7 +301,7 @@ extension RecipeStub {
             tags: self.tags
         )
     }
-    
+
     // REMOVED: Frontend nutritional calculation methods
     // All nutritional data will now be generated by backend AI via create-recipe-from-ai API
 }
@@ -322,9 +322,9 @@ struct LightweightDailyMeal: Codable, Identifiable {
     let id = UUID()
     let day: String                    // Day name (matches backend - "Monday", "星期一")
     let breakfast: [RecipeStub]        // Breakfast recipe stubs (matches backend)
-    let lunch: [RecipeStub]            // Lunch recipe stubs (matches backend)  
+    let lunch: [RecipeStub]            // Lunch recipe stubs (matches backend)
     let dinner: [RecipeStub]           // Dinner recipe stubs (matches backend)
-    
+
     enum CodingKeys: String, CodingKey {
         case day
         case breakfast
@@ -332,39 +332,39 @@ struct LightweightDailyMeal: Codable, Identifiable {
         case dinner
         // Note: id is excluded from coding to match backend contract
     }
-    
+
     init(day: String, breakfast: [RecipeStub] = [], lunch: [RecipeStub] = [], dinner: [RecipeStub] = []) {
         self.day = day
         self.breakfast = breakfast
         self.lunch = lunch
         self.dinner = dinner
     }
-    
+
     // MARK: - Backend Compatibility Initializer
-    
+
     /// Initialize from backend API response (GeneratedMealPlanSerializer.lightweight_daily_meals)
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         day = try container.decode(String.self, forKey: .day)
         breakfast = try container.decodeIfPresent([RecipeStub].self, forKey: .breakfast) ?? []
         lunch = try container.decodeIfPresent([RecipeStub].self, forKey: .lunch) ?? []
         dinner = try container.decodeIfPresent([RecipeStub].self, forKey: .dinner) ?? []
     }
-    
+
     /// Encode to backend API format
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         try container.encode(day, forKey: .day)
         try container.encode(breakfast, forKey: .breakfast)
         try container.encode(lunch, forKey: .lunch)
         try container.encode(dinner, forKey: .dinner)
         // Note: id is intentionally excluded to match backend API contract
     }
-    
+
     // MARK: - Computed Properties for UI Display
-    
+
     /// Total estimated calories for the day
     var totalCalories: Int {
         let breakfastCal = breakfast.reduce(0) { $0 + $1.estimatedCalories }
@@ -372,7 +372,7 @@ struct LightweightDailyMeal: Codable, Identifiable {
         let dinnerCal = dinner.reduce(0) { $0 + $1.estimatedCalories }
         return breakfastCal + lunchCal + dinnerCal
     }
-    
+
     /// Total estimated prep time for the day
     var totalPrepTime: Int {
         let breakfastTime = breakfast.reduce(0) { $0 + $1.estimatedPrepTime }
@@ -380,18 +380,18 @@ struct LightweightDailyMeal: Codable, Identifiable {
         let dinnerTime = dinner.reduce(0) { $0 + $1.estimatedPrepTime }
         return breakfastTime + lunchTime + dinnerTime
     }
-    
+
     /// All unique cuisines for the day
     var cuisines: [String] {
         let allCuisines = breakfast.map { $0.cuisine } + lunch.map { $0.cuisine } + dinner.map { $0.cuisine }
         return Array(Set(allCuisines)).sorted()
     }
-    
+
     /// Check if the day has any meals planned
     var hasAnyMeals: Bool {
         return !breakfast.isEmpty || !lunch.isEmpty || !dinner.isEmpty
     }
-    
+
     /// Check if the day is fully planned (all three meals)
     var isFullyPlanned: Bool {
         return !breakfast.isEmpty && !lunch.isEmpty && !dinner.isEmpty
@@ -412,7 +412,7 @@ struct ApplyMealRequest: Codable {
     let mealType: String               // "breakfast", "lunch", "dinner", "snack" (matches backend)
     let servingSize: Double            // Serving size adjustment (required in backend, default 1.0)
     let saveToAccount: Bool            // Whether to save recipe to user's account (matches backend)
-    
+
     enum CodingKeys: String, CodingKey {
         case recipeStub = "recipe_stub"
         case mealPlanId = "meal_plan_id"
@@ -421,7 +421,7 @@ struct ApplyMealRequest: Codable {
         case servingSize = "serving_size"
         case saveToAccount = "save_to_account"
     }
-    
+
     init(
         recipeStub: RecipeStub,
         mealPlanId: String? = nil,
@@ -449,7 +449,7 @@ struct ApplyMealResponse: Codable {
     let recipe: Recipe?                // Complete recipe that was created (optional, matches backend)
     let mealPlanItem: MealPlanItem?    // Created meal plan item (optional, matches backend)
     let message: String?               // Success/error message (optional, matches backend)
-    
+
     enum CodingKeys: String, CodingKey {
         case success
         case recipe
@@ -472,7 +472,7 @@ extension RecipeStub {
         difficulty: .easy,
         isAIGenerated: true
     )
-    
+
     static let sampleExistingStub = RecipeStub(
         id: "recipe-123",  // Existing database recipe
         name: "红烧肉",

@@ -10,12 +10,12 @@ import SwiftUI
 struct DefaultRecipeImageView: View {
     let width: CGFloat
     let height: CGFloat
-    
+
     init(width: CGFloat = 150, height: CGFloat = 150) {
         self.width = width == .infinity ? 200 : width // Handle infinity case
         self.height = height
     }
-    
+
     var body: some View {
         ZStack {
             // Beautiful gradient background
@@ -28,7 +28,7 @@ struct DefaultRecipeImageView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             // Decorative pattern overlay
             ZStack {
                 // Background pattern
@@ -36,26 +36,26 @@ struct DefaultRecipeImageView: View {
                     .fill(Color.white.opacity(0.1))
                     .frame(width: width * 0.8, height: width * 0.8)
                     .offset(x: -width * 0.2, y: -height * 0.2)
-                
+
                 Circle()
                     .fill(Color.white.opacity(0.05))
                     .frame(width: width * 0.6, height: width * 0.6)
                     .offset(x: width * 0.15, y: height * 0.15)
-                
+
                 // Central cooking icon
                 VStack(spacing: 8) {
                     Image(systemName: "fork.knife")
                         .font(.system(size: min(width, height) * 0.2, weight: .light))
                         .foregroundColor(.white)
                         .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
-                    
+
                     Text("Recipe")
                         .font(.system(size: min(width, height) * 0.08, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.9))
                         .shadow(color: .black.opacity(0.3), radius: 1, x: 0.5, y: 0.5)
                 }
             }
-            
+
             // Simple sparkle effect (static for better performance)
             ForEach(0..<4, id: \.self) { index in
                 Circle()
@@ -78,12 +78,12 @@ struct DefaultRecipeImageView: View {
 struct DefaultRecipeImageView_Elegant: View {
     let width: CGFloat
     let height: CGFloat
-    
+
     init(width: CGFloat = 150, height: CGFloat = 150) {
         self.width = width
         self.height = height
     }
-    
+
     var body: some View {
         ZStack {
             // Elegant gradient
@@ -96,7 +96,7 @@ struct DefaultRecipeImageView_Elegant: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             // Geometric pattern
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
@@ -106,16 +106,16 @@ struct DefaultRecipeImageView_Elegant: View {
                             .frame(width: 8, height: 8)
                     }
                 }
-                
+
                 Image(systemName: "leaf.fill")
                     .font(.system(size: min(width, height) * 0.25, weight: .light))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.2), radius: 2)
-                
+
                 Text("Healthy")
                     .font(.system(size: min(width, height) * 0.07, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.9))
-                
+
                 HStack(spacing: 6) {
                     ForEach(0..<3, id: \.self) { _ in
                         Circle()
@@ -133,12 +133,12 @@ struct DefaultRecipeImageView_Elegant: View {
 struct DefaultRecipeImageView_Warm: View {
     let width: CGFloat
     let height: CGFloat
-    
+
     init(width: CGFloat = 150, height: CGFloat = 150) {
         self.width = width
         self.height = height
     }
-    
+
     var body: some View {
         ZStack {
             // Warm gradient
@@ -151,25 +151,25 @@ struct DefaultRecipeImageView_Warm: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             // Food-themed design
             VStack(spacing: 8) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: min(width, height) * 0.15, weight: .medium))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.3), radius: 2)
-                
+
                 Image(systemName: "chef.hat.and.whisk")
                     .font(.system(size: min(width, height) * 0.2, weight: .light))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.3), radius: 2)
-                
+
                 Text("Delicious")
                     .font(.system(size: min(width, height) * 0.08, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.9))
                     .shadow(color: .black.opacity(0.3), radius: 1)
             }
-            
+
             // Decorative circles
             Circle()
                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
@@ -187,7 +187,7 @@ struct DefaultRecipeImageView_Warm: View {
             DefaultRecipeImageView_Elegant(width: 120, height: 120)
             DefaultRecipeImageView_Warm(width: 120, height: 120)
         }
-        
+
         Text("Default Recipe Image Variations")
             .font(.headline)
     }

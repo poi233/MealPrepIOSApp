@@ -13,13 +13,13 @@ struct RecipeDetailView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @EnvironmentObject var favoritesStore: FavoritesStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var isFavorite = false
-    
+
     var body: some View {
         mainContent
     }
-    
+
     private var mainContent: some View {
         ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -33,24 +33,24 @@ struct RecipeDetailView: View {
                     }
                     .frame(height: 250)
                     .clipped()
-                    
+
                     VStack(alignment: .leading, spacing: 16) {
                         // Title and Basic Info
                         VStack(alignment: .leading, spacing: 8) {
                             Text(recipe.name)
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
-                            
+
                             MarkdownText(recipe.description, font: .body)
                                 .foregroundColor(.secondary)
-                            
+
                             // Recipe Stats
                             HStack(spacing: 20) {
                                 StatView(icon: "clock", value: "\(recipe.totalTime) min", label: "Total Time")
                                 StatView(icon: "star.fill", value: String(format: "%.1f", recipe.avgRating), label: "Rating")
                                 StatView(icon: "flame", value: recipe.nutritionInfo?.calories ?? "N/A", label: "Calories")
                             }
-                            
+
                             // Tags
                             if !recipe.tags.isEmpty {
                                 ScrollView(.horizontal, showsIndicators: false) {
@@ -69,9 +69,9 @@ struct RecipeDetailView: View {
                                 }
                             }
                         }
-                        
+
                         Divider()
-                        
+
                         // Timing and Difficulty
                         HStack(spacing: 30) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -81,7 +81,7 @@ struct RecipeDetailView: View {
                                 Text("\(recipe.prepTime) min")
                                     .font(.headline)
                             }
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Cook Time")
                                     .font(.caption)
@@ -89,7 +89,7 @@ struct RecipeDetailView: View {
                                 Text("\(recipe.cookTime) min")
                                     .font(.headline)
                             }
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Difficulty")
                                     .font(.caption)
@@ -98,71 +98,71 @@ struct RecipeDetailView: View {
                                     .font(.headline)
                                     .foregroundColor(difficultyColor)
                             }
-                            
+
                             Spacer()
                         }
-                        
+
                         Divider()
-                        
+
                         // Ingredients
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Ingredients")
                                 .font(.headline)
-                            
+
                             LazyVStack(alignment: .leading, spacing: 8) {
                                 ForEach(recipe.ingredients, id: \.id) { ingredient in
                                     IngredientView(ingredient: ingredient)
                                 }
                             }
                         }
-                        
+
                         Divider()
-                        
+
                         // Instructions
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Instructions")
                                 .font(.headline)
-                            
+
                             ForEach(Array(instructionLines.enumerated()), id: \.offset) { index, instruction in
                                 HStack(alignment: .top, spacing: 8) {
                                     Text("\(index + 1).")
                                         .fontWeight(.semibold)
                                         .foregroundColor(.primaryGreen)
                                         .frame(minWidth: 20, alignment: .leading)
-                                    
+
                                     Text(instruction)
                                         .fixedSize(horizontal: false, vertical: true)
-                                    
+
                                     Spacer()
                                 }
                                 .padding(.bottom, 4)
                             }
                         }
-                        
+
                         // Nutrition Information
                         if let nutrition = recipe.nutritionInfo {
                             Divider()
-                            
+
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Nutrition Information")
                                     .font(.headline)
-                                
+
                                 NutritionView(nutrition: nutrition)
                             }
                         }
-                        
+
                         // Recipe Meta
                         Divider()
-                        
+
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Recipe by \(recipe.createdByUser)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             Text("Created \(recipe.createdAt, style: .date)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             if recipe.cuisine != nil {
                                 Text("Cuisine: \(recipe.cuisine!)")
                                     .font(.caption)
@@ -183,7 +183,7 @@ struct RecipeDetailView: View {
                 checkCachedFavoriteStatus()
             }
     }
-    
+
     private var difficultyColor: Color {
         switch recipe.difficulty {
         case .easy: return .green
@@ -191,7 +191,7 @@ struct RecipeDetailView: View {
         case .hard: return .red
         }
     }
-    
+
     private var instructionLines: [String] {
         // Instructions are now stored as an array, so we can use them directly
         return recipe.instructions.map { instruction in
@@ -200,7 +200,7 @@ struct RecipeDetailView: View {
             return trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
-    
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
@@ -208,7 +208,7 @@ struct RecipeDetailView: View {
                 dismiss()
             }
         }
-        
+
         ToolbarItem(placement: .navigationBarTrailing) {
             // Favorite Button
             Button(action: toggleFavorite) {
@@ -216,15 +216,15 @@ struct RecipeDetailView: View {
                     .foregroundColor(isFavorite ? .red : .primary)
             }
         }
-        
+
         // Edit and Delete functionality removed temporarily to fix build issues
         // TODO: Restore conditional edit/delete based on isFromMealPlan
     }
-    
 
 
-    
-    
+
+
+
     private func toggleFavorite() {
         Task {
             do {
@@ -241,13 +241,13 @@ struct RecipeDetailView: View {
             }
         }
     }
-    
+
     private func checkCachedFavoriteStatus() {
         // Use the cached favorite status from FavoritesStore to avoid API call
         isFavorite = favoritesStore.isFavorite(recipeId: recipe.id)
         print("📖 [RecipeDetailView] Using cached favorite status for recipe \(recipe.id): \(isFavorite)")
     }
-    
+
     private func checkFavoriteStatus() async {
         do {
             let status = try await favoritesStore.checkFavoriteStatus(recipeId: recipe.id)
@@ -258,8 +258,8 @@ struct RecipeDetailView: View {
             // Ignore error, default to not favorite
         }
     }
-    
-    
+
+
 
 }
 
@@ -268,7 +268,7 @@ struct RecipeDetailView: View {
 
 struct IngredientView: View {
     let ingredient: Ingredient
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
@@ -276,16 +276,16 @@ struct IngredientView: View {
                     if !ingredient.amount.isEmpty {
                         Text(ingredient.amount)
                             .fontWeight(.medium)
-                        
+
                         if !ingredient.unit.isEmpty {
                             Text(ingredient.unit)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    
+
                     Text(ingredient.name)
                 }
-                
+
                 if let notes = ingredient.notes, !notes.isEmpty {
                     Text(notes)
                         .font(.caption)
@@ -293,7 +293,7 @@ struct IngredientView: View {
                         .italic()
                 }
             }
-            
+
             Spacer()
         }
     }
@@ -301,7 +301,7 @@ struct IngredientView: View {
 
 struct NutritionView: View {
     let nutrition: NutritionInfo
-    
+
     var body: some View {
         LazyVGrid(columns: [
             GridItem(.flexible()),
@@ -311,23 +311,23 @@ struct NutritionView: View {
             if let calories = nutrition.calories {
                 NutritionItem(label: "Calories", value: calories, unit: "")
             }
-            
+
             if let protein = nutrition.protein {
                 NutritionItem(label: "Protein", value: protein, unit: "g")
             }
-            
+
             if let carbs = nutrition.carbohydrates {
                 NutritionItem(label: "Carbs", value: carbs, unit: "g")
             }
-            
+
             if let fat = nutrition.fat {
                 NutritionItem(label: "Fat", value: fat, unit: "g")
             }
-            
+
             if let fiber = nutrition.fiber {
                 NutritionItem(label: "Fiber", value: fiber, unit: "g")
             }
-            
+
             if let sodium = nutrition.sodium {
                 NutritionItem(label: "Sodium", value: sodium, unit: "mg")
             }
@@ -339,13 +339,13 @@ struct NutritionItem: View {
     let label: String
     let value: String
     let unit: String
-    
+
     var body: some View {
         VStack(spacing: 4) {
             Text("\(value)\(unit)")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             Text(label)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -390,7 +390,7 @@ struct NutritionItem: View {
         createdAt: Date(),
         updatedAt: Date()
     )
-    
+
     RecipeDetailView(recipe: sampleRecipe, isFromMealPlan: false)
         .environmentObject(RecipeStore())
         .environmentObject(FavoritesStore())

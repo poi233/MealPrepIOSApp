@@ -18,12 +18,12 @@ struct AsyncImageView: View {
     let cornerRadius: CGFloat
     let contentMode: SwiftUI.ContentMode
     let useCache: Bool
-    
+
     @State private var loadedImage: UIImage?
     @State private var isLoading = true
     @State private var hasError = false
     @StateObject private var imageCache = RecipeImageCacheManager.shared
-    
+
     init(
         url: String?,
         width: CGFloat = 150,
@@ -39,7 +39,7 @@ struct AsyncImageView: View {
         self.contentMode = contentMode
         self.useCache = useCache
     }
-    
+
     var body: some View {
         ZStack {
             if useCache && url != nil {
@@ -73,7 +73,7 @@ struct AsyncImageView: View {
                                 isLoading = true
                                 hasError = false
                             }
-                        
+
                     case .success(let image):
                         image
                             .resizable()
@@ -86,7 +86,7 @@ struct AsyncImageView: View {
                                     hasError = false
                                 }
                             }
-                        
+
                     case .failure(_):
                         DefaultRecipeImageView_Elegant(width: width, height: height)
                             .onAppear {
@@ -95,7 +95,7 @@ struct AsyncImageView: View {
                                     hasError = true
                                 }
                             }
-                        
+
                     @unknown default:
                         LoadingImageView(width: width, height: height)
                     }
@@ -114,9 +114,9 @@ struct AsyncImageView: View {
         .animation(.easeInOut(duration: 0.3), value: isLoading)
         .animation(.easeInOut(duration: 0.3), value: hasError)
     }
-    
+
     // MARK: - Cache Loading
-    
+
     private func loadCachedImage() async {
         guard let url = url, !url.isEmpty else {
             await MainActor.run {
@@ -125,10 +125,10 @@ struct AsyncImageView: View {
             }
             return
         }
-        
+
         do {
             let cachedImage = await imageCache.getCachedImage(from: url)
-            
+
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.3)) {
                     self.loadedImage = cachedImage
@@ -145,11 +145,11 @@ struct AsyncImageView: View {
 struct LoadingImageView: View {
     let width: CGFloat
     let height: CGFloat
-    
+
     @State private var isAnimating = false
     @State private var pulseScale: CGFloat = 1.0
     @State private var shimmerOffset: CGFloat = -200
-    
+
     var body: some View {
         ZStack {
             // Base gradient background
@@ -162,7 +162,7 @@ struct LoadingImageView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             // Shimmer effect
             Rectangle()
                 .fill(
@@ -183,7 +183,7 @@ struct LoadingImageView: View {
                         .repeatForever(autoreverses: false),
                     value: shimmerOffset
                 )
-            
+
             // Loading icon with pulse animation
             VStack(spacing: 8) {
                 Image(systemName: "photo")
@@ -195,7 +195,7 @@ struct LoadingImageView: View {
                             .repeatForever(autoreverses: true),
                         value: pulseScale
                     )
-                
+
                 // Loading dots
                 HStack(spacing: 4) {
                     ForEach(0..<3, id: \.self) { index in
@@ -230,9 +230,9 @@ struct LoadingImageView: View {
 
 struct CompactLoadingImageView: View {
     let size: CGFloat
-    
+
     @State private var isAnimating = false
-    
+
     var body: some View {
         ZStack {
             // Simple gradient background
@@ -241,7 +241,7 @@ struct CompactLoadingImageView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             // Simple loading indicator
             ProgressView()
                 .scaleEffect(0.8)
@@ -261,7 +261,7 @@ struct RecipeImageView: View {
     let cornerRadius: CGFloat
     let showLoadingAnimation: Bool
     let useCache: Bool
-    
+
     init(
         recipe: Recipe,
         width: CGFloat = 150,
@@ -277,7 +277,7 @@ struct RecipeImageView: View {
         self.showLoadingAnimation = showLoadingAnimation
         self.useCache = useCache
     }
-    
+
     var body: some View {
         AsyncImageView(
             url: recipe.imageUrl,
@@ -296,7 +296,7 @@ struct RecipeImageView: View {
         HStack(spacing: 20) {
             // Loading state
             LoadingImageView(width: 120, height: 120)
-            
+
             // With URL (cached)
             AsyncImageView(
                 url: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop",
@@ -304,7 +304,7 @@ struct RecipeImageView: View {
                 height: 120,
                 useCache: true
             )
-            
+
             // With URL (no cache)
             AsyncImageView(
                 url: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop",
@@ -312,7 +312,7 @@ struct RecipeImageView: View {
                 height: 120,
                 useCache: false
             )
-            
+
             // No URL (default)
             AsyncImageView(
                 url: nil,
@@ -320,7 +320,7 @@ struct RecipeImageView: View {
                 height: 120
             )
         }
-        
+
         Text("AsyncImageView Examples")
             .font(.headline)
     }

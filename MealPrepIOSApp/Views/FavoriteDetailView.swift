@@ -11,9 +11,9 @@ struct FavoriteDetailView: View {
     let favorite: Favorite
     @EnvironmentObject var favoritesStore: FavoritesStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var servingMultiplier: Double = 1.0
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -27,32 +27,32 @@ struct FavoriteDetailView: View {
                 }
                 .frame(height: 250)
                 .clipped()
-                
+
                 VStack(alignment: .leading, spacing: 16) {
                     // Title and Basic Info
                     VStack(alignment: .leading, spacing: 8) {
                         Text(favorite.recipe.name)
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                        
+
                         Text(favorite.recipe.description)
                             .font(.body)
                             .foregroundColor(.secondary)
-                        
+
                         // Personal Rating Section (Favorite-specific)
                         if let rating = favorite.personalRating {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("My Rating")
                                     .font(.headline)
                                     .foregroundColor(.primaryGreen)
-                                
+
                                 HStack(spacing: 4) {
                                     ForEach(1...5, id: \.self) { star in
                                         Image(systemName: star <= rating ? "star.fill" : "star")
                                             .foregroundColor(star <= rating ? .yellow : .gray.opacity(0.3))
                                             .font(.title3)
                                     }
-                                    
+
                                     Text("(\(rating)/5)")
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
@@ -66,14 +66,14 @@ struct FavoriteDetailView: View {
                                 )
                             }
                         }
-                        
+
                         // Personal Notes Section (Favorite-specific)
                         if let notes = favorite.personalNotes, !notes.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("My Notes")
                                     .font(.headline)
                                     .foregroundColor(.primaryGreen)
-                                
+
                                 Text(notes)
                                     .font(.body)
                                     .foregroundColor(.secondary)
@@ -84,14 +84,14 @@ struct FavoriteDetailView: View {
                             }
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // Basic Recipe Info
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Recipe Information")
                             .font(.headline)
-                        
+
                         HStack {
                             Text("Prep Time:")
                                 .font(.subheadline)
@@ -100,7 +100,7 @@ struct FavoriteDetailView: View {
                             Text("\(favorite.recipe.prepTime) minutes")
                                 .font(.subheadline)
                         }
-                        
+
                         HStack {
                             Text("Cook Time:")
                                 .font(.subheadline)
@@ -109,7 +109,7 @@ struct FavoriteDetailView: View {
                             Text("\(favorite.recipe.cookTime) minutes")
                                 .font(.subheadline)
                         }
-                        
+
                         HStack {
                             Text("Total Time:")
                                 .font(.subheadline)
@@ -118,7 +118,7 @@ struct FavoriteDetailView: View {
                             Text("\(favorite.recipe.totalTime) minutes")
                                 .font(.subheadline)
                         }
-                        
+
                         HStack {
                             Text("Difficulty:")
                                 .font(.subheadline)
@@ -128,7 +128,7 @@ struct FavoriteDetailView: View {
                                 .font(.subheadline)
                                 .foregroundColor(difficultyColor)
                         }
-                        
+
                         if let servings = favorite.recipe.nutritionInfo?.servings {
                             HStack {
                                 Text("Servings:")
@@ -140,14 +140,14 @@ struct FavoriteDetailView: View {
                             }
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // Ingredients
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Ingredients")
                             .font(.headline)
-                        
+
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(favorite.recipe.ingredients, id: \.id) { ingredient in
                                 HStack(alignment: .top, spacing: 12) {
@@ -155,22 +155,22 @@ struct FavoriteDetailView: View {
                                         .fill(Color.primaryGreen.opacity(0.2))
                                         .frame(width: 8, height: 8)
                                         .padding(.top, 6)
-                                    
+
                                     VStack(alignment: .leading, spacing: 2) {
                                         HStack {
                                             if !ingredient.amount.isEmpty {
                                                 Text(ingredient.amount)
                                                     .fontWeight(.medium)
-                                                
+
                                                 if !ingredient.unit.isEmpty {
                                                     Text(ingredient.unit)
                                                         .foregroundColor(.secondary)
                                                 }
                                             }
-                                            
+
                                             Text(ingredient.name)
                                         }
-                                        
+
                                         if let notes = ingredient.notes, !notes.isEmpty {
                                             Text(notes)
                                                 .font(.caption)
@@ -178,44 +178,44 @@ struct FavoriteDetailView: View {
                                                 .italic()
                                         }
                                     }
-                                    
+
                                     Spacer()
                                 }
                             }
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // Instructions
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Instructions")
                             .font(.headline)
-                        
+
                         ForEach(Array(favorite.recipe.instructions.enumerated()), id: \.offset) { index, instruction in
                             HStack(alignment: .top, spacing: 8) {
                                 Text("\(index + 1).")
                                     .fontWeight(.semibold)
                                     .foregroundColor(.primaryGreen)
                                     .frame(minWidth: 20, alignment: .leading)
-                                
+
                                 Text(instruction.replacingOccurrences(of: "^\\d+[.)\\s]+", with: "", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines))
                                     .fixedSize(horizontal: false, vertical: true)
-                                
+
                                 Spacer()
                             }
                             .padding(.bottom, 4)
                         }
                     }
-                    
+
                     // Favorite-specific Meta Information
                     Divider()
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Favorite Info")
                             .font(.headline)
                             .foregroundColor(.primaryGreen)
-                        
+
                         HStack {
                             Text("Added to favorites:")
                                 .font(.caption)
@@ -224,7 +224,7 @@ struct FavoriteDetailView: View {
                             Text(favorite.addedAt, style: .date)
                                 .font(.caption)
                         }
-                        
+
                         HStack {
                             Text("Recipe by:")
                                 .font(.caption)
@@ -248,7 +248,7 @@ struct FavoriteDetailView: View {
             }
         }
     }
-    
+
     private var difficultyColor: Color {
         switch favorite.recipe.difficulty {
         case .easy: return .green
@@ -256,7 +256,7 @@ struct FavoriteDetailView: View {
         case .hard: return .red
         }
     }
-    
+
 }
 
 #Preview {
@@ -296,7 +296,7 @@ struct FavoriteDetailView: View {
         personalNotes: "My favorite pasta recipe!",
         addedAt: Date()
     )
-    
+
     NavigationView {
         FavoriteDetailView(favorite: sampleFavorite)
             .environmentObject(FavoritesStore())

@@ -17,14 +17,14 @@ struct RecipesView: View {
     @State private var viewMode: RecipeViewMode = .list
     @State private var recipeToEdit: Recipe?
     @State private var showingEditRecipe = false
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Search and Filter Bar
                 VStack(spacing: 12) {
                     SearchBar(text: $recipeStore.searchQuery)
-                    
+
                     // Quick Filter Chips
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -41,7 +41,7 @@ struct RecipesView: View {
                                     }
                                 }
                             )
-                            
+
                             FilterChip(
                                 title: "Quick (< 30 min)",
                                 isSelected: recipeStore.filters.totalTimeMax == 30,
@@ -55,7 +55,7 @@ struct RecipesView: View {
                                     }
                                 }
                             )
-                            
+
                             FilterChip(
                                 title: "Highly Rated",
                                 isSelected: recipeStore.filters.avgRatingMin == 4.0,
@@ -69,7 +69,7 @@ struct RecipesView: View {
                                     }
                                 }
                             )
-                            
+
                             // Cuisine filters
                             ForEach(["Italian", "Asian", "Mexican", "American"], id: \.self) { cuisine in
                                 FilterChip(
@@ -93,15 +93,15 @@ struct RecipesView: View {
                 }
                 .padding(.vertical, 8)
                 .background(Color(.systemBackground))
-                
+
                 // Status Bar
                 HStack {
                     Text(recipeStore.statusText)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Spacer()
-                    
+
                     // View Mode Toggle
                     Picker("View Mode", selection: $viewMode) {
                         Image(systemName: "list.bullet").tag(RecipeViewMode.list)
@@ -112,7 +112,7 @@ struct RecipesView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                
+
                 // Content
                 if recipeStore.isLoading && recipeStore.recipes.isEmpty {
                     LoadingView(message: "Loading recipes...")
@@ -120,8 +120,8 @@ struct RecipesView: View {
                     EmptyStateView(
                         icon: "book.closed",
                         title: "No Recipes Found",
-                        message: recipeStore.isSearching ? 
-                            "Try adjusting your search or filters" : 
+                        message: recipeStore.isSearching ?
+                            "Try adjusting your search or filters" :
                             "Start by creating your first recipe",
                         actionTitle: recipeStore.isSearching ? "Clear Search" : "Create Recipe",
                         action: {
@@ -181,7 +181,7 @@ struct RecipesView: View {
                             .fill(recipeStore.hasFilters ? Color.primaryGreen.opacity(0.1) : Color.clear)
                     )
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingCreateRecipe = true
@@ -255,7 +255,7 @@ struct RecipeListView: View {
     let onLoadMore: () -> Void
     let onEditRecipe: ((Recipe) -> Void)?
     let onDeleteRecipe: ((Recipe) -> Void)?
-    
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
@@ -289,7 +289,7 @@ struct RecipeListView: View {
                         }
                     }
                 }
-                
+
                 // Load More Indicator
                 if hasMorePages {
                     if isLoadingMore {
@@ -316,7 +316,7 @@ struct RecipeCard: View {
     let style: RecipeCardStyle
     let onEdit: ((Recipe) -> Void)?
     let onDelete: ((Recipe) -> Void)?
-    
+
     @EnvironmentObject var favoritesStore: FavoritesStore
     @EnvironmentObject var authStore: AuthStore
     @State private var isFavorite = false
@@ -324,15 +324,15 @@ struct RecipeCard: View {
     @State private var showingDeleteAlert = false
     @State private var showingActionMenu = false
     @State private var isPressed = false
-    
+
     enum RecipeCardStyle {
         case standard, compact, featured
     }
-    
+
     private var isOwnRecipe: Bool {
         authStore.currentUser?.id == recipe.createdByUserId
     }
-    
+
     var body: some View {
         // Enhanced Recipe Card with custom Magic UI styling but without conflicting tap gestures
         ZStack {
@@ -356,20 +356,20 @@ struct RecipeCard: View {
                     x: 0,
                     y: isHovered ? 8 : 4
                 )
-            
+
             // Border gradient
             RoundedRectangle(cornerRadius: 16)
                 .stroke(
                     LinearGradient(
-                        colors: isHovered ? 
-                            [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] : 
+                        colors: isHovered ?
+                            [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] :
                             [Color.clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: isHovered ? 2 : 0
                 )
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 // Recipe Image with enhanced styling
                 ZStack {
@@ -383,7 +383,7 @@ struct RecipeCard: View {
                     .frame(maxWidth: .infinity, maxHeight: imageHeight)
                     .clipped()
                     .cornerRadius(12)
-                    
+
                     // Gradient overlay for better text readability
                     LinearGradient(
                         colors: [Color.clear, Color.black.opacity(0.3)],
@@ -391,12 +391,12 @@ struct RecipeCard: View {
                         endPoint: .bottom
                     )
                     .cornerRadius(12)
-                    
+
                     // Action Buttons (Favorite + Edit menu for own recipes, Favorite only for others)
                     VStack {
                         HStack {
                             Spacer()
-                            
+
                             // Favorite Button - always show for all recipes
                             Button(action: {
                                 withAnimation(.spring(response: 0.2, dampingFraction: 0.8)) {
@@ -422,7 +422,7 @@ struct RecipeCard: View {
                                     .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
                             }
                             .zIndex(1000) // Ensure button is on top layer
-                            
+
                             // Edit menu - only show for own recipes
                             if isOwnRecipe {
                                 Button {
@@ -457,11 +457,11 @@ struct RecipeCard: View {
                         }
                         .padding(.trailing, 12)
                         .padding(.top, 12)
-                        
+
                         Spacer()
                     }
                 }
-                
+
                 // Recipe Info with enhanced styling
                 VStack(alignment: .leading, spacing: 8) {
                     Text(recipe.name)
@@ -469,14 +469,14 @@ struct RecipeCard: View {
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                         .lineLimit(2)
-                    
+
                     if style != .compact {
                         Text(recipe.description)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .lineLimit(2)
                     }
-                    
+
                     // Enhanced Stats row
                     HStack(spacing: 16) {
                         StatItem(
@@ -484,7 +484,7 @@ struct RecipeCard: View {
                             value: "\(recipe.totalTime)m",
                             color: .blue
                         )
-                        
+
                         if style != .compact {
                             StatItem(
                                 icon: "star.fill",
@@ -492,10 +492,10 @@ struct RecipeCard: View {
                                 color: .yellow
                             )
                         }
-                        
+
                         Spacer()
                     }
-                    
+
                     // Enhanced Tags
                     if !recipe.tags.isEmpty && style != .compact {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -532,11 +532,11 @@ struct RecipeCard: View {
             Button("Edit Recipe") {
                 onEdit?(recipe)
             }
-            
+
             Button("Delete Recipe", role: .destructive) {
                 showingDeleteAlert = true
             }
-            
+
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Choose an action for \"\(recipe.name)\"")
@@ -550,7 +550,7 @@ struct RecipeCard: View {
             Text("Are you sure you want to delete \"\(recipe.name)\"? This action cannot be undone.")
         }
     }
-    
+
     private var imageHeight: CGFloat {
         switch style {
         case .standard: return 150
@@ -558,7 +558,7 @@ struct RecipeCard: View {
         case .featured: return 200
         }
     }
-    
+
     private var difficultyColor: Color {
         switch recipe.difficulty {
         case .easy: return .green
@@ -566,7 +566,7 @@ struct RecipeCard: View {
         case .hard: return .red
         }
     }
-    
+
     private func toggleFavorite() {
         Task {
             do {
@@ -579,7 +579,7 @@ struct RecipeCard: View {
             }
         }
     }
-    
+
     private func checkFavoriteStatus() async {
         do {
             let status = try await favoritesStore.checkFavoriteStatus(recipeId: recipe.id)

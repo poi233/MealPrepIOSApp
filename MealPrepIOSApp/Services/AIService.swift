@@ -10,9 +10,9 @@ import Foundation
 // MARK: - AI Service
 class AIService {
     private let networkManager = NetworkManager.shared
-    
+
     // MARK: - AI Meal Plan Generation
-    
+
     /// Generate a personalized meal plan using AI
     func generateMealPlan(_ request: GenerateMealPlanRequest) async throws -> MealPlan {
         return try await networkManager.post(
@@ -22,7 +22,7 @@ class AIService {
             requiresAuth: true
         )
     }
-    
+
     /// Generate recipe details using AI
     func generateRecipeDetails(_ request: GenerateRecipeDetailsRequest) async throws -> Recipe {
         return try await networkManager.post(
@@ -32,7 +32,7 @@ class AIService {
             requiresAuth: true
         )
     }
-    
+
     /// Analyze an existing meal plan
     func analyzeMealPlan(_ request: AnalyzeMealPlanRequest) async throws -> MealPlanAnalysis {
         return try await networkManager.post(
@@ -42,9 +42,9 @@ class AIService {
             requiresAuth: true
         )
     }
-    
+
     // MARK: - Convenience Methods
-    
+
     /// Generate a simple meal plan with basic preferences
     func generateSimpleMealPlan(
         description: String,
@@ -52,12 +52,12 @@ class AIService {
         allergies: [String] = [],
         calorieTarget: Int? = nil
     ) async throws -> MealPlan {
-        
+
         var dietaryPreferences: [String: String] = [:]
         if let dietType = dietType {
             dietaryPreferences["dietType"] = dietType.rawValue
         }
-        
+
         let request = GenerateMealPlanRequest(
             planDescription: description,
             dietaryPreferences: dietaryPreferences.isEmpty ? nil : dietaryPreferences,
@@ -66,10 +66,10 @@ class AIService {
             calorieTarget: calorieTarget,
             additionalRequirements: nil
         )
-        
+
         return try await generateMealPlan(request)
     }
-    
+
     /// Quick meal plan analysis
     func quickAnalyzeMealPlan(mealPlanId: String) async throws -> MealPlanAnalysis {
         let request = AnalyzeMealPlanRequest(
@@ -78,7 +78,7 @@ class AIService {
             analysisType: .full,
             includeRecommendations: true
         )
-        
+
         return try await analyzeMealPlan(request)
     }
 }

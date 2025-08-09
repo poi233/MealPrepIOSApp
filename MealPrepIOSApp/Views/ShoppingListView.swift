@@ -10,11 +10,11 @@ import SwiftUI
 struct ShoppingListView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var searchText = ""
     @State private var showingCompletedItems = true
     @State private var sortOrder: ShoppingSortOrder = .category
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -40,23 +40,23 @@ struct ShoppingListView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button("Regenerate List") {
                             generateShoppingList()
                         }
-                        
+
                         Button("Share List") {
                             shareShoppingList()
                         }
-                        
+
                         Divider()
-                        
+
                         Button(showingCompletedItems ? "Hide Completed" : "Show Completed") {
                             showingCompletedItems.toggle()
                         }
-                        
+
                         Menu("Sort By") {
                             ForEach(ShoppingSortOrder.allCases, id: \.self) { order in
                                 Button(order.displayName) {
@@ -72,13 +72,13 @@ struct ShoppingListView: View {
             .searchable(text: $searchText, prompt: "Search ingredients...")
         }
     }
-    
+
     private func generateShoppingList() {
         Task {
             await mealPlanStore.generateShoppingList()
         }
     }
-    
+
     private func shareShoppingList() {
         // TODO: Implement sharing functionality
     }
@@ -88,25 +88,25 @@ struct ShoppingListView: View {
 
 struct EmptyShoppingListView: View {
     let onGenerate: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 24) {
             Image(systemName: "cart.badge.plus")
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
-            
+
             VStack(spacing: 8) {
                 Text("No Shopping List Yet")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
+
                 Text("Generate a shopping list from your current meal plan to see all the ingredients you'll need.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            
+
             Button("Generate Shopping List") {
                 onGenerate()
             }
@@ -124,7 +124,7 @@ struct LoadingShoppingListView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-            
+
             Text("Generating Shopping List...")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -140,12 +140,12 @@ struct ShoppingListContentView: View {
     @Binding var searchText: String
     @Binding var showingCompletedItems: Bool
     @Binding var sortOrder: ShoppingSortOrder
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Progress Bar
             ShoppingProgressView()
-            
+
             // Shopping List
             List {
                 ForEach(filteredAndSortedItems, id: \.id) { item in
@@ -157,10 +157,10 @@ struct ShoppingListContentView: View {
             .listStyle(PlainListStyle())
         }
     }
-    
+
     private var filteredAndSortedItems: [ShoppingListItem] {
         var items = mealPlanStore.shoppingList
-        
+
         // Filter by search text
         if !searchText.isEmpty {
             items = items.filter { item in
@@ -168,12 +168,12 @@ struct ShoppingListContentView: View {
                 item.recipes.contains { $0.localizedCaseInsensitiveContains(searchText) }
             }
         }
-        
+
         // Filter by completion status
         if !showingCompletedItems {
             items = items.filter { !$0.isCompleted }
         }
-        
+
         // Sort items
         switch sortOrder {
         case .alphabetical:
@@ -192,13 +192,13 @@ struct ShoppingListContentView: View {
         case .completed:
             items.sort { !$0.isCompleted && $1.isCompleted }
         }
-        
+
         return items
     }
-    
+
     private func categorizeIngredient(_ ingredient: String) -> String {
         let lowercased = ingredient.lowercased()
-        
+
         if lowercased.contains("meat") || lowercased.contains("chicken") || lowercased.contains("beef") || lowercased.contains("pork") {
             return "Meat & Poultry"
         } else if lowercased.contains("fish") || lowercased.contains("salmon") || lowercased.contains("tuna") {
@@ -221,25 +221,25 @@ struct ShoppingListContentView: View {
 
 struct ShoppingProgressView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    
+
     var body: some View {
         let completedCount = mealPlanStore.shoppingList.filter { $0.isCompleted }.count
         let totalCount = mealPlanStore.shoppingList.count
         let progress = totalCount > 0 ? Double(completedCount) / Double(totalCount) : 0.0
-        
+
         VStack(spacing: 8) {
             HStack {
                 Text("Shopping Progress")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
+
                 Text("\(completedCount) of \(totalCount) items")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             ProgressView(value: progress)
                 .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
         }
@@ -253,7 +253,7 @@ struct ShoppingProgressView: View {
 struct ShoppingListItemRow: View {
     let item: ShoppingListItem
     let onToggle: () -> Void
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Checkbox
@@ -263,7 +263,7 @@ struct ShoppingListItemRow: View {
                     .font(.title2)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             // Item Details
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -272,16 +272,16 @@ struct ShoppingListItemRow: View {
                         .fontWeight(.medium)
                         .strikethrough(item.isCompleted)
                         .foregroundColor(item.isCompleted ? .secondary : .primary)
-                    
+
                     Spacer()
-                    
+
                     if !item.amount.isEmpty {
                         Text("\(item.amount) \(item.unit)")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 // Recipes using this ingredient
                 if !item.recipes.isEmpty {
                     Text("Used in: \(item.recipes.joined(separator: ", "))")
@@ -304,7 +304,7 @@ struct ShoppingListItemRow: View {
 struct MealPlanListSheet: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             MealPlanView()
@@ -325,7 +325,7 @@ struct MealPlanListSheet: View {
 
 enum ShoppingSortOrder: CaseIterable {
     case alphabetical, category, recipe, completed
-    
+
     var displayName: String {
         switch self {
         case .alphabetical:

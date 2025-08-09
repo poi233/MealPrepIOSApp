@@ -10,25 +10,25 @@ import SwiftUI
 struct MealActionSheet: View {
     let mealPlanItem: MealPlanItem
     let recipe: Recipe
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var recipeStore: RecipeStore
-    
+
     @State private var showingRecipeDetail = false
     @State private var showingSwapMeal = false
     @State private var showingMoveMeal = false
     @State private var showingDeleteConfirmation = false
     @State private var newServingSize: Double = 1.0
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Sheet Header with meal info
             sheetHeader
-            
+
             Divider()
-            
+
             // Action options
             ScrollView {
                 VStack(spacing: 0) {
@@ -41,7 +41,7 @@ struct MealActionSheet: View {
                             showingRecipeDetail = true
                         }
                     )
-                    
+
                     actionButton(
                         title: "Swap Meal",
                         subtitle: "Replace with another recipe",
@@ -51,7 +51,7 @@ struct MealActionSheet: View {
                             showingSwapMeal = true
                         }
                     )
-                                        
+
                     actionButton(
                         title: "Move to Another Meal",
                         subtitle: "Change day or meal type",
@@ -61,7 +61,7 @@ struct MealActionSheet: View {
                             showingMoveMeal = true
                         }
                     )
-                    
+
                     actionButton(
                         title: "Duplicate",
                         subtitle: "Copy to another meal slot",
@@ -71,7 +71,7 @@ struct MealActionSheet: View {
                             duplicateMeal()
                         }
                     )
-                    
+
                     actionButton(
                         title: "Remove",
                         subtitle: "Delete this meal",
@@ -122,7 +122,7 @@ extension MealActionSheet {
                 .fill(Color.secondary.opacity(0.3))
                 .frame(width: 40, height: 6)
                 .padding(.top, 8)
-            
+
             // Meal Info
             HStack(spacing: 16) {
                 // Recipe Image
@@ -140,18 +140,18 @@ extension MealActionSheet {
                 }
                 .frame(width: 80, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                
+
                 // Meal Details
                 VStack(alignment: .leading, spacing: 8) {
                     Text(recipe.name)
                         .font(.title2)
                         .fontWeight(.bold)
                         .lineLimit(2)
-                    
+
                     Text("\(mealPlanItem.mealType.capitalized) • \(dayString)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    
+
                     if let nutrition = recipe.nutritionInfo,
                        let caloriesStr = nutrition.calories,
                        let calories = Int(caloriesStr) {
@@ -159,7 +159,7 @@ extension MealActionSheet {
                             Label("\(calories) cal", systemImage: "flame")
                                 .font(.caption)
                                 .foregroundColor(.orange)
-                            
+
                             if recipe.totalTime > 0 {
                                 Label("\(recipe.totalTime)m", systemImage: "clock")
                                     .font(.caption)
@@ -168,14 +168,14 @@ extension MealActionSheet {
                         }
                     }
                 }
-                
+
                 Spacer()
             }
             .padding(.horizontal, 20)
         }
         .padding(.bottom, 16)
     }
-    
+
     private var dayString: String {
         let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         return days[safe: mealPlanItem.dayOfWeek] ?? "Unknown"
@@ -199,21 +199,21 @@ extension MealActionSheet {
                     .font(.title2)
                     .foregroundColor(color)
                     .frame(width: 24, height: 24)
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
-                    
+
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Chevron
                 Image(systemName: "chevron.right")
                     .foregroundColor(.secondary.opacity(0.6))
@@ -238,7 +238,7 @@ extension MealActionSheet {
             dismiss()
         }
     }
-    
+
     private func duplicateMeal() {
         // For simplicity, we'll duplicate to the same day, next meal type
         let nextMealType: MealType = {
@@ -249,7 +249,7 @@ extension MealActionSheet {
             case .none: return .breakfast
             }
         }()
-        
+
         Task {
             await mealPlanStore.duplicateMeal(
                 mealPlanItem: mealPlanItem,
@@ -259,14 +259,14 @@ extension MealActionSheet {
             dismiss()
         }
     }
-    
+
     private func removeMeal() {
         Task {
             await mealPlanStore.removeMealFromPlan(mealPlanItem: mealPlanItem)
             dismiss()
         }
     }
-    
+
     private func dateForDayOfWeek(_ dayOfWeek: Int) -> Date {
         let calendar = Calendar.current
         let today = Date()
@@ -282,38 +282,38 @@ extension MealActionSheet {
 struct MoveMealSheet: View {
     let mealPlanItem: MealPlanItem
     let recipe: Recipe
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var selectedDayOfWeek: Int = 0
     @State private var selectedMealType: MealType = .breakfast
     @State private var isDuplicating = false
-    
+
     private let weekDays = [
         "Monday", "Tuesday", "Wednesday", "Thursday",
         "Friday", "Saturday", "Sunday"
     ]
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
                 // Current meal info
                 currentMealInfo
-                
+
                 Divider()
-                
+
                 // Day selection
                 daySelection
-                
+
                 // Meal type selection
                 mealTypeSelection
-                
+
                 // Duplicate option
                 duplicateOption
-                
+
                 Spacer()
-                
+
                 // Move button
                 moveButton
             }
@@ -333,33 +333,33 @@ struct MoveMealSheet: View {
             selectedMealType = MealType(rawValue: mealPlanItem.mealType) ?? .breakfast
         }
     }
-    
+
     private var currentMealInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Moving:")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            
+
             HStack {
                 Text(recipe.name)
                     .font(.headline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
             }
-            
+
             Text("From \(mealPlanItem.mealType.capitalized) on \(weekDays[safe: mealPlanItem.dayOfWeek] ?? "Unknown")")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private var daySelection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Select Day")
                 .font(.headline)
                 .fontWeight(.medium)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(0..<weekDays.count, id: \.self) { dayIndex in
@@ -370,7 +370,7 @@ struct MoveMealSheet: View {
             }
         }
     }
-    
+
     private func dayButton(for dayIndex: Int) -> some View {
         Button(action: {
             selectedDayOfWeek = dayIndex
@@ -379,7 +379,7 @@ struct MoveMealSheet: View {
                 Text(String(weekDays[dayIndex].prefix(3)))
                     .font(.caption)
                     .fontWeight(.medium)
-                
+
                 Text("\(dayIndex + 1)")
                     .font(.headline)
                     .fontWeight(.bold)
@@ -392,13 +392,13 @@ struct MoveMealSheet: View {
             )
         }
     }
-    
+
     private var mealTypeSelection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Select Meal Type")
                 .font(.headline)
                 .fontWeight(.medium)
-            
+
             VStack(spacing: 8) {
                 ForEach(MealType.allCases, id: \.self) { mealType in
                     mealTypeButton(for: mealType)
@@ -406,7 +406,7 @@ struct MoveMealSheet: View {
             }
         }
     }
-    
+
     private func mealTypeButton(for mealType: MealType) -> some View {
         Button(action: {
             selectedMealType = mealType
@@ -415,9 +415,9 @@ struct MoveMealSheet: View {
                 Text(mealType.rawValue.capitalized)
                     .font(.body)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
+
                 if selectedMealType == mealType {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.primaryGreen)
@@ -432,14 +432,14 @@ struct MoveMealSheet: View {
             )
         }
     }
-    
+
     private var duplicateOption: some View {
         Toggle(isOn: $isDuplicating) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Keep Original")
                     .font(.body)
                     .fontWeight(.medium)
-                
+
                 Text("Duplicate instead of moving")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -447,7 +447,7 @@ struct MoveMealSheet: View {
         }
         .toggleStyle(SwitchToggleStyle())
     }
-    
+
     private var moveButton: some View {
         Button(action: isDuplicating ? duplicateMeal : moveMeal) {
             Text(isDuplicating ? "Duplicate Meal" : "Move Meal")
@@ -464,11 +464,11 @@ struct MoveMealSheet: View {
                 )
                 .cornerRadius(12)
         }
-        .disabled(selectedDayOfWeek == mealPlanItem.dayOfWeek && 
-                 selectedMealType.rawValue == mealPlanItem.mealType && 
+        .disabled(selectedDayOfWeek == mealPlanItem.dayOfWeek &&
+                 selectedMealType.rawValue == mealPlanItem.mealType &&
                  !isDuplicating)
     }
-    
+
     private func moveMeal() {
         Task {
             await mealPlanStore.moveMeal(
@@ -479,7 +479,7 @@ struct MoveMealSheet: View {
             dismiss()
         }
     }
-    
+
     private func duplicateMeal() {
         Task {
             await mealPlanStore.duplicateMeal(

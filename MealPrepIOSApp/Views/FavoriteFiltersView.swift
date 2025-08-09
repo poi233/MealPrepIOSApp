@@ -10,7 +10,7 @@ import SwiftUI
 struct FavoriteFiltersView: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var selectedRating: Int?
     @State private var minRating: Double = 0
     @State private var maxRating: Double = 5
@@ -20,10 +20,10 @@ struct FavoriteFiltersView: View {
     @State private var customStartDate = Date()
     @State private var customEndDate = Date()
     @State private var sortOrder: FavoriteOrdering = .addedAtDesc
-    
+
     private let cuisines = ["Italian", "Asian", "Mexican", "American", "French", "Indian", "Mediterranean", "Thai", "Japanese", "Chinese"]
     private let difficulties = Difficulty.allCases
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -33,13 +33,13 @@ struct FavoriteFiltersView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Exact Rating")
                                 .font(.subheadline)
-                            
+
                             HStack(spacing: 12) {
                                 Button("Any") {
                                     selectedRating = nil
                                 }
                                 .buttonStyle(FilterButtonStyle(isSelected: selectedRating == nil))
-                                
+
                                 ForEach(1...5, id: \.self) { rating in
                                     Button("\(rating)★") {
                                         selectedRating = rating
@@ -48,12 +48,12 @@ struct FavoriteFiltersView: View {
                                 }
                             }
                         }
-                        
+
                         // Rating Range
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Rating Range: \(Int(minRating))★ - \(Int(maxRating))★")
                                 .font(.subheadline)
-                            
+
                             HStack {
                                 Text("Min")
                                 Slider(value: $minRating, in: 0...5, step: 1)
@@ -63,7 +63,7 @@ struct FavoriteFiltersView: View {
                         }
                     }
                 }
-                
+
                 Section("Cuisine") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -71,7 +71,7 @@ struct FavoriteFiltersView: View {
                                 selectedCuisine = nil
                             }
                             .buttonStyle(FilterButtonStyle(isSelected: selectedCuisine == nil))
-                            
+
                             ForEach(cuisines, id: \.self) { cuisine in
                                 Button(cuisine) {
                                     selectedCuisine = selectedCuisine == cuisine ? nil : cuisine
@@ -82,14 +82,14 @@ struct FavoriteFiltersView: View {
                         .padding(.horizontal)
                     }
                 }
-                
+
                 Section("Difficulty") {
                     HStack(spacing: 12) {
                         Button("Any") {
                             selectedDifficulty = nil
                         }
                         .buttonStyle(FilterButtonStyle(isSelected: selectedDifficulty == nil))
-                        
+
                         ForEach(difficulties, id: \.self) { difficulty in
                             Button(difficulty.displayName) {
                                 selectedDifficulty = selectedDifficulty == difficulty ? nil : difficulty
@@ -99,7 +99,7 @@ struct FavoriteFiltersView: View {
                         Spacer()
                     }
                 }
-                
+
                 Section("Date Added") {
                     Picker("Date Range", selection: $dateRange) {
                         ForEach(DateRange.allCases, id: \.self) { range in
@@ -107,13 +107,13 @@ struct FavoriteFiltersView: View {
                         }
                     }
                     .pickerStyle(MenuPickerStyle())
-                    
+
                     if dateRange == .custom {
                         DatePicker("From", selection: $customStartDate, displayedComponents: .date)
                         DatePicker("To", selection: $customEndDate, displayedComponents: .date)
                     }
                 }
-                
+
                 Section("Sort Order") {
                     Picker("Sort By", selection: $sortOrder) {
                         ForEach(FavoriteOrdering.allCases, id: \.self) { order in
@@ -131,7 +131,7 @@ struct FavoriteFiltersView: View {
                         clearAllFilters()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Apply") {
                         applyFilters()
@@ -145,16 +145,16 @@ struct FavoriteFiltersView: View {
             }
         }
     }
-    
+
     private func loadCurrentFilters() {
         selectedRating = favoritesStore.selectedRating
         selectedCuisine = favoritesStore.selectedCuisine
         selectedDifficulty = favoritesStore.selectedDifficulty
         sortOrder = favoritesStore.sortOrder
-        
+
         minRating = Double(favoritesStore.filters.personalRatingMin ?? 0)
         maxRating = Double(favoritesStore.filters.personalRatingMax ?? 5)
-        
+
         // Set date range based on current filters
         if let startDate = favoritesStore.filters.addedAtMin,
            let endDate = favoritesStore.filters.addedAtMax {
@@ -165,16 +165,16 @@ struct FavoriteFiltersView: View {
             dateRange = .anytime
         }
     }
-    
+
     private func applyFilters() {
         favoritesStore.selectedRating = selectedRating
         favoritesStore.selectedCuisine = selectedCuisine
         favoritesStore.selectedDifficulty = selectedDifficulty
         favoritesStore.sortOrder = sortOrder
-        
+
         let startDate: Date?
         let endDate: Date?
-        
+
         switch dateRange {
         case .anytime:
             startDate = nil
@@ -192,7 +192,7 @@ struct FavoriteFiltersView: View {
             startDate = customStartDate
             endDate = customEndDate
         }
-        
+
         favoritesStore.filters = FavoriteFilters(
             search: favoritesStore.searchQuery.isEmpty ? nil : favoritesStore.searchQuery,
             personalRating: selectedRating,
@@ -204,12 +204,12 @@ struct FavoriteFiltersView: View {
             addedAtMax: endDate,
             ordering: sortOrder
         )
-        
+
         Task {
             await favoritesStore.applyFilters()
         }
     }
-    
+
     private func clearAllFilters() {
         selectedRating = nil
         minRating = 0
@@ -225,7 +225,7 @@ struct FavoriteFiltersView: View {
 
 enum DateRange: CaseIterable {
     case anytime, lastWeek, lastMonth, lastYear, custom
-    
+
     var displayName: String {
         switch self {
         case .anytime:
@@ -244,7 +244,7 @@ enum DateRange: CaseIterable {
 
 struct FilterButtonStyle: ButtonStyle {
     let isSelected: Bool
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline)

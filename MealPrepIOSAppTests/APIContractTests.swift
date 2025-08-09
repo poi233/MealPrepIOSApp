@@ -12,22 +12,22 @@ import XCTest
 // These tests verify that our Swift models align with Django backend API contracts
 
 final class APIContractTests: XCTestCase {
-    
+
     private var networkManager: NetworkManager!
-    
+
     @MainActor
     override func setUpWithError() throws {
         try super.setUpWithError()
         networkManager = NetworkManager.shared
     }
-    
+
     override func tearDownWithError() throws {
         networkManager = nil
         try super.tearDownWithError()
     }
-        
+
     // MARK: - Authentication Contract Tests
-    
+
     func testUserRegistrationContract() async throws {
         // Test registration data contract
         let registrationData = RegisterRequest(
@@ -43,21 +43,21 @@ final class APIContractTests: XCTestCase {
                 calorieTarget: 2000
             )
         )
-        
+
         do {
             let authService = AuthenticationService()
             let response = try await authService.register(userData: registrationData)
-            
+
             // Verify response structure
             XCTAssertFalse(response.access.isEmpty, "Access token should not be empty")
             XCTAssertFalse(response.refresh.isEmpty, "Refresh token should not be empty")
             XCTAssertEqual(response.user.username, registrationData.username)
             XCTAssertEqual(response.user.email, registrationData.email)
             XCTAssertEqual(response.user.displayName, registrationData.displayName)
-            
+
             // Test cleanup - delete the test user account
             try await authService.logout()
-            
+
         } catch let error as NetworkError {
             // Check for expected errors
             switch error {
@@ -73,12 +73,12 @@ final class APIContractTests: XCTestCase {
             }
         }
     }
-    
+
     func testLoginContract() async throws {
         // First create a test user
         let testEmail = "contracttest_\(UUID().uuidString.prefix(8))@example.com"
         let testPassword = "ContractTest123!"
-        
+
         let registrationData = RegisterRequest(
             username: "contracttest_\(UUID().uuidString.prefix(8))",
             email: testEmail,
@@ -87,39 +87,39 @@ final class APIContractTests: XCTestCase {
             displayName: "Contract Test User",
             dietaryPreferences: nil
         )
-        
+
         let authService = AuthenticationService()
-        
+
         do {
             // Register user
             _ = try await authService.register(userData: registrationData)
-            
+
             // Clear tokens to test login
             await MainActor.run {
                 networkManager.clearTokens()
             }
-            
+
             // Test login contract
             let loginResponse = try await authService.login(
                 email: testEmail,
                 password: testPassword
             )
-            
+
             // Verify login response structure
             XCTAssertFalse(loginResponse.access.isEmpty)
             XCTAssertFalse(loginResponse.refresh.isEmpty)
             XCTAssertEqual(loginResponse.user.email, testEmail)
-            
+
             // Cleanup
             try await authService.logout()
-            
+
         } catch {
             XCTFail("Login contract test failed: \(error)")
         }
     }
-    
+
     // MARK: - Recipe Contract Tests
-    
+
     func testRecipeModelContract() async throws {
         // Test basic recipe listing without authentication
         do {
@@ -128,7 +128,7 @@ final class APIContractTests: XCTestCase {
                 responseType: [Recipe].self,
                 requiresAuth: false
             )
-            
+
             // If we get recipes, verify the structure
             if let firstRecipe = recipes.first {
                 XCTAssertFalse(firstRecipe.id.isEmpty)
@@ -136,7 +136,7 @@ final class APIContractTests: XCTestCase {
                 XCTAssertNotNil(firstRecipe.createdAt)
                 // Note: Other fields might be optional
             }
-            
+
         } catch let error as NetworkError {
             // Check if it's an authentication error - that's acceptable for this test
             switch error {
@@ -151,9 +151,9 @@ final class APIContractTests: XCTestCase {
             }
         }
     }
-    
+
     // MARK: - Error Handling Contract Tests
-    
+
     func testErrorResponseContract() async throws {
         // Test that error responses follow expected format
         do {
@@ -163,7 +163,7 @@ final class APIContractTests: XCTestCase {
                 responseType: [Recipe].self,
                 requiresAuth: false
             )
-            
+
         } catch let error as NetworkError {
             switch error {
             case .serverError(let code, let message):
@@ -179,25 +179,25 @@ final class APIContractTests: XCTestCase {
             }
         }
     }
-    
+
     // MARK: - Date Parsing Contract Tests
-    
+
     func testDateParsingContract() {
         let decoder = JSONDecoder()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"
         dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
         decoder.dateDecodingStrategy = .formatted(dateFormatter)
-        
+
         // Test various date formats that Django might return
         let testDates = [
             "2024-01-15T10:30:00.123456Z",
             "2024-01-15T10:30:00.000000Z"
         ]
-        
+
         for dateString in testDates {
             let jsonData = "{\"test_date\": \"\(dateString)\"}".data(using: .utf8)!
-            
+
             do {
                 let decoded = try decoder.decode(TestDateModel.self, from: jsonData)
                 XCTAssertNotNil(decoded.testDate, "Date should be parsed successfully for: \(dateString)")
@@ -218,7 +218,7 @@ private struct HealthResponse: Codable {
 
 private struct TestDateModel: Codable {
     let testDate: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case testDate = "test_date"
     }

@@ -14,12 +14,12 @@ struct Favorite: Codable, Identifiable {
     let personalRating: Int?
     let personalNotes: String?
     let addedAt: Date
-    
+
     // Use recipe ID as the identifier for SwiftUI's Identifiable protocol
     var id: String {
         return recipe.id
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case recipe
@@ -27,7 +27,7 @@ struct Favorite: Codable, Identifiable {
         case personalNotes = "personal_notes"
         case addedAt = "added_at"
     }
-    
+
     // Standard initializer for creating instances programmatically
     init(userId: String, recipe: Recipe, personalRating: Int? = nil, personalNotes: String? = nil, addedAt: Date = Date()) {
         self.userId = userId
@@ -36,10 +36,10 @@ struct Favorite: Codable, Identifiable {
         self.personalNotes = personalNotes
         self.addedAt = addedAt
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         userId = try container.decode(String.self, forKey: .userId)
         recipe = try container.decode(Recipe.self, forKey: .recipe)
         personalRating = try container.decodeIfPresent(Int.self, forKey: .personalRating)
@@ -52,26 +52,26 @@ struct Favorite: Codable, Identifiable {
 struct AddToFavoritesRequest: Codable {
     let personalRating: Int?
     let personalNotes: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case personalRating = "personal_rating"
         case personalNotes = "personal_notes"
     }
-    
+
     init(personalRating: Int? = nil, personalNotes: String? = nil) {
         self.personalRating = personalRating
         self.personalNotes = personalNotes
     }
-    
+
     // Custom encoding to exclude nil values from the JSON
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         // Only encode non-nil values
         if let rating = personalRating {
             try container.encode(rating, forKey: .personalRating)
         }
-        
+
         if let notes = personalNotes, !notes.isEmpty {
             try container.encode(notes, forKey: .personalNotes)
         }
@@ -82,21 +82,21 @@ struct AddToFavoritesRequest: Codable {
 struct UpdateFavoriteRequest: Codable {
     let personalRating: Int?
     let personalNotes: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case personalRating = "personal_rating"
         case personalNotes = "personal_notes"
     }
-    
+
     // Custom encoding to exclude nil values from the JSON
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         // Only encode non-nil values
         if let rating = personalRating {
             try container.encode(rating, forKey: .personalRating)
         }
-        
+
         if let notes = personalNotes, !notes.isEmpty {
             try container.encode(notes, forKey: .personalNotes)
         }
@@ -107,7 +107,7 @@ struct UpdateFavoriteRequest: Codable {
 struct FavoriteStatus: Codable {
     let isFavorite: Bool
     let favorite: Favorite?
-    
+
     enum CodingKeys: String, CodingKey {
         case isFavorite = "is_favorite"
         case favorite
@@ -117,26 +117,26 @@ struct FavoriteStatus: Codable {
         case personalNotes = "personal_notes"
         case addedAt = "added_at"
     }
-    
+
     // Standard initializer for creating instances in code
     init(isFavorite: Bool, favorite: Favorite? = nil) {
         self.isFavorite = isFavorite
         self.favorite = favorite
     }
-    
+
     // Custom encoding
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(isFavorite, forKey: .isFavorite)
         try container.encodeIfPresent(favorite, forKey: .favorite)
     }
-    
+
     // Custom decoding to handle both response formats:
     // 1. {"is_favorite": false} when not a favorite
     // 2. Full favorite object when it is a favorite
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Check if this is a simple status response
         if let isFavoriteValue = try? container.decode(Bool.self, forKey: .isFavorite) {
             // This is a simple status response: {"is_favorite": false}
@@ -173,7 +173,7 @@ struct FavoriteFilters: Codable {
     let addedAtMin: Date?
     let addedAtMax: Date?
     let ordering: FavoriteOrdering?
-    
+
     enum CodingKeys: String, CodingKey {
         case search
         case personalRating = "personal_rating"
@@ -185,7 +185,7 @@ struct FavoriteFilters: Codable {
         case addedAtMax = "added_at__lte"
         case ordering
     }
-    
+
     init(search: String? = nil, personalRating: Int? = nil, personalRatingMin: Int? = nil, personalRatingMax: Int? = nil, recipeCuisine: String? = nil, recipeDifficulty: Difficulty? = nil, addedAtMin: Date? = nil, addedAtMax: Date? = nil, ordering: FavoriteOrdering? = nil) {
         self.search = search
         self.personalRating = personalRating
@@ -206,7 +206,7 @@ enum FavoriteOrdering: String, CaseIterable, Codable {
     case personalRatingAsc = "personal_rating"
     case recipeNameAsc = "recipe__name"
     case recipeNameDesc = "-recipe__name"
-    
+
     var displayName: String {
         switch self {
         case .addedAtDesc:

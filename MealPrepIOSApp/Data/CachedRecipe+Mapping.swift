@@ -9,7 +9,7 @@ import Foundation
 import CoreData
 
 extension CachedRecipe {
-    
+
     // MARK: - Convert from Recipe to CachedRecipe
     func fromRecipe(_ recipe: Recipe) {
         self.id = recipe.id
@@ -23,29 +23,29 @@ extension CachedRecipe {
         self.cuisine = recipe.cuisine
         self.avgRating = recipe.avgRating
         self.userId = recipe.createdByUserId
-        
+
         // Convert ingredients array to JSON string
         if let ingredientsData = try? JSONEncoder().encode(recipe.ingredients),
            let ingredientsString = String(data: ingredientsData, encoding: .utf8) {
             self.ingredients = ingredientsString
         }
-        
+
         // Convert instructions array to JSON string
         if let instructionsData = try? JSONEncoder().encode(recipe.instructions),
            let instructionsString = String(data: instructionsData, encoding: .utf8) {
             self.instructions = instructionsString
         }
-        
+
         // Convert tags array to JSON string
         if let tagsData = try? JSONEncoder().encode(recipe.tags),
            let tagsString = String(data: tagsData, encoding: .utf8) {
             self.tags = tagsString
         }
-        
+
         self.createdAt = recipe.createdAt
         self.updatedAt = recipe.updatedAt
     }
-    
+
     // MARK: - Convert from CachedRecipe to Recipe
     func toRecipe() -> Recipe? {
         guard let id = self.id,
@@ -57,28 +57,28 @@ extension CachedRecipe {
               let updatedAt = self.updatedAt else {
             return nil
         }
-        
+
         // Parse ingredients from JSON string
         var ingredients: [Ingredient] = []
         if let ingredientsString = self.ingredients,
            let ingredientsData = ingredientsString.data(using: .utf8) {
             ingredients = (try? JSONDecoder().decode([Ingredient].self, from: ingredientsData)) ?? []
         }
-        
+
         // Parse instructions from JSON string
         var instructions: [String] = []
         if let instructionsString = self.instructions,
            let instructionsData = instructionsString.data(using: .utf8) {
             instructions = (try? JSONDecoder().decode([String].self, from: instructionsData)) ?? []
         }
-        
+
         // Parse tags from JSON string
         var tags: [String] = []
         if let tagsString = self.tags,
            let tagsData = tagsString.data(using: .utf8) {
             tags = (try? JSONDecoder().decode([String].self, from: tagsData)) ?? []
         }
-        
+
         return Recipe(
             id: id,
             name: name,

@@ -14,7 +14,6 @@ struct MealPrepIOSAppApp: App {
     @StateObject private var mealPlanStore = MealPlanStore()
     @StateObject private var favoritesStore = FavoritesStore()
     @StateObject private var userProfileStore = UserProfileStore()
-    
     var body: some Scene {
         WindowGroup {
             ContentView()

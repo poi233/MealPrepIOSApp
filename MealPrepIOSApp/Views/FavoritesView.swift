@@ -14,14 +14,14 @@ struct FavoritesView: View {
     @State private var showingFilters = false
     @State private var selectedFavorite: Favorite?
     @State private var viewMode: FavoriteViewMode = .list
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Search and Filter Bar
                 VStack(spacing: 12) {
                     SearchBar(text: $favoritesStore.searchQuery)
-                    
+
                     // Quick Filter Chips
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -39,7 +39,7 @@ struct FavoritesView: View {
                                     }
                                 }
                             )
-                            
+
                             FilterChip(
                                 title: "4+ Stars",
                                 isSelected: favoritesStore.filters.personalRatingMin == 4,
@@ -53,7 +53,7 @@ struct FavoritesView: View {
                                     }
                                 }
                             )
-                            
+
                             FilterChip(
                                 title: "Recent",
                                 isSelected: favoritesStore.sortOrder == .addedAtDesc,
@@ -68,7 +68,7 @@ struct FavoritesView: View {
                                     }
                                 }
                             )
-                            
+
                             // Cuisine filters
                             ForEach(["Italian", "Asian", "Mexican", "American"], id: \.self) { cuisine in
                                 FilterChip(
@@ -92,15 +92,15 @@ struct FavoritesView: View {
                 }
                 .padding(.vertical, 8)
                 .background(Color(.systemBackground))
-                
+
                 // Status Bar
                 HStack {
                     Text(favoritesStore.statusText)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Spacer()
-                    
+
                     // View Mode Toggle
                     Picker("View Mode", selection: $viewMode) {
                         Image(systemName: "list.bullet").tag(FavoriteViewMode.list)
@@ -111,7 +111,7 @@ struct FavoritesView: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 8)
-                
+
                 // Content
                 if favoritesStore.isLoading && favoritesStore.favorites.isEmpty {
                     EnhancedLoadingView(message: "Loading your favorite recipes...")
@@ -150,7 +150,7 @@ struct FavoritesView: View {
                             .fill(favoritesStore.hasFilters ? Color.primaryGreen.opacity(0.1) : Color.clear)
                     )
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button("Sort by Name") {
@@ -159,14 +159,14 @@ struct FavoritesView: View {
                                 await favoritesStore.applyFilters()
                             }
                         }
-                        
+
                         Button("Sort by Rating") {
                             Task {
                                 favoritesStore.sortOrder = .personalRatingDesc
                                 await favoritesStore.applyFilters()
                             }
                         }
-                        
+
                         Button("Sort by Date Added") {
                             Task {
                                 favoritesStore.sortOrder = .addedAtDesc
@@ -222,7 +222,7 @@ struct FavoriteListView: View {
     let hasMorePages: Bool
     let onFavoriteTap: (Favorite) -> Void
     let onLoadMore: () -> Void
-    
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
@@ -246,7 +246,7 @@ struct FavoriteListView: View {
                         }
                     }
                 }
-                
+
                 // Load More Indicator
                 if hasMorePages {
                     if isLoadingMore {
@@ -286,11 +286,11 @@ struct FavoriteCard: View {
     let style: FavoriteCardStyle
     @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var isHovered = false
-    
+
     enum FavoriteCardStyle {
         case standard, compact
     }
-    
+
     var body: some View {
         // Enhanced Favorite Card with custom Magic UI styling but without conflicting tap gestures
         ZStack {
@@ -309,7 +309,7 @@ struct FavoriteCard: View {
                     x: 0,
                     y: 4
                 )
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 // Recipe Image with enhanced styling and loading animation
                 ZStack {
@@ -322,7 +322,7 @@ struct FavoriteCard: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: imageHeight)
                     .clipped()
-                    
+
                     // Gradient overlay for better text readability
                     LinearGradient(
                         colors: [Color.clear, Color.black.opacity(0.3)],
@@ -330,12 +330,12 @@ struct FavoriteCard: View {
                         endPoint: .bottom
                     )
                     .cornerRadius(12)
-                    
+
                     // Action Buttons - positioned at top like RecipeCard
                     VStack {
                         HStack {
                             Spacer()
-                            
+
                             // Delete Favorite Button
                             Button {
                                 Task {
@@ -357,11 +357,11 @@ struct FavoriteCard: View {
                         }
                         .padding(.trailing, 12)
                         .padding(.top, 12)
-                        
+
                         Spacer()
                     }
                 }
-            
+
                 // Enhanced Recipe Info
                 VStack(alignment: .leading, spacing: 8) {
                     Text(favorite.recipe.name)
@@ -369,14 +369,14 @@ struct FavoriteCard: View {
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                         .lineLimit(2)
-                    
+
                     if style != .compact {
                         Text(favorite.recipe.description)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .lineLimit(2)
                     }
-                    
+
                     // Enhanced Personal Rating
                     if let rating = favorite.personalRating {
                         HStack(spacing: 4) {
@@ -385,7 +385,7 @@ struct FavoriteCard: View {
                                     .foregroundColor(star <= rating ? .yellow : .gray.opacity(0.3))
                                     .font(.system(size: 14, weight: .medium))
                             }
-                            
+
                             Text("My Rating")
                                 .font(.caption)
                                 .fontWeight(.medium)
@@ -399,7 +399,7 @@ struct FavoriteCard: View {
                                 .fill(Color.yellow.opacity(0.1))
                         )
                     }
-                    
+
                     // Enhanced Personal Notes
                     if let notes = favorite.personalNotes, !notes.isEmpty, style != .compact {
                         Text(notes)
@@ -414,7 +414,7 @@ struct FavoriteCard: View {
                                     .fill(Color.primaryGreen.opacity(0.05))
                             )
                     }
-                    
+
                     // Enhanced Recipe Stats
                     HStack(spacing: 16) {
                         StatItem(
@@ -422,7 +422,7 @@ struct FavoriteCard: View {
                             value: "\(favorite.recipe.totalTime)m",
                             color: .blue
                         )
-                        
+
                         if style != .compact {
                             StatItem(
                                 icon: "star.fill",
@@ -430,9 +430,9 @@ struct FavoriteCard: View {
                                 color: .orange
                             )
                         }
-                        
+
                         Spacer()
-                        
+
                         Text("Added \(favorite.addedAt, style: .date)")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -462,7 +462,7 @@ struct FavoriteCard: View {
                 }
         )
     }
-    
+
     private var imageHeight: CGFloat {
         switch style {
         case .standard: return 150
@@ -475,11 +475,11 @@ struct FavoriteCard: View {
 
 struct EnhancedLoadingView: View {
     let message: String
-    
+
     @State private var isAnimating = false
     @State private var currentDotIndex = 0
     @State private var timer: Timer?
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Animated heart icon
@@ -494,7 +494,7 @@ struct EnhancedLoadingView: View {
                             .repeatForever(autoreverses: true),
                         value: isAnimating
                     )
-                
+
                 // Heart icon with beat animation
                 Image(systemName: "heart.fill")
                     .font(.system(size: 32, weight: .medium))
@@ -512,14 +512,14 @@ struct EnhancedLoadingView: View {
                         value: isAnimating
                     )
             }
-            
+
             VStack(spacing: 12) {
                 Text(message)
                     .font(.headline)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
-                
+
                 // Animated loading dots
                 HStack(spacing: 8) {
                     ForEach(0..<3, id: \.self) { index in
@@ -544,7 +544,7 @@ struct EnhancedLoadingView: View {
             timer = nil
         }
     }
-    
+
     private func startDotAnimation() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
@@ -559,7 +559,7 @@ struct EnhancedLoadingView: View {
 
 struct EmptyFavoritesView: View {
     @State private var isAnimating = false
-    
+
     var body: some View {
         VStack(spacing: 32) {
             // Animated illustration
@@ -574,7 +574,7 @@ struct EmptyFavoritesView: View {
                             .repeatForever(autoreverses: true),
                         value: isAnimating
                     )
-                
+
                 Circle()
                     .fill(Color.primaryGreen.opacity(0.05))
                     .frame(width: 160, height: 160)
@@ -584,7 +584,7 @@ struct EmptyFavoritesView: View {
                             .repeatForever(autoreverses: true),
                         value: isAnimating
                     )
-                
+
                 // Heart icon
                 Image(systemName: "heart")
                     .font(.system(size: 48, weight: .light))
@@ -602,7 +602,7 @@ struct EmptyFavoritesView: View {
                         value: isAnimating
                     )
             }
-            
+
             VStack(spacing: 16) {
                 Text("No Favorites Yet")
                     .font(.title2)
@@ -614,14 +614,14 @@ struct EmptyFavoritesView: View {
                             endPoint: .trailing
                         )
                     )
-                
+
                 Text("Start exploring recipes and tap the heart icon to save your favorites!")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                     .lineSpacing(2)
-                
+
                 // Tips
                 VStack(spacing: 8) {
                     HStack(spacing: 12) {
@@ -632,7 +632,7 @@ struct EmptyFavoritesView: View {
                             .foregroundColor(.secondary)
                         Spacer()
                     }
-                    
+
                     HStack(spacing: 12) {
                         Image(systemName: "star.circle.fill")
                             .foregroundColor(.yellow)
@@ -641,7 +641,7 @@ struct EmptyFavoritesView: View {
                             .foregroundColor(.secondary)
                         Spacer()
                     }
-                    
+
                     HStack(spacing: 12) {
                         Image(systemName: "magnifyingglass.circle.fill")
                             .foregroundColor(.blue)
@@ -654,7 +654,7 @@ struct EmptyFavoritesView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
             }
-            
+
             // Action button
             Button {
                 // TODO: Navigate to recipes tab
@@ -706,7 +706,7 @@ struct EmptyFavoritesView: View {
 
 struct LoadMoreIndicator: View {
     @State private var isAnimating = false
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Animated loading dots
@@ -724,7 +724,7 @@ struct LoadMoreIndicator: View {
                         )
                 }
             }
-            
+
             Text("Loading more favorites...")
                 .font(.subheadline)
                 .foregroundColor(.secondary)

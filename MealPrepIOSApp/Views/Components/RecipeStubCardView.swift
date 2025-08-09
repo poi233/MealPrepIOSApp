@@ -14,15 +14,15 @@ struct RecipeStubCardView: View {
     let mealType: MealType
     let dayOfWeek: Int
     let date: Date
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var recipeStore: RecipeStore
     @State private var isApplying = false
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
-    
+
     // MARK: - Performance Optimized Properties
-    
+
     // Cache expensive computations to avoid recreating on every body call
     private let mealColor: Color
     private let buttonGradient: LinearGradient
@@ -30,67 +30,67 @@ struct RecipeStubCardView: View {
     private let shadowColor: Color
     private let shadowRadius: CGFloat
     private let shadowOffset: CGSize
-    
+
     // Cached formatted strings to avoid repeated string interpolation
     private let caloriesText: String
     private let prepTimeText: String
     private let cuisineDisplay: String
-    
+
     // Initialize cached properties once in init
     init(recipeStub: RecipeStub, mealType: MealType, dayOfWeek: Int, date: Date) {
         self.recipeStub = recipeStub
         self.mealType = mealType
         self.dayOfWeek = dayOfWeek
         self.date = date
-        
+
         // Cache meal color to avoid switch statement on every redraw
         switch mealType {
         case .breakfast: self.mealColor = .orange
         case .lunch: self.mealColor = .yellow
         case .dinner: self.mealColor = .purple
         }
-        
+
         // Pre-create expensive gradient (avoid recreating LinearGradient repeatedly)
         self.buttonGradient = LinearGradient(
             colors: [.primaryGreen, .primaryGreen.opacity(0.8)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        
+
         // Pre-create disabled state color
         self.disabledBackground = .gray.opacity(0.6)
-        
+
         // Pre-create shadow configuration (expensive shadow calculations)
         self.shadowColor = .black.opacity(0.08)
         self.shadowRadius = 6
         self.shadowOffset = CGSize(width: 0, height: 3)
-        
+
         // Cache formatted strings to avoid string interpolation on every render
         self.caloriesText = "\(recipeStub.estimatedCalories) 卡路里"
         self.prepTimeText = "\(recipeStub.estimatedPrepTime)分钟"
         self.cuisineDisplay = recipeStub.cuisineDisplay
     }
-    
+
     @ViewBuilder
     private var optimizedButtonBackground: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(isApplying ? AnyShapeStyle(disabledBackground) : AnyShapeStyle(buttonGradient))
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Recipe stub header - optimized with cached colors
             headerSection
-            
+
             // Conditional description - optimize conditional rendering
             descriptionSection
-            
+
             // Nutrition info row - use ViewBuilder for better performance
             nutritionInfoSection
-            
+
             // Tags section - lazy loading for better scroll performance
             tagsSection
-            
+
             // Apply to Plan button - optimized button rendering
             actionButton
         }
@@ -102,9 +102,9 @@ struct RecipeStubCardView: View {
             Text(errorMessage)
         }
     }
-    
+
     // MARK: - Optimized View Components
-    
+
     @ViewBuilder
     private var headerSection: some View {
         HStack(spacing: 12) {
@@ -117,7 +117,7 @@ struct RecipeStubCardView: View {
                         .font(.title2)
                         .foregroundColor(mealColor)
                 )
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 // Recipe name
                 Text(recipeStub.name)
@@ -125,29 +125,29 @@ struct RecipeStubCardView: View {
                     .fontWeight(.semibold)
                     .lineLimit(2)
                     .foregroundColor(.primary)
-                
+
                 // Cuisine and status - optimize conditional rendering
                 cuisineStatusRow
             }
-            
+
             Spacer()
         }
     }
-    
+
     @ViewBuilder
     private var cuisineStatusRow: some View {
         HStack(spacing: 8) {
             Text(cuisineDisplay)
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
+
             // Conditional AI badge - only create when needed
             if recipeStub.isAIGenerated {
                 aiBadge
             }
         }
     }
-    
+
     // Separate AI badge to avoid recreating when not needed
     private var aiBadge: some View {
         HStack(spacing: 4) {
@@ -164,7 +164,7 @@ struct RecipeStubCardView: View {
                 .fill(.purple.opacity(0.1))
         )
     }
-    
+
     @ViewBuilder
     private var descriptionSection: some View {
         if !recipeStub.description.isEmpty {
@@ -174,7 +174,7 @@ struct RecipeStubCardView: View {
                 .lineLimit(2)
         }
     }
-    
+
     private var nutritionInfoSection: some View {
         HStack(spacing: 16) {
             // Calories info - using cached string
@@ -186,7 +186,7 @@ struct RecipeStubCardView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             // Prep time info - using cached string
             HStack(spacing: 4) {
                 Image(systemName: "clock")
@@ -196,11 +196,11 @@ struct RecipeStubCardView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
         }
     }
-    
+
     @ViewBuilder
     private var tagsSection: some View {
         if !recipeStub.tagsDisplay.isEmpty {
@@ -223,7 +223,7 @@ struct RecipeStubCardView: View {
             }
         }
     }
-    
+
     private var actionButton: some View {
         Button(action: {
             Task {
@@ -233,7 +233,7 @@ struct RecipeStubCardView: View {
             HStack(spacing: 8) {
                 // Optimize icon rendering based on state
                 buttonIcon
-                
+
                 Text(isApplying ? "添加中..." : "添加到计划")
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -246,7 +246,7 @@ struct RecipeStubCardView: View {
         .disabled(isApplying)
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     @ViewBuilder
     private var buttonIcon: some View {
         if isApplying {
@@ -258,7 +258,7 @@ struct RecipeStubCardView: View {
                 .font(.system(size: 16, weight: .medium))
         }
     }
-    
+
     private var optimizedCardBackground: some View {
         RoundedRectangle(cornerRadius: 12)
             .fill(Color(.systemBackground))
@@ -268,17 +268,17 @@ struct RecipeStubCardView: View {
                     .stroke(mealColor.opacity(0.2), lineWidth: 1)
             )
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func applyToPlan() async {
         guard !isApplying else { return }
-        
+
         isApplying = true
-        
+
         do {
             print("🔄 [RecipeStubCardView] Applying recipe stub to plan: \(recipeStub.name)")
-            
+
             // Call the RecipeStore's applyMeal function
             let success = await recipeStore.applyMealToPlan(
                 recipeStub: recipeStub,
@@ -288,13 +288,13 @@ struct RecipeStubCardView: View {
                 servingSize: 1.0,
                 saveToAccount: true
             )
-            
+
             if success {
                 print("✅ [RecipeStubCardView] Successfully applied meal to plan")
-                
+
                 // Refresh the meal plan to show the new recipe
                 await mealPlanStore.refreshMealPlans()
-                
+
                 // Show success feedback (optional - could add haptic feedback)
                 if #available(iOS 17.0, *) {
                     // Modern haptic feedback
@@ -306,13 +306,13 @@ struct RecipeStubCardView: View {
             } else {
                 throw RecipeStoreError.applyMealFailed("Failed to apply meal to plan")
             }
-            
+
         } catch {
             print("❌ [RecipeStubCardView] Failed to apply meal: \(error)")
             errorMessage = "无法添加到计划: \(error.localizedDescription)"
             showingErrorAlert = true
         }
-        
+
         isApplying = false
     }
 }
@@ -327,7 +327,7 @@ struct RecipeStubCardView: View {
             dayOfWeek: 1,
             date: Date()
         )
-        
+
         RecipeStubCardView(
             recipeStub: RecipeStub.sampleExistingStub,
             mealType: .dinner,

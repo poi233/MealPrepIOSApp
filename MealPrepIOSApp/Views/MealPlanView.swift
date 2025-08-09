@@ -27,19 +27,19 @@ struct MealPlanView: View {
                             Button("Analyze Plan") {
                                 showingAnalysisView = true
                             }
-                            
+
                             Button("Shopping List") {
                                 showingShoppingList = true
                             }
-                            
+
                             Divider()
-                            
+
                             Button("Batch Operations") {
                                 showingBatchOperations = true
                             }
-                            
+
                             Divider()
-                            
+
                             Button("AI Generate Week") {
                                 showingAIWorkflow = true
                             }
@@ -56,7 +56,7 @@ struct MealPlanView: View {
                             )
                     }
                 }
-                
+
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // AI Generation Button
                     Button {
@@ -72,7 +72,7 @@ struct MealPlanView: View {
                                 )
                             )
                     }
-                    
+
                     // Template Button
                     Button {
                         showingTemplateSheet = true
@@ -122,12 +122,12 @@ struct MealPlanView: View {
 
 struct WeeklyMealPlanView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Week Navigation
             WeekNavigationView()
-            
+
             if mealPlanStore.isLoading {
                 LoadingView(message: "Loading meal plan...")
             } else {
@@ -140,7 +140,7 @@ struct WeeklyMealPlanView: View {
 
 struct WeekNavigationView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    
+
     var body: some View {
         HStack {
             Button(action: {
@@ -153,21 +153,21 @@ struct WeekNavigationView: View {
                     .foregroundColor(mealPlanStore.canNavigateToPreviousWeek ? .primary : .gray)
             }
             .disabled(!mealPlanStore.canNavigateToPreviousWeek)
-            
+
             Spacer()
-            
+
             VStack(spacing: 2) {
                 Text(weekTitle)
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Text(weekSubtitle)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             Button(action: {
                 Task {
                     await mealPlanStore.navigateToWeek(.next)
@@ -182,23 +182,23 @@ struct WeekNavigationView: View {
         .padding()
         .background(Color(.systemGray6))
     }
-    
+
     private var weekTitle: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
-        
+
         let startDate = mealPlanStore.selectedWeekStartDate
         let endDate = Calendar.mondayFirst.date(byAdding: .day, value: 6, to: startDate) ?? startDate
-        
+
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
-    
+
     private var weekSubtitle: String {
         let calendar = Calendar.mondayFirst
         let now = Date()
         let currentWeekStart = now.startOfWeek()
         let selectedWeekStart = mealPlanStore.selectedWeekStartDate
-        
+
         if calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear) {
             return "This Week"
         } else if selectedWeekStart < currentWeekStart {
@@ -211,59 +211,59 @@ struct WeekNavigationView: View {
 
 struct WeeklyMealGridView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
-    
+
     private var sortedDailyMeals: [(dailyMeal: DailyMealSlots, dayOfWeek: Int)] {
         let calendar = Calendar.mondayFirst
         let today = Date()
         let todayMondayBasedWeekday = today.mondayBasedWeekday() // Monday = 0, Tuesday = 1, etc.
-        
+
         let dailyMealsWithIndex = Array(mealPlanStore.weeklyGrid.dailyMeals.enumerated())
             .map { (dailyMeal: $0.element, dayOfWeek: $0.offset) }
-        
+
         // Check if we're viewing the current week
         let currentWeekStart = today.startOfWeek()
         let selectedWeekStart = mealPlanStore.selectedWeekStartDate
         let isCurrentWeek = calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear)
-        
+
         if isCurrentWeek {
             // Current week: Today first, then future days, then past days
             let todayMeals = dailyMealsWithIndex.filter { $0.dayOfWeek == todayMondayBasedWeekday }
             let futureMeals = dailyMealsWithIndex.filter { $0.dayOfWeek > todayMondayBasedWeekday }
             let pastMeals = dailyMealsWithIndex.filter { $0.dayOfWeek < todayMondayBasedWeekday }
-            
+
             return todayMeals + futureMeals + pastMeals
         } else {
             // Past/future week: normal Monday-first order (Monday=0, Tuesday=1, etc.)
             return dailyMealsWithIndex
         }
     }
-    
+
     private var sortedLightweightMeals: [(lightweightMeal: LightweightDailyMeal, dayOfWeek: Int)] {
         let calendar = Calendar.mondayFirst
         let today = Date()
         let todayMondayBasedWeekday = today.mondayBasedWeekday()
-        
+
         let lightweightMealsWithIndex = Array(mealPlanStore.lightweightDailyMeals.enumerated())
             .map { (lightweightMeal: $0.element, dayOfWeek: $0.offset) }
-        
+
         // Check if we're viewing the current week
         let currentWeekStart = today.startOfWeek()
         let selectedWeekStart = mealPlanStore.selectedWeekStartDate
         let isCurrentWeek = calendar.isDate(selectedWeekStart, equalTo: currentWeekStart, toGranularity: .weekOfYear)
-        
+
         if isCurrentWeek {
             // Current week: Today first, then future days, then past days
             let todayMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek == todayMondayBasedWeekday }
             let futureMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek > todayMondayBasedWeekday }
             let pastMeals = lightweightMealsWithIndex.filter { $0.dayOfWeek < todayMondayBasedWeekday }
-            
+
             return todayMeals + futureMeals + pastMeals
         } else {
             // Past/future week: normal Monday-first order (Monday=0, Tuesday=1, etc.)
             return lightweightMealsWithIndex
         }
     }
-    
+
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
@@ -291,7 +291,7 @@ struct WeeklyMealGridView: View {
 struct DailyMealCard: View {
     let dailyMeal: DailyMealSlots
     let dayOfWeek: Int
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Clean Day Header
@@ -301,15 +301,15 @@ struct DailyMealCard: View {
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    
+
                     Text(dailyMeal.date, style: .date)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
             }
-            
+
             // Clean Meal Slots
             VStack(spacing: 16) {
                 MealSlotView(title: "Breakfast", recipes: dailyMeal.breakfast, mealType: .breakfast, dayOfWeek: dayOfWeek, date: dailyMeal.date)
@@ -325,7 +325,7 @@ struct DailyMealCard: View {
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
     }
-    
+
 
 }
 
@@ -335,13 +335,13 @@ struct MealSlotView: View {
     let mealType: MealType
     let dayOfWeek: Int
     let date: Date
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var showingMealSelection = false
     @State private var showingRecipeDetail = false
     @State private var selectedRecipe: Recipe?
-    
+
     private var mealIcon: String {
         switch mealType {
         case .breakfast: return "sunrise"
@@ -349,7 +349,7 @@ struct MealSlotView: View {
         case .dinner: return "moon"
         }
     }
-    
+
     private var mealColor: Color {
         switch mealType {
         case .breakfast: return .orange
@@ -357,7 +357,7 @@ struct MealSlotView: View {
         case .dinner: return .purple
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Meal type header
@@ -366,15 +366,15 @@ struct MealSlotView: View {
                     Image(systemName: mealIcon)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(mealColor)
-                    
+
                     Text(title)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
                 }
-                
+
                 Spacer()
-                
+
                 // Add button - always visible, larger size
                 Button(action: {
                     showingMealSelection = true
@@ -386,7 +386,7 @@ struct MealSlotView: View {
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 32, height: 32)
             }
-            
+
             // Recipe list - support multiple recipes
             if recipes.isEmpty {
                 Text("Tap + to add recipes")
@@ -400,13 +400,13 @@ struct MealSlotView: View {
                             // Large recipe button (takes most space)
                             Button(action: {
                                 print("🔍 Recipe card tapped: \(recipe.name) (ID: \(recipe.id))")
-                                
+
                                 // Validate recipe before setting
                                 guard !recipe.id.isEmpty && !recipe.name.isEmpty else {
                                     print("⚠️ Invalid recipe data, cannot show details")
                                     return
                                 }
-                                
+
                                 // Set recipe to trigger sheet - using .sheet(item:) pattern
                                 selectedRecipe = recipe
                                 print("📱 Sheet triggered for recipe: \(recipe.name)")
@@ -421,13 +421,13 @@ struct MealSlotView: View {
                                                 .font(.caption)
                                                 .foregroundColor(mealColor)
                                         )
-                                    
+
                                     Text(recipe.name)
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .lineLimit(1)
                                         .foregroundColor(.primary)
-                                    
+
                                     Spacer()
                                 }
                                 .padding(.horizontal, 12)
@@ -443,7 +443,7 @@ struct MealSlotView: View {
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
-                            
+
                             // Two small action buttons on the right (horizontal layout)
                             HStack(spacing: 4) {
                                 // Favorite button
@@ -459,7 +459,7 @@ struct MealSlotView: View {
                                         .fill(.white)
                                         .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
                                 )
-                                
+
                                 // Delete button
                                 Button(action: {
                                     removeRecipeFromMealPlan(recipe)
@@ -509,9 +509,9 @@ struct MealSlotView: View {
             }
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func toggleFavorite(_ recipe: Recipe) {
         Task {
             do {
@@ -519,12 +519,12 @@ struct MealSlotView: View {
                 // Use the environment object instead of creating a new instance
                 let newStatus = try await favoritesStore.toggleFavorite(recipeId: recipe.id, rating: nil, notes: nil)
                 print("✅ Toggled favorite for recipe: \(recipe.name), new status: \(newStatus)")
-                
+
                 // Force update the favorite button view by triggering a re-render
                 await MainActor.run {
                     // This will cause FavoriteButtonView to refresh
                     NotificationCenter.default.post(
-                        name: NSNotification.Name("FavoriteStatusChanged"), 
+                        name: NSNotification.Name("FavoriteStatusChanged"),
                         object: recipe.id,
                         userInfo: ["newStatus": newStatus]
                     )
@@ -534,7 +534,7 @@ struct MealSlotView: View {
             }
         }
     }
-    
+
     private func removeRecipeFromMealPlan(_ recipe: Recipe) {
         Task {
             await MainActor.run {
@@ -553,10 +553,10 @@ struct MealSlotView: View {
                         mealPlanStore.weeklyGrid.dailyMeals[dayOfWeek].dinner.remove(at: index)
                     }
                 }
-                
+
                 print("✅ Removed \(recipe.name) from \(mealType.rawValue) for day \(dayOfWeek)")
             }
-            
+
             // Save changes to local storage
             mealPlanStore.saveLocalMealPlan()
         }
@@ -573,7 +573,7 @@ struct FavoriteButtonView: View {
     @EnvironmentObject var favoritesStore: FavoritesStore
     @State private var isFavorite = false
     @State private var isLoading = false
-    
+
     var body: some View {
         Group {
             if isLoading {
@@ -609,13 +609,13 @@ struct FavoriteButtonView: View {
             }
         }
     }
-    
+
     private func loadFavoriteStatus() {
         // First try to use cached status to avoid API call
         let cachedStatus = favoritesStore.isFavorite(recipeId: recipe.id)
         isFavorite = cachedStatus
         print("📖 [FavoriteButtonView] Using cached favorite status for recipe \(recipe.id): \(cachedStatus)")
-        
+
         // Only make API call if cache is potentially stale (not implemented yet)
         // For now, rely on the cached status to reduce API calls
         isLoading = false

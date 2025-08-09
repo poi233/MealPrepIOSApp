@@ -22,9 +22,9 @@ struct MealPlan: Codable, Identifiable, Equatable {
     let lightweightDailyMeals: [LightweightDailyMeal]?  // Recipe stubs for AI-generated suggestions
     let createdAt: Date
     let updatedAt: Date
-    
+
     // Removed weekStartDate - weeklyMealGrid now handles date calculations internally
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
@@ -41,7 +41,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         case updatedAt = "updated_at"
         // Removed weekStartDate from CodingKeys - no longer sent to/from backend
     }
-    
+
     // Standard initializer - weekStartDate removed
     init(
         id: String,
@@ -72,10 +72,10 @@ struct MealPlan: Codable, Identifiable, Equatable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Handle id as either String or Int
         if let idString = try? container.decode(String.self, forKey: .id) {
             id = idString
@@ -84,7 +84,7 @@ struct MealPlan: Codable, Identifiable, Equatable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .id, in: container, debugDescription: "ID must be either String or Int")
         }
-        
+
         userId = try container.decodeIfPresent(String.self, forKey: .userId)
         name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
@@ -95,14 +95,14 @@ struct MealPlan: Codable, Identifiable, Equatable {
         itemsCount = try container.decodeIfPresent(Int.self, forKey: .itemsCount)
         dailyMeals = try container.decodeIfPresent([DailyMeal].self, forKey: .dailyMeals)
         lightweightDailyMeals = try container.decodeIfPresent([LightweightDailyMeal].self, forKey: .lightweightDailyMeals)
-        
+
         // weekStartDate parsing completely removed - backend may still send it but iOS ignores it
-        
+
         // Handle flexible date parsing for timestamps
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
-    
+
     // MARK: - Equatable Implementation
     static func == (lhs: MealPlan, rhs: MealPlan) -> Bool {
         return lhs.id == rhs.id
@@ -118,7 +118,7 @@ struct MealPlanItem: Codable, Identifiable {
     let dayOfWeek: Int
     let mealType: String
     let addedAt: Date?
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case mealPlanId = "meal_plan"
@@ -128,12 +128,12 @@ struct MealPlanItem: Codable, Identifiable {
         case mealType = "meal_type"
         case addedAt = "added_at"
     }
-    
+
     var dayName: String {
         let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         return dayOfWeek < days.count ? days[dayOfWeek] : "Unknown"
     }
-    
+
     static let sampleItem = MealPlanItem(
         id: 1,
         mealPlanId: "1",
@@ -152,7 +152,7 @@ struct DailyMeal: Codable, Identifiable {
     let breakfast: [Recipe]  // Changed from MealItem to Recipe
     let lunch: [Recipe]      // Changed from MealItem to Recipe
     let dinner: [Recipe]     // Changed from MealItem to Recipe
-    
+
     enum CodingKeys: String, CodingKey {
         case day
         case breakfast
@@ -171,7 +171,7 @@ struct GenerateMealPlanRequest: Codable {
     let dislikes: [String]?
     let calorieTarget: Int?
     let additionalRequirements: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case planDescription = "plan_description"
         case dietaryPreferences = "dietary_preferences"
@@ -188,7 +188,7 @@ struct AnalyzeMealPlanRequest: Codable {
     let planDescription: String?
     let analysisType: AnalysisType?
     let includeRecommendations: Bool?
-    
+
     enum CodingKeys: String, CodingKey {
         case mealPlanId = "meal_plan_id"
         case planDescription = "plan_description"
@@ -206,7 +206,7 @@ struct MealPlanAnalysis: Codable {
     let totalRecipes: Int
     let analysisText: String
     let analysisDate: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case mealPlanId = "meal_plan_id"
         case analysisType = "analysis_type"
@@ -219,14 +219,14 @@ struct MealPlanAnalysis: Codable {
 // MARK: - Weekly Meal Grid (UI Helper)
 struct WeeklyMealGrid: Codable {
     var dailyMeals: [DailyMealSlots]
-    
+
     init() {
         self.dailyMeals = []
-        
+
         // Initialize 7 days starting from Monday based on current date
         let calendar = Calendar.mondayFirst
         let actualWeekStart = Date().startOfWeek() // Use current date to calculate week start
-        
+
         for i in 0..<7 {
             if let date = calendar.date(byAdding: .day, value: i, to: actualWeekStart) {
                 // Use custom day names array starting with Monday
@@ -236,16 +236,16 @@ struct WeeklyMealGrid: Codable {
             }
         }
     }
-    
+
     // Helper methods for date extraction from dailyMeals when needed
     func getWeekStartDate() -> Date {
         return dailyMeals.first?.date ?? Date().startOfWeek()
     }
-    
+
     func getWeekEndDate() -> Date {
         return dailyMeals.last?.date ?? Date().endOfWeek()
     }
-    
+
     // Custom Codable implementation to exclude weekStartDate from encoding/decoding
     enum CodingKeys: String, CodingKey {
         case dailyMeals
@@ -260,13 +260,13 @@ struct DailyMealSlots: Identifiable, Codable {
     var breakfast: [Recipe] = []
     var lunch: [Recipe] = []
     var dinner: [Recipe] = []
-    
+
     init(day: String, date: Date) {
         self.id = UUID()
         self.day = day
         self.date = date
     }
-    
+
     // Custom Codable implementation to handle UUID
     enum CodingKeys: String, CodingKey {
         case id, day, date, breakfast, lunch, dinner
@@ -281,7 +281,7 @@ struct ShoppingListItem: Codable, Identifiable {
     let unit: String
     let recipes: [String] // Recipe names that use this ingredient
     var isCompleted: Bool = false
-    
+
     enum CodingKeys: String, CodingKey {
         case ingredient
         case amount
@@ -299,7 +299,7 @@ struct MealPlanPreferences: Codable {
     let mealTypes: [MealType]
     let maxPrepTime: Int?
     let budgetLevel: BudgetLevel?
-    
+
     enum CodingKeys: String, CodingKey {
         case targetCalories = "target_calories"
         case dietaryRestrictions = "dietary_restrictions"
@@ -321,7 +321,7 @@ struct CreateMealPlanRequest: Codable {
     let endDate: Date
     let items: [CreateMealPlanItemRequest]?
     let preferences: MealPlanPreferences?
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case description
@@ -338,7 +338,7 @@ struct CreateMealPlanItemRequest: Codable {
     let dayOfWeek: Int
     let mealType: String
     let servingSize: Double
-    
+
     enum CodingKeys: String, CodingKey {
         case recipeId = "recipe_id"
         case dayOfWeek = "day_of_week"
@@ -356,14 +356,14 @@ extension WeeklyMealGrid {
             !day.breakfast.isEmpty || !day.lunch.isEmpty || !day.dinner.isEmpty
         }
     }
-    
+
     /// Get total count of all meals (recipes) in the week
     var totalMealsCount: Int {
         return dailyMeals.reduce(0) { total, day in
             total + day.breakfast.count + day.lunch.count + day.dinner.count
         }
     }
-    
+
     /// Remove a recipe by ID from all meal slots
     mutating func removeRecipe(_ recipeId: String) {
         for dayIndex in 0..<dailyMeals.count {

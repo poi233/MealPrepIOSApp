@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var authStore: AuthStore
-    
+
     var body: some View {
         Group {
             if authStore.isInitializing {
@@ -17,7 +17,7 @@ struct ContentView: View {
                 VStack(spacing: 20) {
                     ProgressView()
                         .scaleEffect(1.5)
-                    
+
                     Text("Loading...")
                         .font(.headline)
                         .foregroundColor(.secondary)
@@ -42,7 +42,7 @@ struct ContentView: View {
 
 struct MainTabView: View {
     @State private var selectedTab: Int = 0 // Default to MealPlan tab (now index 0)
-    
+
     var body: some View {
         TabView(selection: $selectedTab) {
             MealPlanView()
@@ -51,21 +51,21 @@ struct MainTabView: View {
                     Text("Meal Plan")
                 }
                 .tag(0)
-            
+
             RecipesView()
                 .tabItem {
                     Image(systemName: "book.fill")
                     Text("Recipes")
                 }
                 .tag(1)
-            
+
             FavoritesView()
                 .tabItem {
                     Image(systemName: "heart.fill")
                     Text("Favorites")
                 }
                 .tag(2)
-            
+
             ProfileView()
                 .tabItem {
                     Image(systemName: "person.fill")

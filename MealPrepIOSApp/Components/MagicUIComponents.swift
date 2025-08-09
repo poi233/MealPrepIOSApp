@@ -14,14 +14,14 @@ struct StaticButton: View {
     let action: () -> Void
     let isLoading: Bool
     let disabled: Bool
-    
+
     init(_ title: String, isLoading: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
         self.title = title
         self.action = action
         self.isLoading = isLoading
         self.disabled = disabled
     }
-    
+
     var body: some View {
         Button(action: disabled ? {} : action) {
             HStack {
@@ -46,35 +46,16 @@ struct StaticButton: View {
     }
 }
 
-// MARK: - Legacy Shimmer Button (Deprecated - Use StaticButton)
-@available(*, deprecated, message: "Use StaticButton instead")
-struct ShimmerButton: View {
-    let title: String
-    let action: () -> Void
-    let isLoading: Bool
-    let disabled: Bool
-    
-    init(_ title: String, isLoading: Bool = false, disabled: Bool = false, action: @escaping () -> Void) {
-        self.title = title
-        self.action = action
-        self.isLoading = isLoading
-        self.disabled = disabled
-    }
-    
-    var body: some View {
-        StaticButton(title, isLoading: isLoading, disabled: disabled, action: action)
-    }
-}
 
 // MARK: - Static Outline Button (No Animations)
 struct StaticOutlineButton: View {
     let title: String
     let action: () -> Void
     let style: StaticButtonStyle
-    
+
     enum StaticButtonStyle {
         case primary, secondary, outline
-        
+
         var backgroundColor: Color {
             switch self {
             case .primary: return .primaryGreen
@@ -82,7 +63,7 @@ struct StaticOutlineButton: View {
             case .outline: return .clear
             }
         }
-        
+
         var borderColor: Color {
             switch self {
             case .primary: return .clear
@@ -90,7 +71,7 @@ struct StaticOutlineButton: View {
             case .outline: return .primaryGreen
             }
         }
-        
+
         var textColor: Color {
             switch self {
             case .primary: return .white
@@ -99,13 +80,13 @@ struct StaticOutlineButton: View {
             }
         }
     }
-    
+
     init(_ title: String, style: StaticButtonStyle = .primary, action: @escaping () -> Void) {
         self.title = title
         self.style = style
         self.action = action
     }
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -125,47 +106,19 @@ struct StaticOutlineButton: View {
     }
 }
 
-// MARK: - Legacy Ripple Button (Deprecated - Use StaticOutlineButton)
-@available(*, deprecated, message: "Use StaticOutlineButton instead")
-struct RippleButton: View {
-    let title: String
-    let action: () -> Void
-    let style: RippleButtonStyle
-    
-    enum RippleButtonStyle {
-        case primary, secondary, outline
-    }
-    
-    init(_ title: String, style: RippleButtonStyle = .primary, action: @escaping () -> Void) {
-        self.title = title
-        self.style = style
-        self.action = action
-    }
-    
-    var body: some View {
-        switch style {
-        case .primary:
-            StaticOutlineButton(title, style: .primary, action: action)
-        case .secondary:
-            StaticOutlineButton(title, style: .secondary, action: action)
-        case .outline:
-            StaticOutlineButton(title, style: .outline, action: action)
-        }
-    }
-}
 
 // MARK: - Magic Card
 struct MagicCard<Content: View>: View {
     let content: Content
     let cornerRadius: CGFloat
     let shadowRadius: CGFloat
-    
+
     init(cornerRadius: CGFloat = 16, shadowRadius: CGFloat = 8, @ViewBuilder content: () -> Content) {
         self.content = content()
         self.cornerRadius = cornerRadius
         self.shadowRadius = shadowRadius
     }
-    
+
     var body: some View {
         ZStack {
             // Background with gradient - static, no hover effects
@@ -190,7 +143,7 @@ struct MagicCard<Content: View>: View {
                     x: 0,
                     y: 4
                 )
-            
+
             content
                 .padding()
         }
@@ -203,16 +156,16 @@ struct StaticTextField: View {
     @Binding var text: String
     let keyboardType: UIKeyboardType
     let isSecure: Bool
-    
+
     @FocusState private var isFocused: Bool
-    
+
     init(_ placeholder: String, text: Binding<String>, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) {
         self.placeholder = placeholder
         self._text = text
         self.keyboardType = keyboardType
         self.isSecure = isSecure
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Static label - always visible
@@ -220,7 +173,7 @@ struct StaticTextField: View {
                 .font(.caption)
                 .foregroundColor(isFocused ? .primaryGreen : .secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
+
             // Text field container
             Group {
                 if isSecure {
@@ -247,40 +200,21 @@ struct StaticTextField: View {
     }
 }
 
-// MARK: - Legacy Animated Text Field (Deprecated - Use StaticTextField)
-@available(*, deprecated, message: "Use StaticTextField instead")
-struct AnimatedTextField: View {
-    let placeholder: String
-    @Binding var text: String
-    let keyboardType: UIKeyboardType
-    let isSecure: Bool
-    
-    init(_ placeholder: String, text: Binding<String>, keyboardType: UIKeyboardType = .default, isSecure: Bool = false) {
-        self.placeholder = placeholder
-        self._text = text
-        self.keyboardType = keyboardType
-        self.isSecure = isSecure
-    }
-    
-    var body: some View {
-        StaticTextField(placeholder, text: $text, keyboardType: keyboardType, isSecure: isSecure)
-    }
-}
 
 // MARK: - Blur Fade Animation
 struct BlurFade<Content: View>: View {
     let content: Content
     let delay: Double
-    
+
     @State private var opacity: Double = 0
     @State private var blur: CGFloat = 10
     @State private var scale: CGFloat = 0.8
-    
+
     init(delay: Double = 0, @ViewBuilder content: () -> Content) {
         self.delay = delay
         self.content = content()
     }
-    
+
     var body: some View {
         content
             .opacity(opacity)
@@ -303,20 +237,20 @@ struct BlurFade<Content: View>: View {
 struct SparklesText: View {
     let text: String
     let font: Font
-    
+
     @State private var sparkles: [SparkleEffect] = []
-    
+
     struct SparkleEffect: Identifiable {
         let id = UUID()
         let position: CGPoint
         let delay: Double
     }
-    
+
     init(_ text: String, font: Font = .title) {
         self.text = text
         self.font = font
     }
-    
+
     var body: some View {
         ZStack {
             Text(text)
@@ -329,7 +263,7 @@ struct SparklesText: View {
                         endPoint: .trailing
                     )
                 )
-            
+
             ForEach(sparkles) { sparkle in
                 Image(systemName: "sparkle")
                     .font(.caption)
@@ -349,7 +283,7 @@ struct SparklesText: View {
             generateSparkles()
         }
     }
-    
+
     private func generateSparkles() {
         for i in 0..<5 {
             let sparkle = SparkleEffect(
@@ -370,13 +304,13 @@ struct EnhancedRecipeCard: View {
     let style: RecipeCardStyle
     let onTap: () -> Void
     let onFavoriteToggle: () -> Void
-    
+
     @State private var isFavorite = false
     @State private var isHovered = false
-    
+
     enum RecipeCardStyle {
         case standard, compact, featured
-        
+
         var cardHeight: CGFloat {
             switch self {
             case .standard: return 280
@@ -384,7 +318,7 @@ struct EnhancedRecipeCard: View {
             case .featured: return 320
             }
         }
-        
+
         var imageHeight: CGFloat {
             switch self {
             case .standard: return 160
@@ -393,7 +327,7 @@ struct EnhancedRecipeCard: View {
             }
         }
     }
-    
+
     var body: some View {
         Button(action: onTap) {
             ZStack {
@@ -417,20 +351,20 @@ struct EnhancedRecipeCard: View {
                         x: 0,
                         y: isHovered ? 8 : 4
                     )
-                
+
                 // Border gradient
                 RoundedRectangle(cornerRadius: 20)
                     .stroke(
                         LinearGradient(
-                            colors: isHovered ? 
-                                [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] : 
+                            colors: isHovered ?
+                                [Color.primaryGreen.opacity(0.3), Color.blue.opacity(0.3)] :
                                 [Color.clear],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
                         lineWidth: isHovered ? 2 : 0
                     )
-                
+
                 VStack(alignment: .leading, spacing: 0) {
                     // Recipe Image with overlay
                     ZStack {
@@ -455,14 +389,14 @@ struct EnhancedRecipeCard: View {
                         }
                         .frame(height: style.imageHeight)
                         .clipped()
-                        
+
                         // Gradient overlay
                         LinearGradient(
                             colors: [Color.clear, Color.black.opacity(0.3)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        
+
                         // Favorite button
                         VStack {
                             HStack {
@@ -483,7 +417,7 @@ struct EnhancedRecipeCard: View {
                             }
                             Spacer()
                         }
-                        
+
                         // Difficulty badge
                         VStack {
                             HStack {
@@ -496,7 +430,7 @@ struct EnhancedRecipeCard: View {
                         }
                     }
                     .cornerRadius(16, corners: [.topLeft, .topRight])
-                    
+
                     // Recipe Info
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -505,7 +439,7 @@ struct EnhancedRecipeCard: View {
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
                                 .lineLimit(2)
-                            
+
                             if style != .compact {
                                 Text(recipe.description)
                                     .font(.caption)
@@ -513,7 +447,7 @@ struct EnhancedRecipeCard: View {
                                     .lineLimit(2)
                             }
                         }
-                        
+
                         // Stats row
                         HStack(spacing: 16) {
                             StatItem(
@@ -521,7 +455,7 @@ struct EnhancedRecipeCard: View {
                                 value: "\(recipe.totalTime)m",
                                 color: .blue
                             )
-                            
+
                             if style != .compact {
                                 StatItem(
                                     icon: "star.fill",
@@ -529,10 +463,10 @@ struct EnhancedRecipeCard: View {
                                     color: .yellow
                                 )
                             }
-                            
+
                             Spacer()
                         }
-                        
+
                         // Tags
                         if !recipe.tags.isEmpty && style != .compact {
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -571,7 +505,7 @@ struct EnhancedRecipeCard: View {
 // MARK: - Supporting Components
 struct DifficultyBadge: View {
     let difficulty: Difficulty
-    
+
     var badgeColor: Color {
         switch difficulty {
         case .easy: return .green
@@ -579,7 +513,7 @@ struct DifficultyBadge: View {
         case .hard: return .red
         }
     }
-    
+
     var body: some View {
         Text(difficulty.displayName)
             .font(.caption2)
@@ -598,7 +532,7 @@ struct StatItem: View {
     let icon: String
     let value: String
     let color: Color
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -614,7 +548,7 @@ struct StatItem: View {
 
 struct TagChip: View {
     let tag: String
-    
+
     var body: some View {
         Text(tag)
             .font(.caption2)
@@ -638,7 +572,7 @@ extension View {
 struct RoundedCorner: Shape {
     var radius: CGFloat = .infinity
     var corners: UIRectCorner = .allCorners
-    
+
     func path(in rect: CGRect) -> Path {
         let path = UIBezierPath(
             roundedRect: rect,
@@ -668,7 +602,7 @@ struct RoundedCorner: Shape {
                 Text("Premium Feature")
                     .font(.headline)
             }
-            
+
             Text("This is a magic card with beautiful hover effects and gradient borders.")
                 .font(.body)
                 .foregroundColor(.secondary)

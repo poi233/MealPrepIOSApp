@@ -14,7 +14,7 @@ struct IngredientInput: Identifiable {
     var amount = ""
     var unit = ""
     var notes: String? = nil
-    
+
     init(name: String = "", amount: String = "", unit: String = "", notes: String? = nil) {
         self.name = name
         self.amount = amount
@@ -32,7 +32,7 @@ struct NutritionInput {
     var sodium = ""
     var sugar = ""
     var servings = 0
-    
+
     init(calories: String = "", protein: String = "", carbohydrates: String = "", fat: String = "", fiber: String = "", sodium: String = "", sugar: String = "", servings: Int = 0) {
         self.calories = calories
         self.protein = protein
@@ -43,7 +43,7 @@ struct NutritionInput {
         self.sugar = sugar
         self.servings = servings
     }
-    
+
     var hasValues: Bool {
         !calories.isEmpty || !protein.isEmpty || !carbohydrates.isEmpty ||
         !fat.isEmpty || !fiber.isEmpty || !sodium.isEmpty ||
@@ -55,28 +55,28 @@ struct NutritionInput {
 struct IngredientRow: View {
     @Binding var ingredient: IngredientInput
     let onDelete: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
                 TextField("Ingredient name", text: $ingredient.name)
-                
+
                 Button(action: onDelete) {
                     Image(systemName: "minus.circle.fill")
                         .foregroundColor(.red)
                 }
             }
-            
+
             HStack {
                 TextField("Amount", text: $ingredient.amount)
                     .frame(width: 80)
-                
+
                 TextField("Unit", text: $ingredient.unit)
                     .frame(width: 80)
-                
+
                 Spacer()
             }
-            
+
             TextField("Notes (optional)", text: Binding(
                 get: { ingredient.notes ?? "" },
                 set: { ingredient.notes = $0.isEmpty ? nil : $0 }
@@ -89,7 +89,7 @@ struct IngredientRow: View {
 
 struct NutritionInfoView: View {
     @Binding var nutritionInfo: NutritionInput
-    
+
     var body: some View {
         VStack(spacing: 12) {
             HStack {
@@ -98,25 +98,25 @@ struct NutritionInfoView: View {
                 TextField("Protein (g)", text: $nutritionInfo.protein)
                     .keyboardType(.decimalPad)
             }
-            
+
             HStack {
                 TextField("Carbs (g)", text: $nutritionInfo.carbohydrates)
                     .keyboardType(.decimalPad)
                 TextField("Fat (g)", text: $nutritionInfo.fat)
                     .keyboardType(.decimalPad)
             }
-            
+
             HStack {
                 TextField("Fiber (g)", text: $nutritionInfo.fiber)
                     .keyboardType(.decimalPad)
                 TextField("Sodium (mg)", text: $nutritionInfo.sodium)
                     .keyboardType(.decimalPad)
             }
-            
+
             HStack {
                 TextField("Sugar (g)", text: $nutritionInfo.sugar)
                     .keyboardType(.decimalPad)
-                
+
                 Stepper("Servings: \(nutritionInfo.servings)", value: $nutritionInfo.servings, in: 0...20)
             }
         }
@@ -126,9 +126,9 @@ struct NutritionInfoView: View {
 struct EditRecipeView: View {
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
-    
+
     let recipe: Recipe
-    
+
     // Recipe form data
     @State private var name: String
     @State private var description: String
@@ -141,13 +141,13 @@ struct EditRecipeView: View {
     @State private var tags: String
     @State private var ingredients: [IngredientInput]
     @State private var nutritionInfo: NutritionInput
-    
+
     @State private var isUpdating = false
     @State private var errorMessage: String?
-    
+
     init(recipe: Recipe) {
         self.recipe = recipe
-        
+
         // Initialize state variables with recipe data
         _name = State(initialValue: recipe.name)
         _description = State(initialValue: recipe.description)
@@ -158,7 +158,7 @@ struct EditRecipeView: View {
         _difficulty = State(initialValue: recipe.difficulty)
         _imageUrl = State(initialValue: recipe.imageUrl ?? "")
         _tags = State(initialValue: recipe.tags.joined(separator: ", "))
-        
+
         // Convert ingredients to IngredientInput
         let ingredientInputs = recipe.ingredients.map { ingredient in
             IngredientInput(
@@ -169,7 +169,7 @@ struct EditRecipeView: View {
             )
         }
         _ingredients = State(initialValue: ingredientInputs)
-        
+
         // Convert nutrition info to NutritionInput
         let nutrition = recipe.nutritionInfo
         _nutritionInfo = State(initialValue: NutritionInput(
@@ -183,7 +183,7 @@ struct EditRecipeView: View {
             servings: nutrition?.servings ?? 0
         ))
     }
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -191,7 +191,7 @@ struct EditRecipeView: View {
                     TextField("Recipe Name", text: $name)
                     TextField("Description", text: $description, axis: .vertical)
                         .lineLimit(3...6)
-                    
+
                     HStack {
                         Text("Cuisine")
                         Spacer()
@@ -199,27 +199,27 @@ struct EditRecipeView: View {
                             .multilineTextAlignment(.trailing)
                     }
                 }
-                
+
                 Section("Timing & Difficulty") {
                     HStack {
                         Text("Prep Time")
                         Spacer()
                         Stepper("\(prepTime) minutes", value: $prepTime, in: 0...180, step: 5)
                     }
-                    
+
                     HStack {
                         Text("Cook Time")
                         Spacer()
                         Stepper("\(cookTime) minutes", value: $cookTime, in: 0...480, step: 5)
                     }
-                    
+
                     Picker("Difficulty", selection: $difficulty) {
                         ForEach(Difficulty.allCases, id: \.self) { level in
                             Text(level.displayName)
                         }
                     }
                 }
-                
+
                 Section("Ingredients") {
                     ForEach($ingredients) { $ingredient in
                         IngredientRow(
@@ -233,28 +233,28 @@ struct EditRecipeView: View {
                             }
                         )
                     }
-                    
+
                     Button("Add Ingredient") {
                         ingredients.append(IngredientInput())
                     }
                     .foregroundColor(.primaryGreen)
                 }
-                
+
                 Section("Instructions") {
                     TextField("Step-by-step instructions", text: $instructions, axis: .vertical)
                         .lineLimit(5...15)
                 }
-                
+
                 Section("Additional Details") {
                     TextField("Image URL (optional)", text: $imageUrl)
                     TextField("Tags (comma separated)", text: $tags)
                         .textInputAutocapitalization(.never)
                 }
-                
+
                 Section("Nutrition Information") {
                     NutritionInfoView(nutritionInfo: $nutritionInfo)
                 }
-                
+
                 if let errorMessage = errorMessage {
                     Section {
                         Text(errorMessage)
@@ -270,7 +270,7 @@ struct EditRecipeView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         updateRecipe()
@@ -282,21 +282,21 @@ struct EditRecipeView: View {
             .disabled(isUpdating)
         }
     }
-    
+
     private var isFormValid: Bool {
         return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         ingredients.contains(where: { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
     }
-    
+
     private func updateRecipe() {
         isUpdating = true
         errorMessage = nil
-        
+
         let validIngredients = ingredients.compactMap { ingredient -> Ingredient? in
             let trimmedName = ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedName.isEmpty else { return nil }
-            
+
             return Ingredient(
                 name: trimmedName,
                 amount: ingredient.amount.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -304,11 +304,11 @@ struct EditRecipeView: View {
                 notes: ingredient.notes?.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
-        
+
         let tagArray = tags.components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        
+
         let nutrition = nutritionInfo.hasValues ? NutritionInfo(
             calories: nutritionInfo.calories.isEmpty ? nil : nutritionInfo.calories,
             protein: nutritionInfo.protein.isEmpty ? nil : nutritionInfo.protein,
@@ -319,7 +319,7 @@ struct EditRecipeView: View {
             sugar: nutritionInfo.sugar.isEmpty ? nil : nutritionInfo.sugar,
             servings: nutritionInfo.servings > 0 ? nutritionInfo.servings : nil
         ) : nil
-        
+
         let updatedRecipe = CreateRecipeRequest(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -336,13 +336,13 @@ struct EditRecipeView: View {
             imageUrl: imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : imageUrl.trimmingCharacters(in: .whitespacesAndNewlines),
             tags: tagArray
         )
-        
+
         Task {
             let success = await recipeStore.updateRecipe(id: recipe.id, recipe: updatedRecipe)
-            
+
             await MainActor.run {
                 isUpdating = false
-                
+
                 if success {
                     dismiss()
                 } else {
@@ -378,7 +378,7 @@ struct EditRecipeView: View {
         createdAt: Date(),
         updatedAt: Date()
     )
-    
+
     NavigationView {
         EditRecipeView(recipe: sampleRecipe)
             .environmentObject(RecipeStore())

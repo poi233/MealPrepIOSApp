@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Loading View
 struct LoadingView: View {
     let message: String
-    
+
     var body: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -28,7 +28,7 @@ struct LoadingView: View {
 struct AutoRefreshViewModifier: ViewModifier {
     let action: () async -> Void
     @State private var hasAppeared = false
-    
+
     func body(content: Content) -> some View {
         content
             .onAppear {
@@ -58,9 +58,9 @@ struct FilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     @State private var isPressed = false
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -120,7 +120,7 @@ struct SearchBar: View {
     @Binding var text: String
     @FocusState private var isFocused: Bool
     @State private var isEditing = false
-    
+
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 12) {
@@ -128,7 +128,7 @@ struct SearchBar: View {
                     .font(Font.system(size: 16, weight: .medium))
                     .foregroundColor(isFocused ? .primaryGreen : .secondary)
                     .animation(.easeInOut(duration: 0.2), value: isFocused)
-                
+
                 TextField("Search recipes, ingredients...", text: $text)
                     .font(Font.body)
                     .focused($isFocused)
@@ -136,7 +136,7 @@ struct SearchBar: View {
                     .onTapGesture {
                         isEditing = true
                     }
-                
+
                 if !text.isEmpty {
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -169,7 +169,7 @@ struct SearchBar: View {
                 x: 0,
                 y: isFocused ? 4 : 1
             )
-            
+
             if isEditing {
                 Button("Cancel") {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -201,7 +201,7 @@ struct StatView: View {
     let icon: String
     let value: String
     let label: String
-    
+
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
@@ -211,7 +211,7 @@ struct StatView: View {
                     .fontWeight(.semibold)
             }
             .font(Font.subheadline)
-            
+
             Text(label)
                 .font(Font.caption)
                 .foregroundColor(.secondary)
@@ -226,7 +226,7 @@ struct EmptyStateView: View {
     let message: String
     let actionTitle: String?
     let action: (() -> Void)?
-    
+
     var body: some View {
         VStack(spacing: 24) {
                 // Static icon with gradient
@@ -239,7 +239,7 @@ struct EmptyStateView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                
+
                 VStack(spacing: 12) {
                     Text(title)
                         .font(Font.title2)
@@ -251,14 +251,14 @@ struct EmptyStateView: View {
                                 endPoint: .trailing
                             )
                         )
-                    
+
                     Text(message)
                         .font(Font.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
-                
+
                 if let actionTitle = actionTitle, let action = action {
                     StaticButton(actionTitle, action: action)
                         .padding(.top, 8)

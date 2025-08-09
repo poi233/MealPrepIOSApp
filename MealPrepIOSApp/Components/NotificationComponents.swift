@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Error Alert
 struct ErrorAlert: ViewModifier {
     @ObservedObject var errorHandler: ErrorHandler
-    
+
     func body(content: Content) -> some View {
         content
             .alert("Error", isPresented: $errorHandler.isShowingError) {
@@ -21,7 +21,7 @@ struct ErrorAlert: ViewModifier {
                             errorHandler.clearError()
                         }
                     }
-                    
+
                     Button("OK") {
                         errorHandler.clearError()
                     }
@@ -30,7 +30,7 @@ struct ErrorAlert: ViewModifier {
                 if let error = errorHandler.currentError {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(error.localizedDescription ?? "Unknown error")
-                        
+
                         if let suggestion = error.recoverySuggestion {
                             Text(suggestion)
                                 .font(.caption)
@@ -46,16 +46,16 @@ struct ErrorAlert: ViewModifier {
 struct NotificationToast: View {
     let notification: AppNotification
     let onDismiss: () -> Void
-    
+
     @State private var offset: CGFloat = -100
     @State private var opacity: Double = 0
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: notification.type.icon)
                 .font(.title2)
                 .foregroundColor(notification.type.color)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(notification.message)
                     .font(.body)
@@ -63,9 +63,9 @@ struct NotificationToast: View {
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.leading)
             }
-            
+
             Spacer()
-            
+
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.caption)
@@ -102,13 +102,13 @@ struct NotificationToast: View {
                 }
         )
     }
-    
+
     private func dismissWithAnimation() {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             offset = -100
             opacity = 0
         }
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             onDismiss()
         }
@@ -118,7 +118,7 @@ struct NotificationToast: View {
 // MARK: - Notification Overlay
 struct NotificationOverlay: View {
     @ObservedObject var errorHandler: ErrorHandler
-    
+
     var body: some View {
         VStack(spacing: 8) {
             ForEach(errorHandler.notifications) { notification in
@@ -130,7 +130,7 @@ struct NotificationOverlay: View {
                     removal: .move(edge: .top).combined(with: .opacity)
                 ))
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -143,23 +143,23 @@ struct NotificationOverlay: View {
 struct LoadingOverlay: View {
     let isLoading: Bool
     let message: String
-    
+
     init(isLoading: Bool, message: String = "Loading...") {
         self.isLoading = isLoading
         self.message = message
     }
-    
+
     var body: some View {
         if isLoading {
             ZStack {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 16) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(1.2)
-                    
+
                     Text(message)
                         .font(.body)
                         .foregroundColor(.white)
@@ -180,18 +180,18 @@ struct LoadingOverlay: View {
 // MARK: - Offline Banner
 struct OfflineBanner: View {
     let isOffline: Bool
-    
+
     var body: some View {
         if isOffline {
             HStack {
                 Image(systemName: "wifi.slash")
                     .font(.caption)
                     .foregroundColor(.white)
-                
+
                 Text("You're offline. Some features may be limited.")
                     .font(.caption)
                     .foregroundColor(.white)
-                
+
                 Spacer()
             }
             .padding(.horizontal, 16)
@@ -208,20 +208,20 @@ extension View {
     func errorAlert() -> some View {
         modifier(ErrorAlert(errorHandler: ErrorHandler.shared))
     }
-    
+
     func notificationOverlay() -> some View {
         overlay(
             NotificationOverlay(errorHandler: ErrorHandler.shared),
             alignment: .top
         )
     }
-    
+
     func loadingOverlay(isLoading: Bool, message: String = "Loading...") -> some View {
         overlay(
             LoadingOverlay(isLoading: isLoading, message: message)
         )
     }
-    
+
     func offlineBanner(isOffline: Bool) -> some View {
         VStack(spacing: 0) {
             OfflineBanner(isOffline: isOffline)

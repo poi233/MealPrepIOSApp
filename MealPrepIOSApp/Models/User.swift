@@ -16,7 +16,7 @@ struct User: Codable, Identifiable {
     let dietaryPreferences: DietaryPreferences?
     let createdAt: Date
     let updatedAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case username
@@ -26,7 +26,7 @@ struct User: Codable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
-    
+
     // Regular initializer for internal use
     init(id: String, username: String, email: String, displayName: String? = nil, dietaryPreferences: DietaryPreferences? = nil, createdAt: Date, updatedAt: Date) {
         self.id = id
@@ -37,10 +37,10 @@ struct User: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Handle id as either String or Int
         if let idString = try? container.decode(String.self, forKey: .id) {
             id = idString
@@ -49,21 +49,21 @@ struct User: Codable, Identifiable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .id, in: container, debugDescription: "ID must be either String or Int")
         }
-        
+
         username = try container.decode(String.self, forKey: .username)
         email = try container.decode(String.self, forKey: .email)
-        
+
         // Handle display_name - convert empty string to nil
         let displayNameString = try container.decodeIfPresent(String.self, forKey: .displayName)
         displayName = displayNameString?.isEmpty == true ? nil : displayNameString
-        
+
         dietaryPreferences = try container.decodeIfPresent(DietaryPreferences.self, forKey: .dietaryPreferences)
-        
+
         // Handle dates with flexible parsing
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
-    
+
     var fullDisplayName: String {
         return displayName ?? username
     }
@@ -82,7 +82,7 @@ struct RegisterRequest: Codable {
     let passwordConfirm: String
     let displayName: String?
     let dietaryPreferences: DietaryPreferences?
-    
+
     enum CodingKeys: String, CodingKey {
         case username
         case email
@@ -107,7 +107,7 @@ struct TokenRefreshRequest: Codable {
 struct UserProfileUpdateRequest: Codable {
     let displayName: String?
     let dietaryPreferences: DietaryPreferences?
-    
+
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
         case dietaryPreferences = "dietary_preferences"
@@ -121,7 +121,7 @@ enum DietType: String, CaseIterable, Codable {
     case keto = "keto"
     case paleo = "paleo"
     case mediterranean = "mediterranean"
-    
+
     var displayName: String {
         switch self {
         case .vegetarian:
@@ -143,21 +143,21 @@ struct DietaryPreferences: Codable {
     let allergies: [String]?
     let dislikes: [String]?
     let calorieTarget: Int?
-    
+
     enum CodingKeys: String, CodingKey {
         case dietType = "diet_type"
         case allergies
         case dislikes
         case calorieTarget = "calorie_target"
     }
-    
+
     init(dietType: String? = nil, allergies: [String]? = nil, dislikes: [String]? = nil, calorieTarget: Int? = nil) {
         self.dietType = dietType
         self.allergies = allergies
         self.dislikes = dislikes
         self.calorieTarget = calorieTarget
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         dietType = try container.decodeIfPresent(String.self, forKey: .dietType)

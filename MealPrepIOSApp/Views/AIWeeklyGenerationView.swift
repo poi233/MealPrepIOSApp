@@ -10,40 +10,40 @@ import SwiftUI
 struct AIWeeklyGenerationView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     // MARK: - Workflow Integration
     var onGenerationStart: ((AIGenerationRequest) -> Void)? = nil
     var onCancel: (() -> Void)? = nil
-    
+
     // MARK: - Step Management
     @State private var currentStep = 1
     private let totalSteps = 4
-    
+
     // MARK: - Form Data
     @State private var planDescription = ""
     @State private var selectedDietType: DietType?
     @State private var selectedAllergies: Set<String> = []
     @State private var calorieTarget: Double = 2000
     // weekStartDate removed - dates managed by WeeklyMealGrid
-    
+
     // MARK: - UI State
     @State private var showingCalorieSlider = false
-    
+
     // MARK: - Data
     private let commonAllergies = ["Nuts", "Shellfish", "Dairy", "Eggs", "Soy", "Gluten", "Fish", "Sesame"]
     private let commonDietTypes = DietType.allCases
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Progress Header
                     progressHeader
-                    
+
                     // Current Step Content
                     currentStepView
                         .animation(.easeInOut(duration: 0.3), value: currentStep)
-                    
+
                     Spacer(minLength: 100)
                 }
                 .padding(.horizontal, 20)
@@ -72,7 +72,7 @@ struct AIWeeklyGenerationView: View {
             }
         }
     }
-    
+
     // MARK: - Progress Header
     private var progressHeader: some View {
         VStack(spacing: 16) {
@@ -80,7 +80,7 @@ struct AIWeeklyGenerationView: View {
             ProgressView(value: Double(currentStep), total: Double(totalSteps))
                 .progressViewStyle(LinearProgressViewStyle(tint: .primaryGreen))
                 .scaleEffect(y: 2)
-            
+
             // Step Indicator
             HStack {
                 ForEach(1...totalSteps, id: \.self) { step in
@@ -92,7 +92,7 @@ struct AIWeeklyGenerationView: View {
                                 .stroke(Color.primaryGreen, lineWidth: step == currentStep ? 2 : 0)
                                 .frame(width: 16, height: 16)
                         )
-                    
+
                     if step < totalSteps {
                         Rectangle()
                             .fill(Color(.systemGray4))
@@ -102,7 +102,7 @@ struct AIWeeklyGenerationView: View {
                 }
             }
             .padding(.horizontal, 20)
-            
+
             // Step Title
             Text(stepTitle(for: currentStep))
                 .font(.title3)
@@ -111,7 +111,7 @@ struct AIWeeklyGenerationView: View {
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Current Step View
     @ViewBuilder
     private var currentStepView: some View {
@@ -128,31 +128,31 @@ struct AIWeeklyGenerationView: View {
             EmptyView()
         }
     }
-    
+
     // MARK: - Step 1: Description
     private var step1_Description: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Tell us about your ideal weekly meal plan")
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             Text("Describe what you're looking for in simple terms. The AI will use this to create personalized meals for your entire week.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .lineLimit(nil)
-            
+
             TextField("e.g., Healthy family meals with variety, quick weeknight dinners...", text: $planDescription, axis: .vertical)
                 .textFieldStyle(GreenTextFieldStyle())
                 .lineLimit(4...8)
                 .textInputAutocapitalization(.sentences)
-            
+
             // Quick suggestions
             VStack(alignment: .leading, spacing: 12) {
                 Text("Quick suggestions:")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.secondary)
-                
+
                 LazyVStack(spacing: 8) {
                     ForEach(descriptionSuggestions, id: \.self) { suggestion in
                         Button(action: {
@@ -179,18 +179,18 @@ struct AIWeeklyGenerationView: View {
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Step 2: Diet Preferences
     private var step2_DietPreferences: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Any specific diet you follow?")
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             Text("Choose a diet type if you have specific preferences, or skip this step.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            
+
             // Diet Type Selection
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                 // "No specific diet" option
@@ -201,7 +201,7 @@ struct AIWeeklyGenerationView: View {
                 ) {
                     selectedDietType = nil
                 }
-                
+
                 // Diet type options
                 ForEach(commonDietTypes, id: \.self) { dietType in
                     dietOptionCard(
@@ -216,18 +216,18 @@ struct AIWeeklyGenerationView: View {
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Step 3: Allergies and Restrictions
     private var step3_AllergiesAndRestrictions: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Any allergies or foods to avoid?")
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             Text("Select any allergies or foods you'd like to avoid in your meal plan.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            
+
             // Allergy Selection
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                 ForEach(commonAllergies, id: \.self) { allergy in
@@ -243,13 +243,13 @@ struct AIWeeklyGenerationView: View {
                     }
                 }
             }
-            
+
             if !selectedAllergies.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Selected restrictions:")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    
+
                     FlowLayout(Array(selectedAllergies)) { allergy in
                         HStack(spacing: 4) {
                             Text(allergy)
@@ -273,7 +273,7 @@ struct AIWeeklyGenerationView: View {
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Step 4: Final Settings
     private var step4_FinalSettings: some View {
         VStack(spacing: 20) {
@@ -282,16 +282,16 @@ struct AIWeeklyGenerationView: View {
                 Text("Daily calorie target")
                     .font(.headline)
                     .foregroundColor(.primary)
-                
+
                 VStack(spacing: 12) {
                     HStack {
                         Text("\(Int(calorieTarget)) calories/day")
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundColor(.primaryGreen)
-                        
+
                         Spacer()
-                        
+
                         Button(action: {
                             showingCalorieSlider.toggle()
                         }) {
@@ -301,14 +301,14 @@ struct AIWeeklyGenerationView: View {
                         }
                         .outlineGreenButton()
                     }
-                    
+
                     if showingCalorieSlider {
                         VStack(spacing: 8) {
                             Slider(value: $calorieTarget, in: 1200...3500, step: 50) {
                                 Text("Calories")
                             }
                             .tint(.primaryGreen)
-                            
+
                             HStack {
                                 Text("1,200")
                                     .font(.caption)
@@ -324,60 +324,60 @@ struct AIWeeklyGenerationView: View {
                 }
             }
             .greenThemeCard()
-            
+
             // Week Start Date
             VStack(alignment: .leading, spacing: 16) {
                 Text("Week starting date")
                     .font(.headline)
                     .foregroundColor(.primary)
-                
+
                 Text("Using current week dates")
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
             .greenThemeCard()
-            
+
             // Summary Card
             summaryCard
         }
     }
-    
+
     // MARK: - Summary Card
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Summary")
                 .font(.headline)
                 .foregroundColor(.primary)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 if !planDescription.isEmpty {
                     summaryRow(title: "Plan", value: planDescription)
                 }
-                
+
                 if let dietType = selectedDietType {
                     summaryRow(title: "Diet", value: dietType.displayName)
                 } else {
                     summaryRow(title: "Diet", value: "No restrictions")
                 }
-                
+
                 if !selectedAllergies.isEmpty {
                     summaryRow(title: "Avoid", value: Array(selectedAllergies).joined(separator: ", "))
                 } else {
                     summaryRow(title: "Avoid", value: "No restrictions")
                 }
-                
+
                 summaryRow(title: "Calories", value: "\(Int(calorieTarget))/day")
                 summaryRow(title: "Week", value: "Current Week")
             }
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Bottom Action Bar
     private var bottomActionBar: some View {
         VStack(spacing: 0) {
             Divider()
-            
+
             HStack(spacing: 16) {
                 if currentStep > 1 {
                     Button("Previous") {
@@ -388,7 +388,7 @@ struct AIWeeklyGenerationView: View {
                     .subtleGreenButton()
                     .frame(maxWidth: .infinity)
                 }
-                
+
                 Button(currentStep == totalSteps ? "Generate Plan" : "Next") {
                     if currentStep == totalSteps {
                         generateWeeklyPlan()
@@ -407,7 +407,7 @@ struct AIWeeklyGenerationView: View {
         }
         .background(Color(.systemBackground))
     }
-    
+
     // MARK: - Helper Views
     private func dietOptionCard(title: String, description: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -416,12 +416,12 @@ struct AIWeeklyGenerationView: View {
                     .font(.callout)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
-                
+
                 Text(description)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
-                
+
                 Spacer()
             }
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
@@ -437,7 +437,7 @@ struct AIWeeklyGenerationView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private func allergyCard(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
@@ -456,7 +456,7 @@ struct AIWeeklyGenerationView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private func summaryRow(title: String, value: String) -> some View {
         HStack(alignment: .top) {
             Text(title + ":")
@@ -464,7 +464,7 @@ struct AIWeeklyGenerationView: View {
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
                 .frame(width: 60, alignment: .leading)
-            
+
             Text(value)
                 .font(.callout)
                 .foregroundColor(.primary)
@@ -472,7 +472,7 @@ struct AIWeeklyGenerationView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
-    
+
     // MARK: - Computed Properties
     private var canProceed: Bool {
         switch currentStep {
@@ -486,7 +486,7 @@ struct AIWeeklyGenerationView: View {
             return false
         }
     }
-    
+
     // MARK: - Helper Methods
     private func stepTitle(for step: Int) -> String {
         switch step {
@@ -497,7 +497,7 @@ struct AIWeeklyGenerationView: View {
         default: return ""
         }
     }
-    
+
     private func dietTypeDescription(_ dietType: DietType) -> String {
         switch dietType {
         case .vegetarian:
@@ -512,7 +512,7 @@ struct AIWeeklyGenerationView: View {
             return "Fish, vegetables, olive oil focus"
         }
     }
-    
+
     private func setupInitialValues() {
         // Set week start date to next Monday
         let calendar = Calendar.current
@@ -521,10 +521,10 @@ struct AIWeeklyGenerationView: View {
         let daysUntilMonday = weekday == 1 ? 1 : (9 - weekday) % 7
         // weekStartDate initialization removed
     }
-    
+
     private func generateWeeklyPlan() {
         let description = planDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         let request = AIGenerationRequest(
             description: description,
             dietType: selectedDietType,
@@ -534,7 +534,7 @@ struct AIWeeklyGenerationView: View {
             // weekStartDate parameter removed
             additionalRequirements: nil
         )
-        
+
         if let onGenerationStart = onGenerationStart {
             onGenerationStart(request)
         } else {
@@ -549,7 +549,7 @@ struct AIWeeklyGenerationView: View {
                     // weekStartDate parameter removed
                     additionalRequirements: request.additionalRequirements
                 )
-                
+
                 await MainActor.run {
                     if success {
                         dismiss()
@@ -558,7 +558,7 @@ struct AIWeeklyGenerationView: View {
             }
         }
     }
-    
+
     // MARK: - Static Data
     private var descriptionSuggestions: [String] {
         [

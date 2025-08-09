@@ -13,26 +13,26 @@ struct AIWeeklyPreviewView: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
-    
+
     // MARK: - Workflow Integration
     var onApply: (() -> Void)? = nil
     var onRegenerate: (() -> Void)? = nil
     var onCancel: (() -> Void)? = nil
-    
+
     // MARK: - Preview Data - Now directly observing AIGenerationService
     let generatedMealPlan: MealPlan
     @State private var nutritionSummary: NutritionSummary?
-    
+
     // MARK: - Direct service observation for reactive UI updates
     private var aiGenerationService: AIGenerationService {
         mealPlanStore.aiGenerationService
     }
-    
+
     // MARK: - Computed preview grid from service
     private var previewGrid: WeeklyMealGrid? {
         aiGenerationService.previewWeeklyGrid
     }
-    
+
     // MARK: - UI State
     @State private var showingRecipeReplacement = false
     @State private var selectedMealSlot: MealSlotIdentifier?
@@ -43,12 +43,12 @@ struct AIWeeklyPreviewView: View {
     @State private var showingErrorAlert = false
     @State private var successMessage = ""
     @State private var errorMessage = ""
-    
+
     // MARK: - Initialization
     init(generatedMealPlan: MealPlan) {
         self.generatedMealPlan = generatedMealPlan
     }
-    
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -56,18 +56,18 @@ struct AIWeeklyPreviewView: View {
                     VStack(spacing: 20) {
                         // Header with plan description
                         planHeaderView
-                        
+
                         // Nutrition Summary Card
                         if let nutrition = nutritionSummary {
                             nutritionSummaryCard(nutrition)
                         }
-                        
+
                         // Weekly Meal Grid Preview
                         weeklyGridPreview
-                        
+
                         // Action Buttons
                         actionButtonsView
-                        
+
                         Spacer(minLength: 20)
                     }
                     .padding(.horizontal, 16)
@@ -75,7 +75,7 @@ struct AIWeeklyPreviewView: View {
                     .padding(.bottom, 100) // Add bottom padding to account for fixed overlay buttons
                 }
                 .background(Color(.systemGroupedBackground))
-                
+
                 // Batch Generation Progress Overlay
                 if aiGenerationService.isBatchGenerating {
                     batchGenerationProgressOverlay
@@ -94,7 +94,7 @@ struct AIWeeklyPreviewView: View {
                     }
                     .disabled(aiGenerationService.isBatchGenerating)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Regenerate") {
                         if let onRegenerate = onRegenerate {
@@ -145,7 +145,7 @@ struct AIWeeklyPreviewView: View {
             }
         }
     }
-    
+
     // MARK: - Plan Header View
     private var planHeaderView: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -155,14 +155,14 @@ struct AIWeeklyPreviewView: View {
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
-                    
+
                     Text(weekDateRange)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // AI badge
                 HStack(spacing: 4) {
                     Image(systemName: "brain")
@@ -177,7 +177,7 @@ struct AIWeeklyPreviewView: View {
                 .foregroundColor(.primaryGreen)
                 .cornerRadius(8)
             }
-            
+
             if let description = generatedMealPlan.planDescription {
                 Text(description)
                     .font(.callout)
@@ -187,7 +187,7 @@ struct AIWeeklyPreviewView: View {
         }
         .greenThemeCard()
     }
-    
+
     // MARK: - Nutrition Summary Card
     private func nutritionSummaryCard(_ nutrition: NutritionSummary) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -195,16 +195,16 @@ struct AIWeeklyPreviewView: View {
                 Text("Weekly Nutrition Summary")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 Button("Details") {
                     showingNutritionDetail = true
                 }
                 .font(.callout)
                 .foregroundColor(.primaryGreen)
             }
-            
+
             // Daily average nutrition - comprehensive display
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
@@ -218,7 +218,7 @@ struct AIWeeklyPreviewView: View {
                 }
                 .padding(.horizontal, 4)
             }
-            
+
             // Nutrition balance indicators
             HStack(spacing: 12) {
                 nutritionBalanceIndicator("Variety", score: nutrition.varietyScore)
@@ -228,57 +228,57 @@ struct AIWeeklyPreviewView: View {
         }
         .greenThemeCard()
     }
-    
+
     private func nutritionItem(_ label: String, value: String, unit: String) -> some View {
         VStack(spacing: 2) {
             Text(value)
                 .font(.callout)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
-            
+
             Text(label)
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            
+
             Text(unit)
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
-    
+
     private func nutritionBalanceIndicator(_ label: String, score: Double) -> some View {
         VStack(spacing: 4) {
             ZStack {
                 Circle()
                     .stroke(Color(.systemGray5), lineWidth: 2)
                     .frame(width: 24, height: 24)
-                
+
                 Circle()
                     .trim(from: 0, to: score)
                     .stroke(scoreColor(score), lineWidth: 2)
                     .frame(width: 24, height: 24)
                     .rotationEffect(.degrees(-90))
-                
+
                 Text("\(Int(score * 100))")
                     .font(.caption2)
                     .fontWeight(.bold)
                     .foregroundColor(scoreColor(score))
             }
-            
+
             Text(label)
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
-    
+
     private func scoreColor(_ score: Double) -> Color {
         if score >= 0.8 { return .primaryGreen }
         else if score >= 0.6 { return .warning }
         else { return .error }
     }
-    
+
     // MARK: - Weekly Grid Preview
     private var weeklyGridPreview: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -286,7 +286,7 @@ struct AIWeeklyPreviewView: View {
                 .font(.headline)
                 .fontWeight(.semibold)
                 .padding(.horizontal)
-            
+
             if let grid = previewGrid {
                 LazyVStack(spacing: 12) {
                     ForEach(Array(grid.dailyMeals.enumerated()), id: \.element.id) { dayIndex, dailyMeal in
@@ -315,21 +315,21 @@ struct AIWeeklyPreviewView: View {
             }
         }
     }
-    
+
     // MARK: - Action Buttons
     private var actionButtonsView: some View {
         // REMOVED: "Apply Meal Plan" and "Save As Template" buttons per user request
         // The "Apply Plan" button is available in the main workflow view
         EmptyView()
     }
-    
+
     // MARK: - Batch Generation Progress Overlay
     private var batchGenerationProgressOverlay: some View {
         ZStack {
             // Semi-transparent background
             Color.black.opacity(0.6)
                 .ignoresSafeArea()
-            
+
             // Progress card
             VStack(spacing: 20) {
                 // Header
@@ -337,18 +337,18 @@ struct AIWeeklyPreviewView: View {
                     Image(systemName: "brain")
                         .font(.largeTitle)
                         .foregroundColor(.primaryGreen)
-                    
+
                     Text("正在生成详细食谱")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    
+
                     Text("AI正在为每个食谱生成完整的配料和制作步骤")
                         .font(.callout)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                
+
                 // Progress information
                 if let progress = aiGenerationService.batchGenerationProgress {
                     VStack(spacing: 16) {
@@ -358,15 +358,15 @@ struct AIWeeklyPreviewView: View {
                                 Text("进度")
                                     .font(.callout)
                                     .fontWeight(.medium)
-                                
+
                                 Spacer()
-                                
+
                                 Text("\(progress.completed + progress.failed)/\(progress.total)")
                                     .font(.callout)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.primaryGreen)
                             }
-                            
+
                             GeometryReader { geometry in
                                 ZStack(alignment: .leading) {
                                     Rectangle()
@@ -374,7 +374,7 @@ struct AIWeeklyPreviewView: View {
                                         .opacity(0.3)
                                         .foregroundColor(.secondary)
                                         .cornerRadius(4)
-                                    
+
                                     Rectangle()
                                         .frame(width: min(CGFloat(progress.completionRate) * geometry.size.width, geometry.size.width), height: 8)
                                         .foregroundColor(.primaryGreen)
@@ -384,21 +384,21 @@ struct AIWeeklyPreviewView: View {
                             }
                             .frame(height: 8)
                         }
-                        
+
                         // Current recipe being processed
                         if let currentRecipe = progress.currentRecipe {
                             HStack {
                                 ProgressView()
                                     .scaleEffect(0.8)
-                                
+
                                 Text("正在处理: \(currentRecipe)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                
+
                                 Spacer()
                             }
                         }
-                        
+
                         // Success and failure counts
                         HStack(spacing: 24) {
                             HStack(spacing: 4) {
@@ -410,7 +410,7 @@ struct AIWeeklyPreviewView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             if progress.failed > 0 {
                                 HStack(spacing: 4) {
                                     Image(systemName: "exclamationmark.triangle.fill")
@@ -422,20 +422,20 @@ struct AIWeeklyPreviewView: View {
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            
+
                             Spacer()
                         }
                         .font(.callout)
                     }
                 }
-                
+
                 // Estimated time remaining (optional)
                 if let progress = aiGenerationService.batchGenerationProgress,
                    !progress.isComplete && progress.completed > 0 {
                     let avgTimePerRecipe = 2.0 // Assume 2 seconds per recipe
                     let remainingRecipes = progress.total - progress.completed - progress.failed
                     let estimatedTimeRemaining = Double(remainingRecipes) * avgTimePerRecipe
-                    
+
                     if estimatedTimeRemaining > 0 {
                         Text("预计剩余时间: \(Int(estimatedTimeRemaining))秒")
                             .font(.caption)
@@ -452,7 +452,7 @@ struct AIWeeklyPreviewView: View {
             .frame(maxWidth: 320)
         }
     }
-    
+
     // MARK: - Regenerate Options
     private var regenerateOptionsActionSheet: ActionSheet {
         ActionSheet(
@@ -472,30 +472,30 @@ struct AIWeeklyPreviewView: View {
             ]
         )
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private var weekDateRange: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
-        
+
         let startDate = Date().startOfWeek()
         let endDate = Calendar.current.date(byAdding: .day, value: 6, to: startDate) ?? startDate
-        
+
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
-    
-    // REMOVED: setupPreviewData() - Now using reactive previewGrid computed property from AIGenerationService
-    
 
-    
+    // REMOVED: setupPreviewData() - Now using reactive previewGrid computed property from AIGenerationService
+
+
+
     private func calculateNutritionSummary() {
         guard let grid = previewGrid else {
             print("⚠️ [AIWeeklyPreviewView] Cannot calculate nutrition: no preview grid available")
             nutritionSummary = nil
             return
         }
-        
+
         var totalCalories: Double = 0
         var totalProtein: Double = 0
         var totalCarbs: Double = 0
@@ -504,11 +504,11 @@ struct AIWeeklyPreviewView: View {
         var totalSodium: Double = 0
         var totalSugar: Double = 0
         var totalRecipes: Int = 0
-        
+
         for dailyMeal in grid.dailyMeals {
             let allRecipes = dailyMeal.breakfast + dailyMeal.lunch + dailyMeal.dinner
             totalRecipes += allRecipes.count
-            
+
             for recipe in allRecipes {
                 if let nutrition = recipe.nutritionInfo {
                     totalCalories += Double(nutrition.calories ?? "0") ?? 0
@@ -521,7 +521,7 @@ struct AIWeeklyPreviewView: View {
                 }
             }
         }
-        
+
         // Calculate averages and scores
         let daysCount = 7.0
         nutritionSummary = NutritionSummary(
@@ -544,7 +544,7 @@ struct AIWeeklyPreviewView: View {
             healthScore: calculateHealthScore()
         )
     }
-    
+
     private func calculateVarietyScore() -> Double {
         guard let grid = previewGrid else { return 0.0 }
         // Simple variety calculation based on unique recipes
@@ -552,24 +552,24 @@ struct AIWeeklyPreviewView: View {
         let uniqueRecipes = Set(allRecipes.map { $0.id })
         return min(1.0, Double(uniqueRecipes.count) / 15.0) // Assume 15+ unique recipes = 100% variety
     }
-    
+
     private func calculateBalanceScore() -> Double {
         // Simple balance score - more sophisticated calculation could be implemented
         return 0.8 // Placeholder
     }
-    
+
     private func calculateHealthScore() -> Double {
         // Simple health score based on variety and nutrition
         return min(1.0, (calculateVarietyScore() + calculateBalanceScore()) / 2.0)
     }
-    
+
     private func getCurrentRecipe(for slot: MealSlotIdentifier) -> Recipe? {
         guard let grid = previewGrid,
               slot.dayIndex < grid.dailyMeals.count else { return nil }
-        
+
         let dailyMeal = grid.dailyMeals[slot.dayIndex]
         let recipes: [Recipe]
-        
+
         switch slot.mealType {
         case .breakfast:
             recipes = dailyMeal.breakfast
@@ -578,14 +578,14 @@ struct AIWeeklyPreviewView: View {
         case .dinner:
             recipes = dailyMeal.dinner
         }
-        
+
         return recipes.first // For now, assume one recipe per slot
     }
-    
+
     private func replaceRecipe(in slot: MealSlotIdentifier, with newRecipe: Recipe) {
         guard var grid = aiGenerationService.previewWeeklyGrid,
               slot.dayIndex < grid.dailyMeals.count else { return }
-        
+
         switch slot.mealType {
         case .breakfast:
             grid.dailyMeals[slot.dayIndex].breakfast = [newRecipe]
@@ -594,18 +594,18 @@ struct AIWeeklyPreviewView: View {
         case .dinner:
             grid.dailyMeals[slot.dayIndex].dinner = [newRecipe]
         }
-        
+
         // Update the service with modified grid
         aiGenerationService.previewWeeklyGrid = grid
-        
+
         // Recalculate nutrition summary
         calculateNutritionSummary()
     }
-    
+
     private func deleteMeal(dayIndex: Int, mealType: MealType, recipe: Recipe) {
         guard var grid = aiGenerationService.previewWeeklyGrid,
               dayIndex < grid.dailyMeals.count else { return }
-        
+
         switch mealType {
         case .breakfast:
             grid.dailyMeals[dayIndex].breakfast.removeAll { $0.id == recipe.id }
@@ -614,28 +614,25 @@ struct AIWeeklyPreviewView: View {
         case .dinner:
             grid.dailyMeals[dayIndex].dinner.removeAll { $0.id == recipe.id }
         }
-        
+
         // Update the service with modified grid
         aiGenerationService.previewWeeklyGrid = grid
-        
+
         calculateNutritionSummary()
     }
-    
-    
-    
+
+
+
     private func regenerateEntireWeek() {
         // TODO: Implement regeneration through AI service
-        print("🔄 Regenerating entire week...")
     }
-    
+
     private func regenerateEmptySlots() {
         // TODO: Implement empty slot regeneration
-        print("🔄 Regenerating empty slots...")
     }
-    
+
     private func improveNutritionBalance() {
         // TODO: Implement nutrition balance improvement
-        print("🔄 Improving nutrition balance...")
     }
 }
 
@@ -646,7 +643,7 @@ struct DailyPreviewCard: View {
     let dayIndex: Int
     let onMealSlotTapped: (MealType) -> Void
     let onDeleteMeal: (MealType, Recipe) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Day header
@@ -656,15 +653,15 @@ struct DailyPreviewCard: View {
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    
+
                     Text(dailyMeal.date, style: .date)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
             }
-            
+
             // Meal slots
             VStack(spacing: 8) {
                 MealPreviewSlot(
@@ -674,7 +671,7 @@ struct DailyPreviewCard: View {
                     onTap: { onMealSlotTapped(.breakfast) },
                     onDelete: { recipe in onDeleteMeal(.breakfast, recipe) }
                 )
-                
+
                 MealPreviewSlot(
                     title: "Lunch",
                     recipes: dailyMeal.lunch,
@@ -682,7 +679,7 @@ struct DailyPreviewCard: View {
                     onTap: { onMealSlotTapped(.lunch) },
                     onDelete: { recipe in onDeleteMeal(.lunch, recipe) }
                 )
-                
+
                 MealPreviewSlot(
                     title: "Dinner",
                     recipes: dailyMeal.dinner,
@@ -707,7 +704,7 @@ struct MealPreviewSlot: View {
     let mealType: MealType
     let onTap: () -> Void
     let onDelete: (Recipe) -> Void
-    
+
     private var mealIcon: String {
         switch mealType {
         case .breakfast: return "sunrise"
@@ -715,7 +712,7 @@ struct MealPreviewSlot: View {
         case .dinner: return "moon"
         }
     }
-    
+
     private var mealColor: Color {
         switch mealType {
         case .breakfast: return .orange
@@ -723,7 +720,7 @@ struct MealPreviewSlot: View {
         case .dinner: return .purple
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Meal type header
@@ -732,22 +729,22 @@ struct MealPreviewSlot: View {
                     Image(systemName: mealIcon)
                         .font(.caption)
                         .foregroundColor(mealColor)
-                    
+
                     Text(title)
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: onTap) {
                     Image(systemName: recipes.isEmpty ? "plus.circle" : "pencil.circle")
                         .font(.caption)
                         .foregroundColor(.primaryGreen)
                 }
             }
-            
+
             // Recipe list or empty state
             if recipes.isEmpty {
                 Button(action: onTap) {
@@ -773,17 +770,17 @@ struct MealPreviewSlot: View {
                                             .font(.caption2)
                                             .foregroundColor(mealColor)
                                     )
-                                
+
                                 Text(recipe.name)
                                     .font(.caption)
                                     .lineLimit(1)
                                     .foregroundColor(.primary)
-                                
+
                                 Spacer()
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
+
                         Button(action: { onDelete(recipe) }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.caption)
@@ -835,19 +832,19 @@ struct RecipeReplacementSheet: View {
     let mealSlot: MealSlotIdentifier
     let currentRecipe: Recipe?
     let onReplace: (Recipe) -> Void
-    
+
     @EnvironmentObject var recipeStore: RecipeStore
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var isRegenerating = false
-    
+
     var body: some View {
         NavigationView {
             VStack {
                 // Search bar
                 SearchBar(text: $searchText)
                     .padding()
-                
+
                 if isRegenerating {
                     VStack {
                         ProgressView()
@@ -868,16 +865,16 @@ struct RecipeReplacementSheet: View {
                                     Text(recipe.name)
                                         .font(.callout)
                                         .fontWeight(.medium)
-                                    
+
                                     if let calories = recipe.nutritionInfo?.calories {
                                         Text("\(calories) calories")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Image(systemName: "arrow.right.circle")
                                     .foregroundColor(.primaryGreen)
                             }
@@ -894,7 +891,7 @@ struct RecipeReplacementSheet: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("AI Generate") {
                         generateNewRecipe()
@@ -910,7 +907,7 @@ struct RecipeReplacementSheet: View {
             }
         }
     }
-    
+
     private var filteredRecipes: [Recipe] {
         if searchText.isEmpty {
             return recipeStore.recipes
@@ -921,15 +918,15 @@ struct RecipeReplacementSheet: View {
             }
         }
     }
-    
+
     private func generateNewRecipe() {
         isRegenerating = true
-        
+
         // TODO: Implement AI recipe generation for specific meal type
         Task {
             // Simulate AI generation
             try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            
+
             await MainActor.run {
                 isRegenerating = false
                 // For now, use sample recipe
@@ -943,7 +940,7 @@ struct RecipeReplacementSheet: View {
 struct NutritionDetailSheet: View {
     let summary: NutritionSummary
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -952,7 +949,7 @@ struct NutritionDetailSheet: View {
                     Text("Daily Averages")
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
+
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                         nutritionDetailItem("Calories", value: "\(Int(summary.averageCaloriesPerDay))", unit: "per day")
                         nutritionDetailItem("Protein", value: "\(Int(summary.averageProteinPerDay))g", unit: "per day")
@@ -964,13 +961,13 @@ struct NutritionDetailSheet: View {
                     }
                 }
                 .greenThemeCard()
-                
+
                 // Weekly totals
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Weekly Totals")
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
+
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                         nutritionDetailItem("Calories", value: "\(Int(summary.totalCalories))", unit: "total")
                         nutritionDetailItem("Protein", value: "\(Int(summary.totalProtein))g", unit: "total")
@@ -982,13 +979,13 @@ struct NutritionDetailSheet: View {
                     }
                 }
                 .greenThemeCard()
-                
+
                 // Quality scores
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Plan Quality")
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
+
                     HStack(spacing: 20) {
                         qualityScoreItem("Variety", score: summary.varietyScore)
                         qualityScoreItem("Balance", score: summary.balanceScore)
@@ -996,7 +993,7 @@ struct NutritionDetailSheet: View {
                     }
                 }
                 .greenThemeCard()
-                
+
                 Spacer()
             }
             .padding()
@@ -1011,18 +1008,18 @@ struct NutritionDetailSheet: View {
             }
         }
     }
-    
+
     private func nutritionDetailItem(_ label: String, value: String, unit: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.title3)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
-            
+
             Text(label)
                 .font(.callout)
                 .foregroundColor(.secondary)
-            
+
             Text(unit)
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -1032,33 +1029,33 @@ struct NutritionDetailSheet: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
-    
+
     private func qualityScoreItem(_ label: String, score: Double) -> some View {
         VStack(spacing: 8) {
             ZStack {
                 Circle()
                     .stroke(Color(.systemGray5), lineWidth: 4)
                     .frame(width: 60, height: 60)
-                
+
                 Circle()
                     .trim(from: 0, to: score)
                     .stroke(scoreColor(score), lineWidth: 4)
                     .frame(width: 60, height: 60)
                     .rotationEffect(.degrees(-90))
-                
+
                 Text("\(Int(score * 100))")
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(scoreColor(score))
             }
-            
+
             Text(label)
                 .font(.callout)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
     }
-    
+
     private func scoreColor(_ score: Double) -> Color {
         if score >= 0.8 { return .primaryGreen }
         else if score >= 0.6 { return .warning }

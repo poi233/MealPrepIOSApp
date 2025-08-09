@@ -4,13 +4,13 @@ class UserProfileStore: ObservableObject {
     @Published var profile: UserProfile?
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+
     private let userService = UserService()
-    
+
     func fetchProfile() {
         isLoading = true
         errorMessage = nil
-        
+
         userService.fetchProfile { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false
@@ -23,11 +23,11 @@ class UserProfileStore: ObservableObject {
             }
         }
     }
-    
+
     func updateProfile(_ profile: UserProfile) {
         isLoading = true
         errorMessage = nil
-        
+
         userService.updateProfile(profile) { [weak self] result in
             DispatchQueue.main.async {
                 self?.isLoading = false

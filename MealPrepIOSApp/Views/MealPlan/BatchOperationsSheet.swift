@@ -10,30 +10,30 @@ import SwiftUI
 struct BatchOperationsSheet: View {
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var selectedOperation: BatchOperation?
     @State private var showingConfirmation = false
     @State private var isProcessing = false
     @State private var operationResult: BatchOperationResult?
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Header
                 headerView
-                
+
                 Divider()
-                
+
                 // Operations List
                 operationsList
-                
+
                 // Result Display
                 if let result = operationResult {
                     resultView(result)
                 }
-                
+
                 Spacer()
-                
+
                 // Action Buttons
                 if !isProcessing {
                     actionButtons
@@ -69,42 +69,42 @@ extension BatchOperationsSheet {
                 Text("Week Operations")
                     .font(.title2)
                     .fontWeight(.bold)
-                
+
                 Text("Manage your entire week's meal plan")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
-            
+
             // Week Summary
             weekSummaryCard
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
     }
-    
+
     private var weekSummaryCard: some View {
         VStack(spacing: 8) {
             HStack {
                 Text(weekDateString)
                     .font(.headline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
+
                 if let mealCount = currentWeekMealCount {
                     Label("\(mealCount) meals", systemImage: "fork.knife")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             if let calorieCount = currentWeekCalories {
                 HStack {
                     Text("Est. \(Int(calorieCount)) cal/week")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Spacer()
                 }
             }
@@ -129,7 +129,7 @@ extension BatchOperationsSheet {
             .padding(.vertical, 16)
         }
     }
-    
+
     private func operationButton(_ operation: BatchOperation) -> some View {
         Button(action: {
             selectedOperation = operation
@@ -145,22 +145,22 @@ extension BatchOperationsSheet {
                     .font(.title2)
                     .foregroundColor(operation.color)
                     .frame(width: 24, height: 24)
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text(operation.title)
                         .font(.headline)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
-                    
+
                     Text(operation.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.leading)
                 }
-                
+
                 Spacer()
-                
+
                 // Availability Indicator
                 if !operation.isAvailable(for: mealPlanStore) {
                     Image(systemName: "exclamationmark.circle")
@@ -190,25 +190,25 @@ extension BatchOperationsSheet {
     private func resultView(_ result: BatchOperationResult) -> some View {
         VStack(spacing: 16) {
             Divider()
-            
+
             VStack(spacing: 12) {
                 // Status Icon
                 Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .font(.system(size: 40))
                     .foregroundColor(result.isSuccess ? .green : .red)
-                
+
                 // Title and Message
                 VStack(spacing: 4) {
                     Text(result.title)
                         .font(.headline)
                         .fontWeight(.medium)
-                    
+
                     Text(result.message)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                
+
                 // Details (if any)
                 if let details = result.details, !details.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
@@ -217,11 +217,11 @@ extension BatchOperationsSheet {
                                 Image(systemName: "circle.fill")
                                     .font(.system(size: 4))
                                     .foregroundColor(.secondary)
-                                
+
                                 Text(detail)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                
+
                                 Spacer()
                             }
                         }
@@ -266,23 +266,23 @@ extension BatchOperationsSheet {
         formatter.dateStyle = .medium
         let startDate = Date().startOfWeek()
         let endDate = Calendar.current.date(byAdding: .day, value: 6, to: startDate) ?? startDate
-        
+
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
-    
+
     private var currentWeekMealCount: Int? {
         guard let activePlan = mealPlanStore.activeMealPlan,
               let items = activePlan.items else { return nil }
         return items.count
     }
-    
+
     private var currentWeekCalories: Double? {
         guard let activePlan = mealPlanStore.activeMealPlan,
               let items = activePlan.items else { return nil }
-        
+
         var totalCalories: Double = 0
         var hasValidData = false
-        
+
         for item in items {
             if let recipe = item.recipe,
                let nutrition = recipe.nutritionInfo,
@@ -292,7 +292,7 @@ extension BatchOperationsSheet {
                 hasValidData = true
             }
         }
-        
+
         return hasValidData ? totalCalories : nil
     }
 }
@@ -302,20 +302,20 @@ extension BatchOperationsSheet {
 extension BatchOperationsSheet {
     private func executeSelectedOperation() {
         guard let operation = selectedOperation else { return }
-        
+
         isProcessing = true
         operationResult = nil
-        
+
         Task {
             let result = await performBatchOperation(operation)
-            
+
             await MainActor.run {
                 operationResult = result
                 isProcessing = false
             }
         }
     }
-    
+
     private func performBatchOperation(_ operation: BatchOperation) async -> BatchOperationResult {
         switch operation {
         case .copyFromLastWeek:
@@ -330,42 +330,42 @@ extension BatchOperationsSheet {
             return await generateShoppingList()
         }
     }
-    
+
     private func copyFromLastWeek() async -> BatchOperationResult {
         // Implementation would copy meals from last week
         // await mealPlanStore.copyMealsFromLastWeek()
-        
+
         return BatchOperationResult(
             isSuccess: true,
             title: "Meals Copied",
             message: "Successfully copied meals from last week"
         )
     }
-    
 
-    
+
+
     private func autoFillWithAI() async -> BatchOperationResult {
         // Implementation would generate AI meals
         // await mealPlanStore.generateWeekWithAI()
-        
+
         return BatchOperationResult(
             isSuccess: true,
             title: "AI Generation Complete",
             message: "AI has filled your week with personalized meal recommendations"
         )
     }
-    
+
     private func clearAllMeals() async -> BatchOperationResult {
         // Implementation would clear all meals
         // await mealPlanStore.clearAllMealsForWeek()
-        
+
         return BatchOperationResult(
             isSuccess: true,
             title: "All Meals Cleared",
             message: "All meals have been removed from this week"
         )
     }
-    
+
     private func duplicateToNextWeek() async -> BatchOperationResult {
         guard mealPlanStore.activeMealPlan != nil else {
             return BatchOperationResult(
@@ -374,21 +374,21 @@ extension BatchOperationsSheet {
                 message: "No active meal plan to duplicate"
             )
         }
-        
+
         // Implementation would duplicate to next week
         // await mealPlanStore.duplicateWeekToPlan(currentPlan, weekStartDate: nextWeekStart)
-        
+
         return BatchOperationResult(
             isSuccess: true,
             title: "Week Duplicated",
             message: "This week's meals have been copied to next week"
         )
     }
-    
+
     private func generateShoppingList() async -> BatchOperationResult {
         // Implementation would generate shopping list
         // await mealPlanStore.generateShoppingListForWeek()
-        
+
         return BatchOperationResult(
             isSuccess: true,
             title: "Shopping List Generated",
@@ -405,7 +405,7 @@ enum BatchOperation: CaseIterable, Identifiable {
     case clearAllMeals
     case autoFillWithAI
     case generateShoppingList
-    
+
     var id: String {
         switch self {
         case .copyFromLastWeek: return "copy-last-week"
@@ -415,7 +415,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         case .generateShoppingList: return "shopping-list"
         }
     }
-    
+
     var title: String {
         switch self {
         case .copyFromLastWeek: return "Copy from Last Week"
@@ -425,7 +425,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         case .generateShoppingList: return "Generate Shopping List"
         }
     }
-    
+
     var description: String {
         switch self {
         case .copyFromLastWeek: return "Copy all meals from the previous week"
@@ -435,7 +435,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         case .generateShoppingList: return "Create shopping list from this week's meals"
         }
     }
-    
+
     var iconName: String {
         switch self {
         case .copyFromLastWeek: return "arrow.uturn.backward"
@@ -445,7 +445,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         case .generateShoppingList: return "cart"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .copyFromLastWeek: return .blue
@@ -455,7 +455,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         case .generateShoppingList: return .indigo
         }
     }
-    
+
     var requiresConfirmation: Bool {
         switch self {
         case .clearAllMeals: return true
@@ -464,7 +464,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         default: return false
         }
     }
-    
+
     var confirmationTitle: String {
         switch self {
         case .clearAllMeals: return "Clear All Meals?"
@@ -473,7 +473,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         default: return "Confirm Action?"
         }
     }
-    
+
     var confirmationMessage: String {
         switch self {
         case .clearAllMeals: return "This will remove all meals from the current week. This action cannot be undone."
@@ -482,7 +482,7 @@ enum BatchOperation: CaseIterable, Identifiable {
         default: return "Are you sure you want to continue?"
         }
     }
-    
+
     var actionTitle: String {
         switch self {
         case .clearAllMeals: return "Clear All"
@@ -491,14 +491,14 @@ enum BatchOperation: CaseIterable, Identifiable {
         default: return "Confirm"
         }
     }
-    
+
     var isDestructive: Bool {
         switch self {
         case .clearAllMeals: return true
         default: return false
         }
     }
-    
+
     @MainActor func isAvailable(for store: MealPlanStore) -> Bool {
         switch self {
         case .copyFromLastWeek:
@@ -529,7 +529,7 @@ struct BatchOperationResult {
     let message: String
     let itemCount: Int?
     let details: [String]?
-    
+
     init(isSuccess: Bool, title: String, message: String, itemCount: Int? = nil, details: [String]? = nil) {
         self.isSuccess = isSuccess
         self.title = title

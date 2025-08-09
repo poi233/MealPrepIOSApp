@@ -11,11 +11,11 @@ import Combine
 
 /**
  * Unified AI Generation Manager - Single Source of Truth
- * 
+ *
  * Consolidates state management from AIGenerationService and AIWorkflowCoordinator
  * into a single, coherent system. Maintains the validated two-phase design
  * (RecipeStub → Recipe) while eliminating architectural duplication.
- * 
+ *
  * Key Improvements:
  * - Single source of truth for all AI generation state
  * - Unified error handling with AIWorkflowError
@@ -25,67 +25,67 @@ import Combine
  */
 @MainActor
 class AIGenerationManager: ObservableObject {
-    
+
     // MARK: - Published State
-    
+
     @Published var state: AIGenerationState = .idle
     @Published var workflowStep: AIWorkflowStep = .input
     @Published var error: AIWorkflowError?
     @Published var isLoading = false
-    
+
     // MARK: - Preview Data (Single Source of Truth)
-    
+
     @Published var previewMealPlan: MealPlan?
     @Published var previewWeeklyGrid: WeeklyMealGrid?
     @Published var currentRequest: AIGenerationRequest?
-    
+
     // MARK: - Dependencies
-    
+
     private let mealPlanService: MealPlanService
     private let recipeService: RecipeService
     private var generationTask: Task<Void, Never>?
-    
+
     // MARK: - Initialization
-    
+
     init(mealPlanService: MealPlanService, recipeService: RecipeService) {
         self.mealPlanService = mealPlanService
         self.recipeService = recipeService
     }
-    
+
     // MARK: - Public API
-    
+
     /// Start AI meal plan generation with the two-phase workflow
     func generateMealPlan(_ request: AIGenerationRequest) async {
         print("🚀 [AIGenerationManager] Starting meal plan generation")
-        
+
         currentRequest = request
         state = .generating
         workflowStep = .generating
         isLoading = true
         error = nil
-        
+
         // Cancel any existing generation
         generationTask?.cancel()
-        
+
         generationTask = Task {
             await executeGeneration(request)
         }
     }
-    
+
     /// Confirm and apply the previewed meal plan
     func confirmPreview() async {
         guard let mealPlan = previewMealPlan else {
             await handleError(.previewUnavailable)
             return
         }
-        
+
         print("✅ [AIGenerationManager] Confirming preview meal plan")
-        
+
         state = .confirming
         workflowStep = .confirming
         isLoading = true
         error = nil
-        
+
         do {
             // Apply the meal plan by creating it in the backend if needed
             // For AI-generated meal plans, they might already be saved or need to be created
@@ -99,7 +99,7 @@ class AIGenerationManager: ObservableObject {
                     items: nil, // Will be populated from dailyMeals
                     preferences: nil
                 )
-                
+
                 let confirmedPlan = try await mealPlanService.createMealPlan(createRequest)
                 await completeWorkflowWithPlan(confirmedPlan)
             } else {
@@ -110,19 +110,19 @@ class AIGenerationManager: ObservableObject {
             await handleGenerationError(error)
         }
     }
-    
+
     /// Cancel current generation workflow
     func cancelGeneration() {
         print("❌ [AIGenerationManager] Cancelling generation")
-        
+
         generationTask?.cancel()
         resetState()
     }
-    
+
     /// Reset to initial state
     func resetState() {
         print("🔄 [AIGenerationManager] Resetting state")
-        
+
         state = .idle
         workflowStep = .input
         error = nil
@@ -133,14 +133,14 @@ class AIGenerationManager: ObservableObject {
         generationTask?.cancel()
         generationTask = nil
     }
-    
+
     /// Handle error with recovery options
     func handleError(_ error: AIWorkflowError) async {
         print("❌ [AIGenerationManager] Handling error: \(error)")
-        
+
         self.error = error
         self.isLoading = false
-        
+
         // Determine appropriate state based on error type
         switch error {
         case .previewUnavailable, .invalidRequest:
@@ -156,13 +156,13 @@ class AIGenerationManager: ObservableObject {
             self.state = .error(error.localizedDescription)
         }
     }
-    
+
     /// Execute recovery action based on error and current state
     func executeRecoveryAction(_ action: AIWorkflowRecoveryAction) async {
         print("🔄 [AIGenerationManager] Executing recovery action: \(action)")
-        
+
         error = nil
-        
+
         switch action {
         case .retry:
             if let request = currentRequest {
@@ -182,13 +182,13 @@ class AIGenerationManager: ObservableObject {
             resetState()
         }
     }
-    
+
     // MARK: - Private Implementation
-    
+
     private func executeGeneration(_ request: AIGenerationRequest) async {
         do {
             print("🔄 [AIGenerationManager] Executing generation request")
-            
+
             // Phase 1: Generate meal plan with RecipeStubs (fast)
             let generatedPlan = try await mealPlanService.generateCustomMealPlan(
                 description: request.description,
@@ -198,33 +198,33 @@ class AIGenerationManager: ObservableObject {
                 calorieTarget: request.calorieTarget,
                 additionalRequirements: request.additionalRequirements
             )
-            
+
             await handleGenerationSuccess(generatedPlan)
-            
+
         } catch {
             await handleGenerationError(error)
         }
     }
-    
+
     private func handleGenerationSuccess(_ generatedPlan: MealPlan) async {
         print("✅ [AIGenerationManager] Generation completed successfully")
-        
+
         // Store the generated meal plan directly
         previewMealPlan = generatedPlan
         previewWeeklyGrid = MealPlanConverter.mealPlanToGrid(generatedPlan)
-        
+
         state = .previewing
         workflowStep = .preview
         isLoading = false
-        
+
         print("📋 [AIGenerationManager] Preview data ready - Meal plan: \(generatedPlan.name)")
     }
-    
+
     private func handleGenerationError(_ error: Error) async {
         print("❌ [AIGenerationManager] Generation error: \(error)")
-        
+
         let workflowError: AIWorkflowError
-        
+
         if let aiError = error as? AIWorkflowError {
             workflowError = aiError
         } else {
@@ -238,43 +238,43 @@ class AIGenerationManager: ObservableObject {
                 workflowError = .generationFailed(errorMessage)
             }
         }
-        
+
         await handleError(workflowError)
     }
-    
+
     private func retryGeneration(_ request: AIGenerationRequest) async {
         print("🔄 [AIGenerationManager] Retrying generation")
-        
+
         // Reset error state and retry
         error = nil
         isLoading = true
-        
+
         await executeGeneration(request)
     }
-    
+
     private func completeWorkflow() async {
         print("🎉 [AIGenerationManager] Workflow completed successfully")
-        
+
         state = .idle
         workflowStep = .completed
         isLoading = false
-        
+
         // Clear preview data after successful application
         previewMealPlan = nil
         previewWeeklyGrid = nil
         currentRequest = nil
     }
-    
+
     private func completeWorkflowWithPlan(_ confirmedPlan: MealPlan) async {
         print("🎉 [AIGenerationManager] Workflow completed with confirmed plan: \(confirmedPlan.name)")
-        
+
         // Update the preview meal plan with the confirmed version
         previewMealPlan = confirmedPlan
-        
+
         state = .idle
         workflowStep = .completed
         isLoading = false
-        
+
         // Keep the confirmed plan available for a short time before clearing
         Task {
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
@@ -283,30 +283,30 @@ class AIGenerationManager: ObservableObject {
             currentRequest = nil
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     /// Determine if a meal plan is a preview (AI-generated, not yet saved to backend)
     private func isPreviewMealPlan(_ mealPlan: MealPlan) -> Bool {
         // AI-generated meal plans typically have these characteristics:
         // 1. ID contains "ai-generated" or is a UUID generated by AI service
         // 2. dailyMeals contains RecipeStub data instead of full Recipe objects
         // 3. No items array (backend meal plans have items)
-        
+
         if mealPlan.id.contains("ai-generated") || mealPlan.id.isEmpty {
             return true
         }
-        
+
         // Check if this meal plan has lightweight daily meals (AI-generated characteristic)
         if mealPlan.dailyMeals != nil && mealPlan.items == nil {
             return true
         }
-        
+
         return false
     }
-    
+
     // MARK: - Computed Properties
-    
+
     var canProceed: Bool {
         switch workflowStep {
         case .input:
@@ -317,7 +317,7 @@ class AIGenerationManager: ObservableObject {
             return false
         }
     }
-    
+
     var canGoBack: Bool {
         switch workflowStep {
         case .preview:
@@ -326,7 +326,7 @@ class AIGenerationManager: ObservableObject {
             return false
         }
     }
-    
+
     var canCancel: Bool {
         switch workflowStep {
         case .generating, .preview:
@@ -335,7 +335,7 @@ class AIGenerationManager: ObservableObject {
             return false
         }
     }
-    
+
     var workflowProgress: Double {
         switch workflowStep {
         case .input:
@@ -355,11 +355,11 @@ class AIGenerationManager: ObservableObject {
 // MARK: - Meal Plan Converter (Consolidated Logic)
 
 struct MealPlanConverter {
-    
+
     /// Convert MealPlan to WeeklyMealGrid (consolidated from multiple implementations)
     static func mealPlanToGrid(_ mealPlan: MealPlan) -> WeeklyMealGrid {
         var grid = WeeklyMealGrid()
-        
+
         // Handle AI-generated meal plans with dailyMeals (RecipeStub-based)
         if let dailyMeals = mealPlan.dailyMeals {
             for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
@@ -372,13 +372,13 @@ struct MealPlanConverter {
             }
             return grid
         }
-        
+
         // Handle regular meal plans with items (MealPlanItem-based)
         if let items = mealPlan.items {
             for item in items {
                 guard let recipe = item.recipe,
                       item.dayOfWeek < grid.dailyMeals.count else { continue }
-                
+
                 switch item.mealType.lowercased() {
                 case "breakfast":
                     grid.dailyMeals[item.dayOfWeek].breakfast.append(recipe)
@@ -391,10 +391,10 @@ struct MealPlanConverter {
                 }
             }
         }
-        
+
         return grid
     }
-    
+
     /// Convert RecipeStubs to full Recipes (for Phase 2 of two-phase workflow)
     static func convertStubsToRecipes(_ stubs: [RecipeStub]) async throws -> [Recipe] {
         // This will be implemented when we integrate with the backend apply meal endpoint
@@ -406,11 +406,11 @@ struct MealPlanConverter {
 // MARK: - Supporting Types
 
 extension AIGenerationManager {
-    
+
     /// Get available recovery actions for current error
     func getRecoveryActions() -> [AIWorkflowRecoveryAction] {
         guard let error = error else { return [] }
-        
+
         let config = AIWorkflowErrorAlertConfig(error: error, currentStep: workflowStep)
         var actions = [config.primaryAction]
         if let secondary = config.secondaryAction {

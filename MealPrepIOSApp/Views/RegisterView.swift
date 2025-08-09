@@ -3,13 +3,13 @@ import SwiftUI
 struct RegisterView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var authStore: AuthStore
-    
+
     @State private var email = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var firstName = ""
     @State private var lastName = ""
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -26,17 +26,17 @@ struct RegisterView: View {
                                 )
                             )
                             .shadow(color: .primaryGreen.opacity(0.3), radius: 10)
-                        
+
                         Text("Join MealPrep AI")
                             .font(.title)
                             .fontWeight(.bold)
-                        
+
                         Text("Start your culinary journey today")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     // Registration Form in Magic Card - static, no animations
                     MagicCard {
                         VStack(spacing: 24) {
@@ -49,20 +49,20 @@ struct RegisterView: View {
                                     .foregroundColor(.secondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            
+
                             VStack(spacing: 20) {
                                 HStack(spacing: 12) {
                                     StaticTextField("First name", text: $firstName)
                                     StaticTextField("Last name", text: $lastName)
                                 }
-                                
+
                                 StaticTextField("Email", text: $email, keyboardType: .emailAddress)
                                     .textInputAutocapitalization(.never)
-                                
+
                                 StaticTextField("Password", text: $password, isSecure: true)
-                                
+
                                 StaticTextField("Confirm password", text: $confirmPassword, isSecure: true)
-                                
+
                                 // Error messages
                                 VStack(alignment: .leading, spacing: 8) {
                                     if let errorMessage = authStore.errorMessage {
@@ -73,7 +73,7 @@ struct RegisterView: View {
                                         }
                                         .foregroundColor(.red)
                                     }
-                                    
+
                                     if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
                                         HStack {
                                             Image(systemName: "xmark.circle.fill")
@@ -82,7 +82,7 @@ struct RegisterView: View {
                                         }
                                         .foregroundColor(.red)
                                     }
-                                    
+
                                     if !password.isEmpty && password.count < 6 {
                                         HStack {
                                             Image(systemName: "info.circle.fill")
@@ -94,7 +94,7 @@ struct RegisterView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            
+
                             VStack(spacing: 16) {
                                 StaticButton(
                                     "Create Account",
@@ -103,7 +103,7 @@ struct RegisterView: View {
                                 ) {
                                     register()
                                 }
-                                
+
                                 Text("By signing up, you agree to our Terms of Service and Privacy Policy")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -111,7 +111,7 @@ struct RegisterView: View {
                             }
                         }
                     }
-                    
+
                     // Back to login - static, no animations
                     VStack(spacing: 16) {
                         HStack {
@@ -125,7 +125,7 @@ struct RegisterView: View {
                                 .frame(height: 1)
                                 .foregroundColor(.secondary.opacity(0.3))
                         }
-                        
+
                         StaticOutlineButton("Already have an account?", style: .secondary) {
                             presentationMode.wrappedValue.dismiss()
                         }
@@ -170,12 +170,12 @@ struct RegisterView: View {
             )
         }
     }
-    
+
     private var isFormValid: Bool {
-        !firstName.isEmpty && !lastName.isEmpty && !email.isEmpty && 
+        !firstName.isEmpty && !lastName.isEmpty && !email.isEmpty &&
         !password.isEmpty && password == confirmPassword
     }
-    
+
     private func register() {
         // Derive username and display name from the form inputs
         let username = email             // use the email as a unique username
@@ -188,7 +188,7 @@ struct RegisterView: View {
                 displayName: displayName,
                 dietaryPreferences: nil
             )
-            
+
             await authStore.register(userData: registerData)
         }
     }

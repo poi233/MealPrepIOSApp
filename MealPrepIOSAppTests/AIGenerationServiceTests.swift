@@ -11,19 +11,19 @@ import XCTest
 
 @MainActor
 class AIGenerationServiceTests: XCTestCase {
-    
+
     var aiGenerationService: AIGenerationService!
-    
+
     override func setUpWithError() throws {
         aiGenerationService = AIGenerationService()
     }
-    
+
     override func tearDownWithError() throws {
         aiGenerationService = nil
     }
-    
+
     // MARK: - Test lightweightDailyMeals Conversion
-    
+
     func testConvertMealPlanWithLightweightDailyMeals() throws {
         // Given: A MealPlan with lightweightDailyMeals (AI-generated response format)
         let recipeStub1 = RecipeStub(
@@ -37,7 +37,7 @@ class AIGenerationServiceTests: XCTestCase {
             difficulty: .easy,
             isAIGenerated: true
         )
-        
+
         let recipeStub2 = RecipeStub(
             id: "stub-2",
             name: "红烧肉",
@@ -49,7 +49,7 @@ class AIGenerationServiceTests: XCTestCase {
             difficulty: .medium,
             isAIGenerated: true
         )
-        
+
         let lightweightDailyMeals = [
             LightweightDailyMeal(
                 day: "Monday",
@@ -64,7 +64,7 @@ class AIGenerationServiceTests: XCTestCase {
                 dinner: [recipeStub1]
             )
         ]
-        
+
         let mealPlan = MealPlan(
             id: "test-plan-1",
             userId: "test-user",
@@ -80,20 +80,20 @@ class AIGenerationServiceTests: XCTestCase {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // When: Converting to WeeklyMealGrid via the private method (using reflection for testing)
         let weeklyGrid = callPrivateConvertMethod(mealPlan: mealPlan)
-        
+
         // Then: Verify the conversion worked correctly
         XCTAssertEqual(weeklyGrid.dailyMeals.count, 7, "WeeklyGrid should have 7 days")
-        
+
         // Monday assertions
         let monday = weeklyGrid.dailyMeals[0]
         XCTAssertEqual(monday.day, "Monday")
         XCTAssertEqual(monday.breakfast.count, 1, "Monday should have 1 breakfast recipe")
         XCTAssertEqual(monday.lunch.count, 1, "Monday should have 1 lunch recipe")
         XCTAssertEqual(monday.dinner.count, 2, "Monday should have 2 dinner recipes")
-        
+
         // Verify recipe conversion from RecipeStub to Recipe
         XCTAssertEqual(monday.breakfast[0].name, "蒜蓉西兰花")
         XCTAssertEqual(monday.breakfast[0].id, "stub-1")
@@ -102,14 +102,14 @@ class AIGenerationServiceTests: XCTestCase {
         XCTAssertEqual(monday.breakfast[0].difficulty, .easy)
         XCTAssertEqual(monday.breakfast[0].nutritionInfo?.calories, "120")
         XCTAssertEqual(monday.breakfast[0].createdByUser, "AI Generated")
-        
+
         // Tuesday assertions
         let tuesday = weeklyGrid.dailyMeals[1]
         XCTAssertEqual(tuesday.day, "Tuesday")
         XCTAssertEqual(tuesday.breakfast.count, 1, "Tuesday should have 1 breakfast recipe")
         XCTAssertEqual(tuesday.lunch.count, 0, "Tuesday should have 0 lunch recipes")
         XCTAssertEqual(tuesday.dinner.count, 1, "Tuesday should have 1 dinner recipe")
-        
+
         // Verify empty days (Wednesday through Sunday)
         for dayIndex in 2..<7 {
             let day = weeklyGrid.dailyMeals[dayIndex]
@@ -118,19 +118,19 @@ class AIGenerationServiceTests: XCTestCase {
             XCTAssertEqual(day.dinner.count, 0, "Day \(dayIndex) should have 0 dinner recipes")
         }
     }
-    
+
     func testConvertMealPlanPriorityOrder() throws {
         // Given: A MealPlan with BOTH dailyMeals and lightweightDailyMeals
         let fullRecipe = Recipe.sampleRecipe
         let dailyMeals = [
             DailyMeal(day: "Monday", breakfast: [fullRecipe], lunch: [], dinner: [])
         ]
-        
+
         let recipeStub = RecipeStub.sampleStub
         let lightweightDailyMeals = [
             LightweightDailyMeal(day: "Monday", breakfast: [], lunch: [recipeStub], dinner: [])
         ]
-        
+
         let mealPlan = MealPlan(
             id: "test-plan-2",
             userId: "test-user",
@@ -146,17 +146,17 @@ class AIGenerationServiceTests: XCTestCase {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // When: Converting to WeeklyMealGrid
         let weeklyGrid = callPrivateConvertMethod(mealPlan: mealPlan)
-        
+
         // Then: dailyMeals should take priority over lightweightDailyMeals
         let monday = weeklyGrid.dailyMeals[0]
         XCTAssertEqual(monday.breakfast.count, 1, "Should use dailyMeals (breakfast)")
         XCTAssertEqual(monday.lunch.count, 0, "Should use dailyMeals (no lunch)")
         XCTAssertEqual(monday.breakfast[0].id, fullRecipe.id, "Should use full Recipe from dailyMeals")
     }
-    
+
     func testConvertEmptyMealPlan() throws {
         // Given: A MealPlan with no meals data
         let mealPlan = MealPlan(
@@ -174,10 +174,10 @@ class AIGenerationServiceTests: XCTestCase {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // When: Converting to WeeklyMealGrid
         let weeklyGrid = callPrivateConvertMethod(mealPlan: mealPlan)
-        
+
         // Then: Should return empty grid
         XCTAssertEqual(weeklyGrid.dailyMeals.count, 7, "Should have 7 empty days")
         for day in weeklyGrid.dailyMeals {
@@ -186,9 +186,9 @@ class AIGenerationServiceTests: XCTestCase {
             XCTAssertEqual(day.dinner.count, 0)
         }
     }
-    
+
     // MARK: - Test RecipeStub.toRecipe() Conversion
-    
+
     func testRecipeStubToRecipeConversion() throws {
         // Given: A RecipeStub with all properties set
         let recipeStub = RecipeStub(
@@ -203,10 +203,10 @@ class AIGenerationServiceTests: XCTestCase {
             difficulty: .medium,
             isAIGenerated: true
         )
-        
+
         // When: Converting to Recipe
         let recipe = recipeStub.toRecipe()
-        
+
         // Then: All properties should be correctly mapped
         XCTAssertEqual(recipe.id, "test-stub-1")
         XCTAssertEqual(recipe.name, "Test Recipe")
@@ -221,26 +221,26 @@ class AIGenerationServiceTests: XCTestCase {
         XCTAssertEqual(recipe.tags, ["tag1", "tag2"])
         XCTAssertEqual(recipe.createdByUser, "AI Generated")
         XCTAssertEqual(recipe.createdByUserId, "ai")
-        
+
         // Verify nutrition info conversion
         XCTAssertNotNil(recipe.nutritionInfo)
         XCTAssertEqual(recipe.nutritionInfo?.calories, "350")
         XCTAssertNil(recipe.nutritionInfo?.protein) // Default nil for stubs
         XCTAssertEqual(recipe.nutritionInfo?.servings, 1)
-        
+
         // Verify empty collections for stubs
         XCTAssertEqual(recipe.ingredients.count, 0)
         XCTAssertEqual(recipe.instructions.count, 0)
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func callPrivateConvertMethod(mealPlan: MealPlan) -> WeeklyMealGrid {
         // Since we can't easily access private methods in Swift testing,
         // we'll replicate the exact conversion logic from AIGenerationService
-        
+
         var grid = WeeklyMealGrid()
-        
+
         // PRIORITY 1: Handle AI-generated meal plans with dailyMeals structure (full Recipe objects)
         if let dailyMeals = mealPlan.dailyMeals {
             for (dayIndex, dailyMeal) in dailyMeals.enumerated() {
@@ -253,7 +253,7 @@ class AIGenerationServiceTests: XCTestCase {
             }
             return grid
         }
-        
+
         // PRIORITY 2: Handle AI-generated meal plans with lightweightDailyMeals structure (RecipeStub objects)
         if let lightweightDailyMeals = mealPlan.lightweightDailyMeals {
             for (dayIndex, lightweightDailyMeal) in lightweightDailyMeals.enumerated() {
@@ -262,7 +262,7 @@ class AIGenerationServiceTests: XCTestCase {
                     let breakfastRecipes = lightweightDailyMeal.breakfast.map { $0.toRecipe() }
                     let lunchRecipes = lightweightDailyMeal.lunch.map { $0.toRecipe() }
                     let dinnerRecipes = lightweightDailyMeal.dinner.map { $0.toRecipe() }
-                    
+
                     // Assign converted recipes to grid
                     grid.dailyMeals[dayIndex].breakfast = breakfastRecipes
                     grid.dailyMeals[dayIndex].lunch = lunchRecipes
@@ -271,21 +271,21 @@ class AIGenerationServiceTests: XCTestCase {
             }
             return grid
         }
-        
+
         // PRIORITY 3: Handle traditional meal plan items structure (legacy format)
         if let items = mealPlan.items {
             // Group meal plan items by day of week
             let groupedItems = Dictionary(grouping: items) { $0.dayOfWeek }
-            
+
             for dayIndex in 0..<7 {
                 if dayIndex < grid.dailyMeals.count,
                    let dayItems = groupedItems[dayIndex] {
-                    
+
                     // Group by meal type
                     let breakfastItems = dayItems.filter { $0.mealType == "breakfast" }.compactMap { $0.recipe }
                     let lunchItems = dayItems.filter { $0.mealType == "lunch" }.compactMap { $0.recipe }
                     let dinnerItems = dayItems.filter { $0.mealType == "dinner" }.compactMap { $0.recipe }
-                    
+
                     // Update the daily meals
                     grid.dailyMeals[dayIndex].breakfast = breakfastItems
                     grid.dailyMeals[dayIndex].lunch = lunchItems
@@ -294,7 +294,7 @@ class AIGenerationServiceTests: XCTestCase {
             }
             return grid
         }
-        
+
         // No data available - return empty grid
         return grid
     }

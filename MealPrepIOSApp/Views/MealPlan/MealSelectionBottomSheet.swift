@@ -11,28 +11,28 @@ struct MealSelectionBottomSheet: View {
     let dayOfWeek: Int
     let mealType: MealType
     let date: Date
-    
+
     @EnvironmentObject var mealPlanStore: MealPlanStore
     @EnvironmentObject var recipeStore: RecipeStore
     @EnvironmentObject var favoritesStore: FavoritesStore
-    
+
     @State private var selectedTab: MealSelectionTab = .search
     @State private var searchText = ""
     // Removed unused state variables
     @State private var customMealName = ""
     @State private var customCalories = ""
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Sheet Header
                 sheetHeader
-                
+
                 // Tab Selection
                 tabSelector
-                
+
                 // Content based on selected tab
                 tabContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -56,21 +56,21 @@ extension MealSelectionBottomSheet {
                 .fill(Color.secondary.opacity(0.3))
                 .frame(width: 40, height: 6)
                 .padding(.top, 8)
-            
+
             // Title Section
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Add \(mealType.rawValue.capitalized)")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     Text(dayString)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 Button("Cancel") {
                     dismiss()
                 }
@@ -81,7 +81,7 @@ extension MealSelectionBottomSheet {
         }
         .background(Color(.systemBackground))
     }
-    
+
     private var dayString: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
@@ -104,7 +104,7 @@ extension MealSelectionBottomSheet {
         .background(Color(.systemGray6))
         .padding(.vertical, 8)
     }
-    
+
     private func tabButton(for tab: MealSelectionTab) -> some View {
         Button(action: {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -115,7 +115,7 @@ extension MealSelectionBottomSheet {
                 Image(systemName: tab.iconName)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(selectedTab == tab ? .primaryGreen : .secondary)
-                
+
                 Text(tab.title)
                     .font(.caption)
                     .fontWeight(.medium)
@@ -161,7 +161,7 @@ extension MealSelectionBottomSheet {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                
+
                 TextField("Search recipes...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(minHeight: 44)
@@ -169,7 +169,7 @@ extension MealSelectionBottomSheet {
                     .onSubmit {
                         performSearch()
                     }
-                
+
                 if !searchText.isEmpty {
                     Button("Clear") {
                         searchText = ""
@@ -180,9 +180,9 @@ extension MealSelectionBottomSheet {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            
+
             Divider()
-            
+
             // Recipe List
             if recipeStore.isLoading && recipeStore.recipes.isEmpty {
                 LoadingView(message: "Searching recipes...")
@@ -198,7 +198,7 @@ extension MealSelectionBottomSheet {
                                 selectRecipe(recipe)
                             }
                         }
-                        
+
                         // Infinite scroll loading indicator
                         if recipeStore.hasMorePages {
                             HStack {
@@ -239,18 +239,18 @@ extension MealSelectionBottomSheet {
             }
         }
     }
-    
+
     private func EmptySearchView() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
-            
+
             Text("Search for recipes")
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
-            
+
             Text("Type in the search box above to find delicious recipes")
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -271,7 +271,7 @@ extension MealSelectionBottomSheet {
                         selectRecipe(recipe)
                     }
                 }
-                
+
                 if mealPlanStore.recentMeals.isEmpty {
                     EmptyRecentView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -282,18 +282,18 @@ extension MealSelectionBottomSheet {
             .padding(.vertical, 16)
         }
     }
-    
+
     private func EmptyRecentView() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "clock")
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
-            
+
             Text("No Recent Meals")
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
-            
+
             Text("Your recently used meals will appear here")
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -314,7 +314,7 @@ extension MealSelectionBottomSheet {
                         selectRecipe(recipe)
                     }
                 }
-                
+
                 if favoritesStore.favorites.isEmpty {
                     EmptyFavoritesView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -335,18 +335,18 @@ extension MealSelectionBottomSheet {
             }
         }
     }
-    
+
     private func EmptyFavoritesView() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "heart")
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
-            
+
             Text("No Favorite Recipes")
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
-            
+
             Text("Your favorite recipes will appear here")
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -367,7 +367,7 @@ extension MealSelectionBottomSheet {
                         selectRecipe(recipe)
                     }
                 }
-                
+
                 if mealPlanStore.aiRecommendedRecipes.isEmpty {
                     EmptyAIRecommendationsView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -381,18 +381,18 @@ extension MealSelectionBottomSheet {
             loadAIRecommendations()
         }
     }
-    
+
     private func EmptyAIRecommendationsView() -> some View {
         VStack(spacing: 16) {
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 50))
                 .foregroundColor(.secondary)
-            
+
             Text("Generating Recommendations")
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
-            
+
             Text("AI is finding the perfect meals for you based on your preferences")
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -412,30 +412,30 @@ extension MealSelectionBottomSheet {
                     Text("Create Custom Meal")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Meal Name")
                             .font(.headline)
                             .fontWeight(.medium)
-                        
+
                         TextField("Enter meal name...", text: $customMealName)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Estimated Calories")
                             .font(.headline)
                             .fontWeight(.medium)
-                        
+
                         TextField("Enter calories...", text: $customCalories)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.numberPad)
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
-                    
+
                     Button(action: addCustomMeal) {
                         Text("Add Custom Meal")
                             .font(.headline)
@@ -468,9 +468,9 @@ struct RecipeSelectionCard: View {
     let isFavorite: Bool
     let isAIRecommended: Bool
     let onTap: () -> Void
-    
+
     @State private var isHovered = false
-    
+
     init(recipe: Recipe, isRecent: Bool = false, isFavorite: Bool = false, isAIRecommended: Bool = false, onTap: @escaping () -> Void) {
         self.recipe = recipe
         self.isRecent = isRecent
@@ -478,7 +478,7 @@ struct RecipeSelectionCard: View {
         self.isAIRecommended = isAIRecommended
         self.onTap = onTap
     }
-    
+
     var body: some View {
         MagicCard {
             HStack(spacing: 12) {
@@ -497,7 +497,7 @@ struct RecipeSelectionCard: View {
                 }
                 .frame(width: 60, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                
+
                 // Recipe Info
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -505,7 +505,7 @@ struct RecipeSelectionCard: View {
                             .font(.headline)
                             .fontWeight(.medium)
                             .lineLimit(1)
-                        
+
                         if isRecent {
                             Image(systemName: "clock.fill")
                                 .foregroundColor(.orange)
@@ -520,25 +520,25 @@ struct RecipeSelectionCard: View {
                                 .font(.caption)
                         }
                     }
-                    
+
                     Text(recipe.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
-                    
+
                     HStack(spacing: 12) {
                         Label("\(recipe.totalTime)m", systemImage: "clock")
-                        
+
                         Label(recipe.difficulty.displayName, systemImage: "chart.bar")
-                        
+
                         Spacer()
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Add Button
                 Button(action: onTap) {
                     Image(systemName: "plus.circle.fill")
@@ -575,7 +575,7 @@ enum MealSelectionTab: CaseIterable {
     case favorites
     case aiRecommended
     case custom
-    
+
     var title: String {
         switch self {
         case .search: return "Search"
@@ -585,7 +585,7 @@ enum MealSelectionTab: CaseIterable {
         case .custom: return "Custom"
         }
     }
-    
+
     var iconName: String {
         switch self {
         case .search: return "magnifyingglass"
@@ -604,7 +604,7 @@ extension MealSelectionBottomSheet {
         Task {
             // Use meal selection specific loading for better caching
             await recipeStore.loadRecipesForMealSelection()
-            
+
             // Only load favorites if we don't have cached data
             if favoritesStore.favorites.isEmpty {
                 await favoritesStore.loadFavorites()
@@ -613,7 +613,7 @@ extension MealSelectionBottomSheet {
             }
         }
     }
-    
+
     private func performSearch() {
         recipeStore.searchQuery = searchText
         Task {
@@ -621,12 +621,12 @@ extension MealSelectionBottomSheet {
             await recipeStore.loadRecipesForMealSelection(refresh: true)
         }
     }
-    
+
     private func selectRecipe(_ recipe: Recipe) {
         // Add directly with default serving size (no serving adjustment needed)
         addMealToWeek(with: recipe)
     }
-    
+
     private func addMealToWeek(with recipe: Recipe) {
         Task {
             await mealPlanStore.addMealToWeek(
@@ -635,25 +635,25 @@ extension MealSelectionBottomSheet {
                 mealType: mealType,
                 servingSize: 1.0 // Default serving size
             )
-            
+
             // Add to recent meals
             mealPlanStore.addToRecentMeals(recipe)
-            
+
             // No need to reload from backend - addMealToWeek already updates the local data
             print("✅ Recipe \(recipe.name) added successfully to \(mealType.rawValue)")
-            
+
             // Dismiss the sheet
             await MainActor.run {
                 dismiss()
             }
         }
     }
-    
+
     private func addCustomMeal() {
         guard !customMealName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        
+
         let calories = Double(customCalories) ?? 0
-        
+
         Task {
             await mealPlanStore.addCustomMealToWeek(
                 name: customMealName.trimmingCharacters(in: .whitespaces),
@@ -661,11 +661,11 @@ extension MealSelectionBottomSheet {
                 dayOfWeek: dayOfWeek,
                 mealType: mealType
             )
-            
+
             dismiss()
         }
     }
-    
+
     private func loadAIRecommendations() {
         Task {
             await mealPlanStore.loadAIRecommendations(for: mealType)

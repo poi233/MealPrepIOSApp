@@ -27,7 +27,7 @@ struct Recipe: Codable, Identifiable {
     let createdByUserId: String
     let createdAt: Date
     let updatedAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case name
@@ -48,7 +48,7 @@ struct Recipe: Codable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
-    
+
     // Standard initializer for creating Recipe instances
     init(
         id: String,
@@ -89,10 +89,10 @@ struct Recipe: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Handle id as either String or Int
         if let idString = try? container.decode(String.self, forKey: .id) {
             id = idString
@@ -101,10 +101,10 @@ struct Recipe: Codable, Identifiable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .id, in: container, debugDescription: "ID must be either String or Int")
         }
-        
+
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
-        
+
         // Handle ingredients as either structured objects or AI-generated format
         if let structuredIngredients = try? container.decode([Ingredient].self, forKey: .ingredients) {
             ingredients = structuredIngredients
@@ -127,7 +127,7 @@ struct Recipe: Codable, Identifiable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .ingredients, in: container, debugDescription: "Ingredients must be either structured objects, AI format, or string array")
         }
-        
+
         // Handle instructions as either string or array of strings (from AI generation)
         if let instructionArray = try? container.decode([String].self, forKey: .instructions) {
             // Check if the array contains a single string that looks like a stringified array
@@ -171,21 +171,21 @@ struct Recipe: Codable, Identifiable {
         // Handle createdByUser field - use empty string if not present since API doesn't always return it
         createdByUser = try container.decodeIfPresent(String.self, forKey: .createdByUser) ?? ""
         createdByUserId = try container.decode(String.self, forKey: .createdByUserId)
-        
+
         // Handle flexible date parsing for timestamps
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
-    
+
     var totalTime: Int {
         return prepTime + cookTime
     }
-    
+
     // Helper function to parse stringified array format like "['item1', 'item2', 'item3']"
     private static func parseStringifiedArray(_ stringifiedArray: String) -> [String] {
         // Remove the outer brackets
         let content = String(stringifiedArray.dropFirst().dropLast())
-        
+
         // Split by comma and clean up each item
         let items = content.components(separatedBy: "', '")
         return items.map { item in
@@ -207,25 +207,25 @@ struct Ingredient: Codable, Identifiable {
     let amount: String
     let unit: String
     let notes: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case amount
         case unit
         case notes
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         name = try container.decode(String.self, forKey: .name)
-        
+
         // Handle different formats: full structured format vs AI format
         if container.contains(.unit) {
             // Full structured format with separate unit field
             unit = try container.decode(String.self, forKey: .unit)
             notes = try container.decodeIfPresent(String.self, forKey: .notes)
-            
+
             // Handle amount as either String or Number
             if let amountString = try? container.decode(String.self, forKey: .amount) {
                 amount = amountString
@@ -243,7 +243,7 @@ struct Ingredient: Codable, Identifiable {
             notes = nil
         }
     }
-    
+
     init(name: String, amount: String, unit: String, notes: String? = nil) {
         self.name = name
         self.amount = amount
@@ -261,7 +261,7 @@ struct NutritionInfo: Codable {
     let sodium: String?
     let sugar: String?
     let servings: Int?
-    
+
     enum CodingKeys: String, CodingKey {
         case calories
         case protein
@@ -272,10 +272,10 @@ struct NutritionInfo: Codable {
         case sugar
         case servings
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Helper function to decode flexible numeric/string values
         func decodeFlexibleString(for key: CodingKeys) -> String? {
             // Try numeric types first since they're more common in the API response
@@ -288,7 +288,7 @@ struct NutritionInfo: Codable {
             }
             return nil
         }
-        
+
         // Decode all nutrition fields with flexible parsing
         calories = decodeFlexibleString(for: .calories)
         protein = decodeFlexibleString(for: .protein)
@@ -297,7 +297,7 @@ struct NutritionInfo: Codable {
         fiber = decodeFlexibleString(for: .fiber)
         sodium = decodeFlexibleString(for: .sodium)
         sugar = decodeFlexibleString(for: .sugar)
-        
+
         // Handle servings as flexible numeric value
         if let servingsDouble = try? container.decodeIfPresent(Double.self, forKey: .servings) {
             servings = Int(servingsDouble)
@@ -307,7 +307,7 @@ struct NutritionInfo: Codable {
             servings = nil
         }
     }
-    
+
     init(calories: String? = nil, protein: String? = nil, carbohydrates: String? = nil, fat: String? = nil, fiber: String? = nil, sodium: String? = nil, sugar: String? = nil, servings: Int? = nil) {
         self.calories = calories
         self.protein = protein
@@ -335,7 +335,7 @@ struct CreateRecipeRequest: Codable {
     let difficulty: Difficulty
     let imageUrl: String?
     let tags: [String]
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case description
@@ -363,7 +363,7 @@ struct UpdateRecipeRequest: Codable {
     let difficulty: Difficulty?
     let imageUrl: String?
     let tags: [String]?
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case description
@@ -391,7 +391,7 @@ struct RecipeFilters: Codable {
     let tags: [String]?
     let mealType: MealType?
     let myRecipes: Bool?
-    
+
     enum CodingKeys: String, CodingKey {
         case search
         case cuisine
@@ -404,7 +404,7 @@ struct RecipeFilters: Codable {
         case mealType = "meal_type"
         case myRecipes = "my_recipes"
     }
-    
+
     init(search: String? = nil, cuisine: String? = nil, difficulty: Difficulty? = nil, prepTimeMax: Int? = nil, cookTimeMax: Int? = nil, totalTimeMax: Int? = nil, avgRatingMin: Double? = nil, tags: [String]? = nil, mealType: MealType? = nil, myRecipes: Bool? = nil) {
         self.search = search
         self.cuisine = cuisine
@@ -433,7 +433,7 @@ extension Recipe {
         ],
         instructions: [
             "Season chicken with salt and pepper",
-            "Heat grill to medium-high", 
+            "Heat grill to medium-high",
             "Grill 6-7 minutes per side"
         ],
         nutritionInfo: NutritionInfo(
@@ -483,7 +483,7 @@ struct PaginatedResponse<T: Codable>: Codable {
     let currentPage: Int
     let pageSize: Int
     let results: [T]
-    
+
     enum CodingKeys: String, CodingKey {
         case count
         case next

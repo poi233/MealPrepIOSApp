@@ -11,11 +11,11 @@ import Foundation
 @testable import MealPrepIOSApp
 
 struct CoreDataTests {
-    
+
     @Test("Recipe caching and retrieval")
     func testRecipeCaching() async throws {
         let cacheManager = RecipeCacheManager()
-        
+
         // Create test recipe
         let testRecipe = Recipe(
             id: "test-1",
@@ -39,31 +39,31 @@ struct CoreDataTests {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // Save recipe
         try await cacheManager.save([testRecipe])
-        
+
         // Fetch recipes
         let cachedRecipes = try await cacheManager.fetch()
         #expect(cachedRecipes.count >= 1)
-        
+
         // Find our test recipe
         let foundRecipe = cachedRecipes.first { $0.id == "test-1" }
         #expect(foundRecipe != nil)
         #expect(foundRecipe?.name == "Test Recipe")
-        
+
         // Test search
         let searchResults = try await cacheManager.searchRecipes(query: "Test")
         #expect(searchResults.count >= 1)
-        
+
         // Clean up
         try await cacheManager.delete("test-1")
     }
-    
+
     @Test("User caching and current user management")
     func testUserCaching() async throws {
         let cacheManager = UserCacheManager()
-        
+
         // Create test user
         let testUser = User(
             id: "user-1",
@@ -74,26 +74,26 @@ struct CoreDataTests {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // Save as current user
         try await cacheManager.saveCurrentUser(testUser)
-        
+
         // Retrieve current user
         let currentUser = try await cacheManager.getCurrentUser()
         #expect(currentUser != nil)
         #expect(currentUser?.id == "user-1")
         #expect(currentUser?.username == "testuser")
-        
+
         // Clear current user
         try await cacheManager.clearCurrentUser()
         let clearedUser = try await cacheManager.getCurrentUser()
         #expect(clearedUser == nil)
     }
-    
+
     @Test("Recipe filtering by difficulty and cuisine")
     func testRecipeFiltering() async throws {
         let cacheManager = RecipeCacheManager()
-        
+
         // Create test recipes with different properties
         let easyRecipe = Recipe(
             id: "easy-1",
@@ -115,7 +115,7 @@ struct CoreDataTests {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         let hardRecipe = Recipe(
             id: "hard-1",
             name: "Hard Recipe",
@@ -136,18 +136,18 @@ struct CoreDataTests {
             createdAt: Date(),
             updatedAt: Date()
         )
-        
+
         // Save recipes
         try await cacheManager.save([easyRecipe, hardRecipe])
-        
+
         // Test difficulty filtering
         let easyRecipes = try await cacheManager.fetchRecipesByDifficulty(.easy)
         #expect(easyRecipes.contains { $0.id == "easy-1" })
-        
+
         // Test cuisine filtering
         let italianRecipes = try await cacheManager.fetchRecipesByCuisine("Italian")
         #expect(italianRecipes.contains { $0.id == "easy-1" })
-        
+
         // Clean up
         try await cacheManager.delete("easy-1")
         try await cacheManager.delete("hard-1")

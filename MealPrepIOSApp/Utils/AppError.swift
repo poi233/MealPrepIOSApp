@@ -16,7 +16,7 @@ enum AppErrorType {
     case server(Int, String)
     case notFound(String)
     case unknown(Error)
-    
+
     var message: String {
         switch self {
         case .general(let message):
@@ -35,7 +35,7 @@ enum AppErrorType {
             return "Unknown error: \(error.localizedDescription)"
         }
     }
-    
+
     var isRetryable: Bool {
         switch self {
         case .network:
