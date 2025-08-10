@@ -305,30 +305,5 @@ extension MealPlanStore {
         return meals.first
     }
 
-    func getAllRecipesForWeek() -> [Recipe] {
-        var recipes: [Recipe] = []
-
-        for dayMeals in weeklyGrid.dailyMeals {
-            recipes.append(contentsOf: dayMeals.breakfast)
-            recipes.append(contentsOf: dayMeals.lunch)
-            recipes.append(contentsOf: dayMeals.dinner)
-        }
-
-        return recipes
-    }
-
-    func getAllUniqueRecipesForWeek() -> [Recipe] {
-        let allRecipes = getAllRecipesForWeek()
-        var uniqueRecipes: [Recipe] = []
-        var seenIds: Set<String> = []
-
-        for recipe in allRecipes {
-            if !seenIds.contains(recipe.id) {
-                uniqueRecipes.append(recipe)
-                seenIds.insert(recipe.id)
-            }
-        }
-
-        return uniqueRecipes
-    }
+    // Note: getAllRecipesForWeek() and getAllUniqueRecipesForWeek() are now defined in MealPlanStore.swift
 }

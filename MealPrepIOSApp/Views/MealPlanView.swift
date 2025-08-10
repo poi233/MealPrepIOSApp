@@ -38,11 +38,6 @@ struct MealPlanView: View {
                                 showingBatchOperations = true
                             }
 
-                            Divider()
-
-                            Button("AI Generate Week") {
-                                showingAIWorkflow = true
-                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")

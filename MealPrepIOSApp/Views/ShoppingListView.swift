@@ -88,6 +88,7 @@ struct ShoppingListView: View {
 
 struct EmptyShoppingListView: View {
     let onGenerate: () -> Void
+    @EnvironmentObject var mealPlanStore: MealPlanStore
 
     var body: some View {
         VStack(spacing: 24) {
@@ -100,17 +101,37 @@ struct EmptyShoppingListView: View {
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text("Generate a shopping list from your current meal plan to see all the ingredients you'll need.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                if mealPlanStore.weeklyGrid.hasAnyMeals {
+                    Text("Generate a shopping list from your current meal plan to see all the ingredients you'll need.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                } else {
+                    VStack(spacing: 12) {
+                        Text("Add some meals to your week first, then generate a shopping list to see all the ingredients you'll need.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Text("💡 Tip: Try using the 'Auto-fill with AI' feature in batch operations to get started quickly!")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
             }
 
             Button("Generate Shopping List") {
                 onGenerate()
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!mealPlanStore.weeklyGrid.hasAnyMeals)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()

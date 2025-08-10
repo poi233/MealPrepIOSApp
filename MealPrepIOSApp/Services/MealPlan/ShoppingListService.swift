@@ -23,15 +23,23 @@ class ShoppingListService: ObservableObject {
         isLoadingShoppingList = true
 
         do {
-            // Create a temporary meal plan from the weekly grid
+            // Try backend first
             let mealPlan = createMealPlan(from: weeklyGrid)
             let items = try await mealPlanService.generateShoppingList(mealPlan: mealPlan)
 
-            shoppingList = items
-            print("✅ [ShoppingListService] Generated shopping list with \\(items.count) items")
+            // Enhance items with better categorization
+            let enhancedItems = enhanceShoppingListItems(items)
+            shoppingList = enhancedItems
+            
+            print("✅ [ShoppingListService] Generated shopping list with \\(enhancedItems.count) items via backend")
         } catch {
-            print("❌ [ShoppingListService] Error generating shopping list: \\(error)")
-            shoppingList = []
+            print("⚠️ [ShoppingListService] Backend failed, using local fallback: \\(error)")
+            
+            // Local fallback: generate from recipes directly
+            let localItems = generateShoppingListLocally(from: weeklyGrid)
+            shoppingList = localItems
+            
+            print("✅ [ShoppingListService] Generated shopping list with \\(localItems.count) items via local fallback")
         }
 
         isLoadingShoppingList = false
@@ -137,10 +145,139 @@ class ShoppingListService: ObservableObject {
             ingredient: name,
             amount: amount,
             unit: unit,
-            recipes: [],
-            isCompleted: false
+            category: categorizeIngredient(name),
+            recipes: []
         )
         shoppingList.append(newItem)
+    }
+
+    // MARK: - Local Shopping List Generation
+    
+    private func generateShoppingListLocally(from weeklyGrid: WeeklyMealGrid) -> [ShoppingListItem] {
+        var ingredientMap: [String: ShoppingListItem] = [:]
+        
+        // Extract all recipes from the weekly grid
+        let recipes = extractRecipesFromGrid(weeklyGrid)
+        
+        // Aggregate ingredients from all recipes
+        for recipe in recipes {
+            for ingredient in recipe.ingredients {
+                let key = ingredient.name.lowercased()
+                
+                if let existingItem = ingredientMap[key] {
+                    // Combine amounts and add recipe to list
+                    var recipeNames = existingItem.recipes
+                    if !recipeNames.contains(recipe.name) {
+                        recipeNames.append(recipe.name)
+                    }
+                    
+                    ingredientMap[key] = ShoppingListItem(
+                        ingredient: ingredient.name,
+                        amount: combineAmounts(existingItem.amount, ingredient.amount),
+                        unit: ingredient.unit,
+                        category: categorizeIngredient(ingredient.name),
+                        recipes: recipeNames
+                    )
+                } else {
+                    // Create new shopping list item
+                    ingredientMap[key] = ShoppingListItem(
+                        ingredient: ingredient.name,
+                        amount: ingredient.amount,
+                        unit: ingredient.unit,
+                        category: categorizeIngredient(ingredient.name),
+                        recipes: [recipe.name]
+                    )
+                }
+            }
+        }
+        
+        // Convert to sorted array and enhance with categories
+        let items = Array(ingredientMap.values).sorted { $0.ingredient < $1.ingredient }
+        return enhanceShoppingListItems(items)
+    }
+    
+    private func enhanceShoppingListItems(_ items: [ShoppingListItem]) -> [ShoppingListItem] {
+        return items.map { item in
+            ShoppingListItem(
+                ingredient: item.ingredient,
+                amount: item.amount,
+                unit: item.unit,
+                category: categorizeIngredient(item.ingredient),
+                recipes: item.recipes
+            )
+        }
+    }
+    
+    private func categorizeIngredient(_ ingredient: String) -> String {
+        let lowercased = ingredient.lowercased()
+        
+        // Meat & Poultry
+        if lowercased.contains("chicken") || lowercased.contains("beef") || lowercased.contains("pork") ||
+           lowercased.contains("turkey") || lowercased.contains("lamb") || lowercased.contains("meat") {
+            return "Meat & Poultry"
+        }
+        
+        // Seafood
+        if lowercased.contains("fish") || lowercased.contains("salmon") || lowercased.contains("tuna") ||
+           lowercased.contains("shrimp") || lowercased.contains("crab") || lowercased.contains("lobster") {
+            return "Seafood"
+        }
+        
+        // Dairy & Eggs
+        if lowercased.contains("milk") || lowercased.contains("cheese") || lowercased.contains("yogurt") ||
+           lowercased.contains("butter") || lowercased.contains("cream") || lowercased.contains("egg") {
+            return "Dairy & Eggs"
+        }
+        
+        // Fruits
+        if lowercased.contains("apple") || lowercased.contains("banana") || lowercased.contains("orange") ||
+           lowercased.contains("berry") || lowercased.contains("grape") || lowercased.contains("lemon") ||
+           lowercased.contains("lime") || lowercased.contains("peach") || lowercased.contains("pear") {
+            return "Fruits"
+        }
+        
+        // Vegetables
+        if lowercased.contains("lettuce") || lowercased.contains("tomato") || lowercased.contains("onion") ||
+           lowercased.contains("carrot") || lowercased.contains("potato") || lowercased.contains("pepper") ||
+           lowercased.contains("spinach") || lowercased.contains("broccoli") || lowercased.contains("cucumber") {
+            return "Vegetables"
+        }
+        
+        // Grains & Bread
+        if lowercased.contains("bread") || lowercased.contains("pasta") || lowercased.contains("rice") ||
+           lowercased.contains("flour") || lowercased.contains("cereal") || lowercased.contains("oat") ||
+           lowercased.contains("quinoa") || lowercased.contains("wheat") {
+            return "Grains & Bread"
+        }
+        
+        // Pantry & Spices
+        if lowercased.contains("oil") || lowercased.contains("vinegar") || lowercased.contains("salt") ||
+           lowercased.contains("pepper") || lowercased.contains("spice") || lowercased.contains("herb") ||
+           lowercased.contains("sugar") || lowercased.contains("honey") {
+            return "Pantry & Spices"
+        }
+        
+        // Default category
+        return "Other"
+    }
+    
+    // Note: extractRecipesFromGrid method is defined above at line 115
+    
+    private func combineAmounts(_ amount1: String, _ amount2: String) -> String {
+        // Try to parse as numbers and add them
+        if let num1 = Double(amount1), let num2 = Double(amount2) {
+            let combined = num1 + num2
+            return combined.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(combined)) : String(format: "%.1f", combined)
+        }
+        
+        // If parsing fails, concatenate with "+"
+        if amount1.isEmpty {
+            return amount2
+        } else if amount2.isEmpty {
+            return amount1
+        } else {
+            return "\(amount1) + \(amount2)"
+        }
     }
 
     // MARK: - Computed Properties
@@ -155,8 +292,8 @@ class ShoppingListService: ObservableObject {
 
     var groupedShoppingList: [String: [ShoppingListItem]] {
         Dictionary(grouping: shoppingList) { item in
-            // Group by ingredient name's first letter for alphabetical grouping
-            String(item.ingredient.prefix(1).uppercased())
+            // Group by category if available, otherwise by first letter
+            item.category ?? String(item.ingredient.prefix(1).uppercased())
         }
     }
 

@@ -279,6 +279,7 @@ struct ShoppingListItem: Codable, Identifiable {
     let ingredient: String
     let amount: String
     let unit: String
+    let category: String // Category for grouping ingredients (e.g., "Produce", "Dairy", "Meat")
     let recipes: [String] // Recipe names that use this ingredient
     var isCompleted: Bool = false
 
@@ -286,6 +287,7 @@ struct ShoppingListItem: Codable, Identifiable {
         case ingredient
         case amount
         case unit
+        case category
         case recipes
     }
 }

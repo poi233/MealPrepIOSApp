@@ -36,7 +36,6 @@ extension MealPlanStore {
     // MARK: - Nutrition Analysis Integration
 
     func analyzeNutrition() async {
-        showingAnalysisView = true
         await nutritionAnalysisService.analyzeNutrition(from: weeklyGrid)
     }
 
@@ -46,7 +45,8 @@ extension MealPlanStore {
 
     func clearNutritionAnalysis() {
         nutritionAnalysisService.clearNutritionAnalysis()
-        showingAnalysisView = false
+        // Note: Do not set showingAnalysisView = false here as it causes the sheet to dismiss
+        // The sheet should only be dismissed by user action, not programmatically
     }
 
     func calculateDailyNutrition(for dayIndex: Int) -> NutritionInfo? {

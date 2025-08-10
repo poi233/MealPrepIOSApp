@@ -103,12 +103,23 @@ struct AnalysisSetupView: View {
                 onAnalyze()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(mealPlanStore.currentMealPlan == nil)
+            .disabled(!mealPlanStore.weeklyGrid.hasAnyMeals)
 
-            if mealPlanStore.currentMealPlan == nil {
-                Text("No meal plan selected")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            if !mealPlanStore.weeklyGrid.hasAnyMeals {
+                VStack(spacing: 8) {
+                    Text("No meals to analyze")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("💡 Add some meals to your weekly plan first, then come back to analyze nutrition and variety!")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
+                }
             }
         }
         .padding()
@@ -258,16 +269,10 @@ struct AnalysisResultView: View {
 
                 // Action Buttons
                 VStack(spacing: 12) {
-                    Button("Generate Shopping List") {
-                        // TODO: Generate shopping list
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-
                     Button("Share Analysis") {
                         // TODO: Share analysis
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
                 }
             }

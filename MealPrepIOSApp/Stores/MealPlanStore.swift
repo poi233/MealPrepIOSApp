@@ -32,7 +32,6 @@ class MealPlanStore: ObservableObject {
 
     // UI State
     @Published var showingGenerationView = false
-    @Published var showingAnalysisView = false
 
     // MARK: - Lightweight Meal Plan Support
     @Published var hasLightweightMeals = false
@@ -53,6 +52,7 @@ class MealPlanStore: ObservableObject {
     init() {
         setupSelectedWeek()
         setupNotificationObservers()
+        setupServiceObservers()
         // Don't load initial data immediately - wait for user authentication
     }
 
@@ -105,6 +105,22 @@ class MealPlanStore: ObservableObject {
 
         // Always initialize with an empty weekly grid for the current week
         weeklyGrid = WeeklyMealGrid()
+    }
+    
+    private func setupServiceObservers() {
+        // Forward shopping list service changes to this store
+        shoppingListService.objectWillChange
+            .sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        
+        // Forward nutrition analysis service changes to this store
+        nutritionAnalysisService.objectWillChange
+            .sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     /// Initialize data loading when user authentication is ready
@@ -224,6 +240,35 @@ class MealPlanStore: ObservableObject {
         let normalizedSelected = localStorageService.normalizeWeekStartDate(selectedWeekStartDate)
 
         return calendar.isDate(normalizedCurrent, equalTo: normalizedSelected, toGranularity: .day)
+    }
+    
+    // MARK: - Recipe Helper Methods
+    
+    func getAllRecipesForWeek() -> [Recipe] {
+        var allRecipes: [Recipe] = []
+        
+        for dayMeal in weeklyGrid.dailyMeals {
+            allRecipes.append(contentsOf: dayMeal.breakfast)
+            allRecipes.append(contentsOf: dayMeal.lunch)
+            allRecipes.append(contentsOf: dayMeal.dinner)
+        }
+        
+        return allRecipes
+    }
+    
+    func getAllUniqueRecipesForWeek() -> [Recipe] {
+        let allRecipes = getAllRecipesForWeek()
+        var uniqueRecipes: [Recipe] = []
+        var seenIds = Set<String>()
+        
+        for recipe in allRecipes {
+            if !seenIds.contains(recipe.id) {
+                uniqueRecipes.append(recipe)
+                seenIds.insert(recipe.id)
+            }
+        }
+        
+        return uniqueRecipes
     }
 }
 

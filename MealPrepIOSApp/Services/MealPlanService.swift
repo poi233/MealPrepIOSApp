@@ -215,6 +215,7 @@ class MealPlanService {
                         ingredient: key,
                         amount: combineAmounts(existingItem.amount, ingredient.amount),
                         unit: ingredient.unit,
+                        category: categorizeIngredient(ingredient.name),
                         recipes: recipes
                     )
                 } else {
@@ -222,6 +223,7 @@ class MealPlanService {
                         ingredient: key,
                         amount: ingredient.amount,
                         unit: ingredient.unit,
+                        category: categorizeIngredient(ingredient.name),
                         recipes: [recipe.name]
                     )
                 }
@@ -345,6 +347,51 @@ class MealPlanService {
             return combined.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(combined)) : String(combined)
         }
         return "\(amount1) + \(amount2)"
+    }
+    
+    private func categorizeIngredient(_ ingredientName: String) -> String {
+        let ingredient = ingredientName.lowercased()
+        
+        // Produce
+        if ingredient.contains("tomato") || ingredient.contains("onion") || ingredient.contains("garlic") ||
+           ingredient.contains("lettuce") || ingredient.contains("carrot") || ingredient.contains("pepper") ||
+           ingredient.contains("cucumber") || ingredient.contains("spinach") || ingredient.contains("apple") ||
+           ingredient.contains("banana") || ingredient.contains("lemon") || ingredient.contains("lime") {
+            return "Produce"
+        }
+        
+        // Dairy
+        if ingredient.contains("milk") || ingredient.contains("cheese") || ingredient.contains("yogurt") ||
+           ingredient.contains("butter") || ingredient.contains("cream") || ingredient.contains("egg") {
+            return "Dairy & Eggs"
+        }
+        
+        // Meat & Seafood
+        if ingredient.contains("chicken") || ingredient.contains("beef") || ingredient.contains("pork") ||
+           ingredient.contains("fish") || ingredient.contains("salmon") || ingredient.contains("shrimp") ||
+           ingredient.contains("turkey") || ingredient.contains("lamb") {
+            return "Meat & Seafood"
+        }
+        
+        // Pantry
+        if ingredient.contains("rice") || ingredient.contains("pasta") || ingredient.contains("flour") ||
+           ingredient.contains("sugar") || ingredient.contains("oil") || ingredient.contains("vinegar") ||
+           ingredient.contains("salt") || ingredient.contains("pepper") || ingredient.contains("spice") {
+            return "Pantry"
+        }
+        
+        // Frozen
+        if ingredient.contains("frozen") || ingredient.contains("ice") {
+            return "Frozen"
+        }
+        
+        // Bakery
+        if ingredient.contains("bread") || ingredient.contains("roll") || ingredient.contains("bagel") {
+            return "Bakery"
+        }
+        
+        // Default category
+        return "Other"
     }
 }
 
