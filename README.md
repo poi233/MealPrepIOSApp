@@ -1,573 +1,508 @@
-# MealPrepIOSApp
+# 🍽️ MealPrep iOS App
 
-Native iOS client for the MealPrepAI application, providing a seamless mobile experience for AI-powered meal planning.
+A comprehensive meal planning and recipe management iOS application built with SwiftUI, featuring AI-powered meal generation, nutrition analysis, and smart shopping lists.
 
-## Features
+[![iOS](https://img.shields.io/badge/iOS-15.0+-blue.svg)](https://developer.apple.com/ios/)
+[![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)](https://swift.org)
+[![Xcode](https://img.shields.io/badge/Xcode-15.0+-blue.svg)](https://developer.apple.com/xcode/)
+[![SwiftUI](https://img.shields.io/badge/SwiftUI-5.0-green.svg)](https://developer.apple.com/xcode/swiftui/)
 
-- **Native iOS Experience**: Built with SwiftUI for iOS 15+ compatibility
-- **AI-Powered Meal Planning**: Generate personalized weekly meal plans (primary feature - default tab)
-- **Recipe Management**: Browse, create, and manage recipes
-- **Favorites System**: Save and organize favorite recipes
-- **Offline Support**: ⚠️ Temporarily disabled - Core Data integration planned for future implementation
-- **Robust API Integration**: Flexible parsing with resilient ID handling for backend compatibility
+## 📱 Features
 
-## Architecture
+### 🍳 Recipe Management
+- **Recipe Discovery**: Browse and search thousands of recipes with advanced filtering
+- **Recipe Details**: Comprehensive ingredient lists, step-by-step instructions, and nutrition info
+- **Recipe Creation**: Add and customize your own recipes with AI assistance
+- **Smart Filtering**: Filter by cuisine, diet, cooking time, difficulty, and ingredients
+- **Recipe Collections**: Organize recipes into custom collections and categories
 
-### MVVM Pattern
-- **Models**: Data structures matching backend API contracts
-- **Views**: SwiftUI views for user interface
-- **ViewModels**: ObservableObject stores for state management
-- **Services**: API communication and business logic
+### 📅 Meal Planning
+- **Weekly Meal Plans**: Plan your meals for the entire week with drag & drop interface
+- **Smart Scheduling**: Intuitive meal scheduling with automatic conflict detection
+- **Meal Templates**: Save and reuse your favorite meal combinations
+- **Batch Operations**: Copy from last week, duplicate to next week, clear all meals
+- **Serving Adjustments**: Flexible serving size adjustments with real-time nutrition updates
+- **Multiple Meal Types**: Support for breakfast, lunch, dinner, and snacks
 
-### Key Components
+### 🤖 AI-Powered Features
+- **AI Recipe Generation**: Generate custom recipes based on your preferences and dietary restrictions
+- **Smart Meal Planning**: AI-powered weekly meal plan generation with nutritional balance
+- **Intelligent Recommendations**: Personalized recipe suggestions based on your history
+- **Dietary Adaptation**: Automatic recipe modifications for dietary restrictions
 
-#### UI Components Layer
+### 📊 Nutrition Analysis
+- **Comprehensive Tracking**: Detailed nutrition analysis for meals and weekly plans
+- **Daily Summaries**: Monitor your daily nutritional intake and goals
+- **Weekly Insights**: View weekly nutrition trends with actionable recommendations
+- **Goal Setting**: Set and track custom nutritional targets
+- **Visual Reports**: Interactive charts and graphs for nutrition data
 
-- `AsyncImageView`: Enhanced async image loading component with sophisticated loading states, shimmer animations, and error handling
-  - **Loading States**: Animated shimmer effect with pulse animations during image loading
-  - **Error Handling**: Graceful fallback to `DefaultRecipeImageView_Elegant` when images fail to load
-  - **Performance Modes**: Full animation mode for detail views, compact mode for list performance
-  - **Customizable**: Configurable dimensions, corner radius, and content modes
-  - **Integration**: Seamless integration with recipe image URLs from backend Unsplash service
-- `DefaultRecipeImageView`: Elegant fallback images with multiple style variations (Default, Elegant, Warm)
-- `RecipeImageView`: Convenience wrapper combining AsyncImageView with Recipe model integration
-- `MagicUIComponents`: Magic UI component implementations for enhanced visual effects
-  - **StatItem**: Compact component for displaying recipe statistics with icon, value, and color (moved from SharedComponents for consistency)
-- `SharedComponents`: Reusable UI components used across multiple views
-  - **StatView**: Component for displaying statistics with icon, value, and label
-  - **FilterChip**: Enhanced filter chip with Magic UI styling and animations
-  - **SearchBar**: Enhanced search bar with focus states and animations
-  - **EmptyStateView**: Enhanced empty state view with Magic UI styling
-  - **LoadingView**: Standard loading view with progress indicator
+### 🛒 Smart Shopping
+- **Auto-Generated Lists**: Automatically create shopping lists from meal plans
+- **Ingredient Consolidation**: Smart merging and grouping of duplicate ingredients
+- **Shopping Progress**: Track your shopping progress with interactive checkboxes
+- **Category Organization**: Ingredients organized by supermarket sections
+- **Offline Access**: Shopping lists available offline for in-store use
 
-#### Services Layer
-- `AuthenticationService`: User authentication and profile management
-- `RecipeService`: Recipe CRUD operations
-- `MealPlanService`: Meal plan management
-- `MealPlanTemplateService`: Template creation and management with duplicate filtering
-- `FavoritesService`: User favorites handling
-- `LocalMealPlanStorage`: File-based meal plan persistence with multi-week support
-- `UnifiedRecipeCache`: **🚧 In Development** - Advanced recipe caching system with intelligent cache management, pagination support, and search optimization for meal plan recipe selection
-- `NetworkManager`: Centralized HTTP client with JWT handling
+### ❤️ Favorites & Collections
+- **Favorite Recipes**: Save your most-loved recipes with personal ratings and notes
+- **Custom Collections**: Organize recipes into themed collections
+- **Quick Access**: Fast access to frequently used recipes from meal planning
+- **Smart Suggestions**: Recommendations based on your favorite recipe patterns
 
-#### Utilities Layer
-- `UserCacheManager`: Local user data caching and session persistence
-- `RecipeCacheManager`: ⚠️ Not implemented - Recipe caching temporarily disabled (being replaced by `UnifiedRecipeCache`)
-- `TimeZoneHelper`: Comprehensive timezone handling utility for consistent date/time operations across the app
-  - **Current Time Zone Management**: Device timezone detection and calendar configuration
-  - **Week Management**: Current week calculations, weekday detection, and week validation
-  - **Date Operations**: Normalization, calculations (adding weeks/days), and difference calculations
-  - **Formatting Utilities**: Week range display, date formatting, and relative descriptions
-  - **Meal Plan Integration**: Specialized sorting for daily meals with current week prioritization
-  - **Date Extensions**: Convenient Date extensions for common timezone operations
+### 👤 User Management
+- **User Profiles**: Personalized experience with dietary preferences and restrictions
+- **Sync Across Devices**: Cloud synchronization for seamless multi-device experience
+- **Offline Support**: Full functionality available without internet connection
+- **Data Privacy**: Local-first architecture with secure cloud backup
 
-#### Data Models
-- `User`: User profile with flexible ID parsing
-- `Recipe`: Recipe data with ingredients and nutrition (instructions stored as `[String]` array with robust parsing for multiple backend formats)
-- `MealPlan`: Weekly meal plan structure
-- `Favorite`: User favorite recipes
+## 🏗️ Architecture
 
-#### Shared Enums
-- `MealType`: Breakfast, lunch, dinner meal categories
-- `Difficulty`: Recipe difficulty levels (easy, medium, hard)
-- `AnalysisType`: Meal plan analysis types (nutrition, variety, balance, full)
-- `BudgetLevel`: Budget categories for meal planning
-- `WeekDirection`: Week navigation directions (previous, current, next)
-
-#### Stores (ViewModels)
-- `AuthStore`: Authentication state management
-- `RecipeStore`: Recipe data and operations
-- `MealPlanStore`: Meal plan state
-- `FavoritesStore`: Favorites management
-- `UserProfileStore`: User profile data
-
-## API Compatibility
-
-### Flexible Data Parsing
-The iOS client implements robust parsing to handle backend API variations:
-
-#### User Model Flexibility
-```swift
-// Handles both String UUID and Integer ID formats
-if let idString = try? container.decode(String.self, forKey: .id) {
-    id = idString
-} else if let idInt = try? container.decode(Int.self, forKey: .id) {
-    id = String(idInt)
-}
-```
-
-#### Date Handling
-- Flexible ISO-8601 date parsing for `created_at` and `updated_at` fields
-- Comprehensive timezone handling with `TimeZoneHelper` utility
-- Consistent date normalization and week calculations
-- Device timezone-aware date operations and formatting
-
-#### Ingredient Amount Parsing
-- Flexible parsing for ingredient amounts (String, Double, or Int)
-- Consistent String representation for UI display
-- Handles backend variations in numeric data formats
-- **AI Integration v2.0 Support**: Parses new AI-generated ingredient format `{name: "鸡胸肉", amount: "150克"}` and stores the complete amount string with unit field left empty for simplified handling
-- **Multi-Format Support**: Handles structured objects, AI format, and legacy string arrays seamlessly
-
-#### Instructions Parsing
-- **Enhanced Robustness**: Handles multiple instruction formats from backend API
-- **Stringified Array Support**: Automatically parses stringified JSON arrays (`"[\"step 1\", \"step 2\"]"`)
-- **Mixed Format Handling**: Supports both array and string formats with automatic detection
-- **Backward Compatibility**: Maintains support for legacy newline-separated instruction strings
-
-#### Nutrition Data Parsing
-- Optimized flexible parsing prioritizing numeric types (Double, Int) over String
-- Enhanced servings field supports both whole and fractional serving sizes
-- Consistent String representation for nutrition display in UI
-- Improved parsing performance for common API response formats
-- Robust handling of nutrition field data type variations (String/Double conversion)
-- Internal property naming uses descriptive names (e.g., `carbohydrates`) while maintaining API compatibility with backend field names (e.g., "carbs")
-
-#### Error Handling
-- Descriptive error messages for debugging
-- Graceful fallbacks for missing optional data
-- Resilient ID handling with temporary ID generation for missing fields
-
-#### Custom Serialization Control
-- Bidirectional encoding/decoding control for API communication
-- Conditional field encoding to optimize request payloads
-- Consistent data format handling across different backend response variations
-
-### Backend Integration
-- **Primary Backend**: Django REST API at `http://127.0.0.1:8000` (development)
-- **Production**: `meal-prep-app-backend.vercel.app`
-- **Authentication**: JWT tokens with automatic refresh
-- **Data Format**: JSON with UUID strings for IDs
-- **AI Integration**: Full compatibility with AI Integration v2.0 including structured ingredient parsing
-- **Recipe Generation**: Simplified request format using only recipe name for AI-powered recipe generation
-
-## Development Setup
-
-### Prerequisites
-- Xcode 15.0+
-- iOS 15.0+ deployment target
-- Swift 5.9+
-
-### Installation
-1. Clone the repository
-2. Open `MealPrepIOSApp.xcodeproj` in Xcode
-3. Configure backend URL in `NetworkManager.swift`
-4. Build and run on simulator or device
-
-### Configuration
-Update `NetworkManager.swift` with appropriate backend URLs:
-```swift
-private let baseURL = "http://127.0.0.1:8000/api"  // Development
-// private let baseURL = "https://meal-prep-app-backend.vercel.app/api"  // Production
-```
-
-## Testing
-
-### Unit Tests
-- Model parsing and validation
-- Service layer functionality
-- Store state management
-- Error handling scenarios
-
-### API Contract Tests
-- Backend response compatibility
-- Data model parsing
-- Authentication flow
-- Error response handling
-
-### UI Tests
-- User authentication flows
-- Recipe management
-- Meal plan creation
-- Favorites functionality
-
-Run tests in Xcode:
-```bash
-# Unit tests
-⌘+U in Xcode
-
-# Specific test suites
-xcodebuild test -scheme MealPrepIOSApp -destination 'platform=iOS Simulator,name=iPhone 15'
-```
-
-## Project Structure
+The app follows modern iOS development best practices with a feature-based, modular architecture:
 
 ```
 MealPrepIOSApp/
-├── MealPrepIOSApp/
-│   ├── Models/              # Data models
-│   │   ├── User.swift       # User model with flexible parsing
-│   │   ├── Recipe.swift     # Recipe data structure
-│   │   ├── MealPlan.swift   # Meal plan models
-│   │   ├── Favorite.swift   # Favorites model
-│   │   └── SharedEnums.swift # Shared enums and types
-│   ├── Services/            # API services
-│   │   ├── NetworkManager.swift      # HTTP client
-│   │   ├── AuthenticationService.swift
-│   │   ├── RecipeService.swift
-│   │   ├── MealPlanService.swift
-│   │   ├── MealPlanTemplateService.swift  # Template management with duplicate filtering
-│   │   ├── LocalMealPlanStorage.swift     # File-based meal plan persistence
-│   │   ├── UnifiedRecipeCache.swift       # 🚧 Advanced recipe caching (in development)
-│   │   └── FavoritesService.swift
-│   ├── Stores/              # ViewModels
-│   │   ├── AuthStore.swift
-│   │   ├── RecipeStore.swift
+├── App/                            # 🚀 Application Entry Point
+│   ├── MealPrepIOSAppApp.swift    # Main app file
+│   └── ContentView.swift          # Root content view
+│
+├── Core/                          # 🧠 Core Business Logic
+│   ├── Models/                    # Data models and Core Data extensions
+│   │   ├── Recipe.swift, User.swift, MealPlan.swift
+│   │   ├── CachedUserMappingExtension.swift
+│   │   └── CachedRecipeMappingExtension.swift
+│   ├── Services/                  # Business logic and API services
+│   │   ├── NetworkManager.swift, AuthenticationService.swift
+│   │   ├── AIGenerationService.swift, MealPlanService.swift
+│   │   ├── ShoppingListService.swift, NutritionAnalysisService.swift
+│   │   └── CoreDataManager.swift
+│   ├── Stores/                    # State management (ObservableObject)
 │   │   ├── MealPlanStore.swift
-│   │   └── FavoritesStore.swift
-│   ├── Views/               # SwiftUI views
+│   │   ├── MealPlanStoreAnalysisExtension.swift
+│   │   ├── MealPlanStoreLoadingExtension.swift
+│   │   ├── MealPlanStoreMealManagementExtension.swift
+│   │   ├── AuthStore.swift, RecipeStore.swift
+│   │   └── FavoritesStore.swift, UserProfileStore.swift
+│   └── Utils/                     # Utilities and extensions
+│       ├── Logger.swift, ErrorHandler.swift
+│       ├── AppError.swift, Extensions.swift
+│       └── CacheManager.swift
+│
+├── Features/                      # 🎯 Feature-Based Organization
+│   ├── Authentication/            # Login and registration
 │   │   ├── LoginView.swift
-│   │   ├── RecipesView.swift
-│   │   ├── MealPlanView.swift
-│   │   ├── AIRecipeGenerationView.swift  # AI recipe generation with image preview
-│   │   ├── MealPlan/        # Meal planning components
-│   │   │   ├── ServingAdjustmentSheet.swift  # Serving size adjustment UI (post-addition)
-│   │   │   ├── BatchOperationsSheet.swift
-│   │   │   ├── MealActionSheet.swift
-│   │   │   └── MealSelectionBottomSheet.swift  # Streamlined meal selection UI
-│   │   ├── FavoritesView.swift
-│   │   ├── FavoriteDetailView.swift
-│   │   └── EditFavoriteView.swift
-│   ├── Components/          # Reusable UI components
-   │   ├── AsyncImageView.swift     # Enhanced async image loading with animations
-   │   ├── DefaultRecipeImageView.swift  # Fallback recipe image variations
-   │   ├── MagicUIComponents.swift  # Magic UI component implementations
-   │   ├── MarkdownText.swift       # Markdown text rendering
-   │   ├── NotificationComponents.swift  # Notification UI components
-   │   └── SharedComponents.swift   # Shared reusable components
-│   ├── Utils/               # Utilities and extensions
-│   │   ├── UserCacheManager.swift  # User data caching
-│   │   └── TimeZoneHelper.swift    # Timezone handling utilities
-│   └── Data/                # Core Data stack
-├── MealPrepIOSAppTests/     # Unit tests
-└── MealPrepIOSAppUITests/   # UI tests
+│   │   └── RegisterView.swift
+│   ├── Recipes/                   # Recipe management
+│   │   ├── RecipesView.swift, RecipeDetailView.swift
+│   │   ├── EditRecipeView.swift, RecipeFiltersView.swift
+│   │   └── AIRecipeGenerationView.swift
+│   ├── MealPlanning/              # Meal planning and analysis
+│   │   ├── MealPlanView.swift, MealPlanAnalysisView.swift
+│   │   ├── ShoppingListView.swift
+│   │   ├── MealSelectionBottomSheet.swift
+│   │   ├── MealActionSheet.swift, MealPlanTemplateSheet.swift
+│   │   ├── BatchOperationsSheet.swift
+│   │   └── MealPlanStoreBatchOperationsExtension.swift
+│   ├── Favorites/                 # Favorites management
+│   │   ├── FavoritesView.swift, FavoriteDetailView.swift
+│   │   ├── EditFavoriteView.swift
+│   │   └── FavoriteFiltersView.swift
+│   ├── Profile/                   # User profile management
+│   │   └── ProfileView.swift
+│   └── AIGeneration/              # AI-powered features
+│       ├── AIWorkflowCoordinator.swift
+│       ├── AIWeeklyGenerationView.swift
+│       ├── AIWeeklyWorkflowView.swift
+│       ├── AIWeeklyPreviewView.swift
+│       ├── MealPlanGenerationView.swift
+│       └── MealPlanStoreAIExtension.swift
+│
+├── Shared/                        # 🔄 Shared Components and Resources
+│   ├── Components/                # Reusable UI components
+│   │   ├── SharedComponents.swift, AsyncImageView.swift
+│   │   ├── LoadingAnimations.swift, MarkdownText.swift
+│   │   ├── DefaultRecipeImageView.swift
+│   │   ├── LightweightDailyMealCard.swift
+│   │   ├── LightweightMealSlotView.swift
+│   │   ├── RecipeStubCardView.swift
+│   │   └── MagicUIComponents.swift
+│   ├── Extensions/                # Shared extensions
+│   │   └── NotificationExtensions.swift
+│   └── Theme/                     # App theming and styling
+│       └── GreenTheme.swift
+│
+└── Resources/                     # 📦 App Resources
+    ├── Assets/                    # Images, colors, app icons
+    │   └── Assets.xcassets/
+    ├── Data/                      # Core Data models
+    │   └── MealPrepDataModel.xcdatamodeld/
+    └── Documentation/             # Project documentation
+        └── AIWorkflowIntegration.md
 ```
 
-## Image Loading System
+## 🛠️ Technical Stack
 
-The iOS app features a sophisticated image loading system designed to provide an excellent user experience when displaying recipe images from the backend's Unsplash integration.
+### **Frontend Architecture**
+- **SwiftUI**: Declarative UI framework with modern iOS design patterns
+- **Combine**: Reactive programming for seamless data flow and state management
+- **Core Data**: Robust local data persistence and offline support
+- **URLSession**: High-performance networking with async/await patterns
 
-### AsyncImageView Component
+### **State Management**
+- **ObservableObject**: Reactive state management with automatic UI updates
+- **Environment Objects**: Dependency injection and shared state management
+- **Published Properties**: Real-time UI synchronization with data changes
 
-The `AsyncImageView` is a comprehensive image loading component that enhances the standard SwiftUI `AsyncImage` with:
+### **Networking & APIs**
+- **REST API**: Communication with Django backend using modern async/await
+- **JWT Authentication**: Secure token-based authentication with auto-refresh
+- **Error Handling**: Comprehensive error management with user-friendly messages
+- **Offline Support**: Local-first architecture with intelligent sync
 
-#### Loading States & Animations
-- **Shimmer Loading Effect**: Animated shimmer overlay during image loading
-- **Pulse Animation**: Subtle pulsing icon animation to indicate active loading
-- **Loading Dots**: Three-dot animation sequence for visual feedback
-- **Smooth Transitions**: 0.3-second ease-in-out animations between states
+### **Data Storage**
+- **Core Data**: Primary local storage with complex relationships
+- **Keychain**: Secure credential and sensitive data storage
+- **UserDefaults**: App preferences and lightweight settings
+- **File System**: Advanced meal plan storage with multi-week support
 
-#### Error Handling & Fallbacks
-- **Graceful Degradation**: Automatic fallback to `DefaultRecipeImageView_Elegant` on load failures
-- **URL Validation**: Handles invalid or missing URLs gracefully
-- **Network Resilience**: Continues to show appropriate UI even when network requests fail
+### **Dependencies**
+- **KeychainSwift** (24.0.0): Secure keychain access and credential management
+- **AnyCodable** (0.6.7): Flexible JSON encoding/decoding for dynamic API responses
+- **Reachability** (master): Network connectivity monitoring and offline detection
 
-#### Performance Optimization
-- **Dual Performance Modes**:
-  - **Full Animation Mode**: Rich loading animations for detail views
-  - **Compact Mode**: Simplified loading for better list performance
-- **Memory Efficient**: Proper cleanup of animations and loading states
-- **Lifecycle Management**: Automatic animation start/stop based on view appearance
+## 📋 Requirements
 
-#### Usage Examples
+- **iOS**: 15.0+ (supports iOS 26 beta)
+- **Xcode**: 15.0+
+- **Swift**: 5.9+
+- **Deployment Target**: iOS 15.0 minimum, iOS 18.0 optimized
+- **Device Support**: iPhone, iPad, Apple Silicon Macs with Catalyst
+
+## 🚀 Getting Started
+
+### Prerequisites
+1. **Xcode 15.0+** with iOS SDK
+2. **Apple Developer Account** (for device testing and distribution)
+3. **Backend API Access** (Django REST API)
+
+### Installation
+
+1. **Clone the Repository**
+   ```bash
+   git clone [repository-url]
+   cd MealPrep/MealPrepIOSApp
+   ```
+
+2. **Open Project**
+   ```bash
+   open MealPrepIOSApp.xcodeproj
+   ```
+
+3. **Configure Backend Connection**
+   ```swift
+   // Update NetworkManager.swift
+   private let baseURL = "http://127.0.0.1:8000"      // Local development
+   // private let baseURL = "https://meal-prep-app-backend.vercel.app"  // Production
+   ```
+
+4. **Install Dependencies**
+   - Dependencies are automatically resolved via Swift Package Manager
+   - No manual installation required
+
+5. **Build and Run**
+   - Select target device/simulator
+   - Press `⌘+R` to build and run
+
+### Development Configuration
+
+#### Backend Integration
 ```swift
-// Basic usage with default settings
-AsyncImageView(url: recipe.imageUrl)
-
-// Customized dimensions and styling
-AsyncImageView(
-    url: recipe.imageUrl,
-    width: 200,
-    height: 150,
-    cornerRadius: 16
-)
-
-// AI Recipe Generation Preview (full-width display)
-AsyncImageView(
-    url: aiRecipe.imageUrl,
-    width: UIScreen.main.bounds.width - 32,
-    height: 200,
-    cornerRadius: 12
-)
-
-// Recipe-specific wrapper with performance options
-RecipeImageView(
-    recipe: recipe,
-    showLoadingAnimation: false  // For list performance
-)
+// Development Environment
+#if DEBUG
+let apiBaseURL = "http://127.0.0.1:8000"
+let enableDebugLogging = true
+#else
+let apiBaseURL = "https://meal-prep-app-backend.vercel.app"
+let enableDebugLogging = false
+#endif
 ```
 
-### Default Image System
-
-When images fail to load or URLs are unavailable, the app uses elegant fallback images:
-
-- **DefaultRecipeImageView_Elegant**: Teal gradient with leaf icon for healthy recipes
-- **DefaultRecipeImageView**: Orange gradient with cooking utensils
-- **DefaultRecipeImageView_Warm**: Yellow gradient with chef theme
-
-### Integration with Backend
-
-The image loading system is designed to work seamlessly with the backend's Unsplash integration:
-- Handles Unsplash image URLs with proper sizing parameters
-- Graceful fallback when Unsplash API is unavailable
-- Supports both development and production image sources
-
-## Key Features Implementation
-
-### Meal Planning (Primary Feature - Default Tab)
-- **User Experience Priority**: Meal planning is the first screen users see when opening the app
-- Weekly meal plan generation
-- **Template Management**: Save and apply meal plan templates with robust duplicate filtering and auto-fill functionality for seamless template selection
-- Manual recipe assignment with streamlined workflow:
-  - Quick meal addition with default serving size (1.0)
-  - Simplified one-tap meal selection process
-  - Categorized recipe browsing (Search, Recent, Favorites, AI Picks)
-  - Custom meal creation option
-  - **Duplicate Prevention**: Intelligent duplicate recipe detection prevents adding the same recipe to the same day and meal type combination, with user-friendly error messaging
-- **Advanced Serving Size Adjustment** (available after meal addition): 
-  - Interactive serving size selection with predefined options (½, 1, 1½, 2, 2½, 3 servings)
-  - Custom serving size input with decimal precision and validation
-  - Real-time nutrition calculation and preview for adjusted portions
-  - Visual feedback with animated selection states and gradient backgrounds
-  - Fine-tuning controls with stepper for precise adjustments
-  - Recipe information display with image, description, and cooking time
-- Meal plan analysis
-- Shopping list generation
-
-### Authentication
-- JWT token management with automatic refresh
-- Secure token storage in Keychain
-- User profile management
-- Password change functionality
-- Offline authentication with UserCacheManager
-- Form validation with comprehensive error handling
-- Session persistence across app launches
-
-### Recipe Management
-- Browse recipe catalog
-- Create custom recipes
-- **AI-generated recipe details with visual preview**: Enhanced AI recipe generation now displays recipe images in the preview view using AsyncImageView for better visual presentation
-- Recipe search and filtering
-
-### Favorites System
-- Save favorite recipes with personal ratings (1-5 stars) and notes
-- Comprehensive favorite detail view with recipe information
-- Edit ratings and notes for saved favorites
-- Quick access to full recipe details from favorites
-- Remove recipes from favorites with confirmation
-- View favorite metadata (when added, recipe author)
-- Display recipe tags and nutritional information
-- Simplified architecture using recipe ID as the favorite identifier
-- Organize favorites collections (planned feature)
-
-## Data Persistence
-
-### Multi-Tier Storage Architecture
-The iOS app implements a sophisticated multi-tier storage system optimized for different data types:
-
-#### User Session Caching
-- `UserCacheManager`: Local user data persistence using UserDefaults
-- Automatic session restoration across app launches
-- Consistent date parsing matching NetworkManager
-- Secure local storage for user profile data
-- Cache-first authentication approach for offline access
-- Seamless integration with AuthStore for state management
-- Proper cache cleanup during logout operations
-
-#### Meal Plan File-Based Storage
-- `LocalMealPlanStorage`: Hybrid file-based + UserDefaults storage system
-- **Primary Storage**: JSON files in Documents/MealPlans directory
-- **Backup Storage**: UserDefaults for redundancy and migration
-- **Multi-Week Support**: Independent storage for up to 6 weeks of meal plans
-- **Automatic Cleanup**: Intelligent storage management prevents unlimited growth
-- **File Protection**: Uses `.completeFileProtection` for enhanced security
-- **Atomic Operations**: Ensures data integrity during save operations
-- **Legacy Migration**: Seamless migration from UserDefaults-only storage
-- **Error Recovery**: Robust retry logic with fallback mechanisms
-
-#### Storage Directory Structure
-```
-Documents/
-└── MealPlans/
-    ├── 2025-07-14.json    # Week starting July 14, 2025
-    ├── 2025-07-21.json    # Week starting July 21, 2025
-    └── 2025-07-28.json    # Week starting July 28, 2025
-```
-
-#### Core Data Integration (Planned)
-- ⚠️ **Recipe Caching**: Being replaced by `UnifiedRecipeCache` service with memory-based caching
-- Offline recipe caching (planned)
-- User preference storage
-- Favorites management
-- Advanced search indexing
-
-### Sync Strategy
-- Online-first approach with intelligent local caching
-- **User Data**: UserDefaults-based caching for session persistence
-- **Meal Plans**: File-based storage with UserDefaults backup
-- **Recipes**: ⚠️ Limited caching currently - `UnifiedRecipeCache` in development to provide smart caching with pagination and search optimization
-- Background sync when connectivity restored
-- Conflict resolution for concurrent edits
-- Automatic data migration between storage tiers
-
-## Storage Implementation Details
-
-### UnifiedRecipeCache System (In Development)
-
-The `UnifiedRecipeCache` service provides intelligent recipe caching specifically designed for meal plan recipe selection workflows:
-
-#### Key Features
-- **Smart Cache Validation**: 5-minute cache validity with automatic expiration detection
-- **Search-Aware Caching**: Invalidates cache when search queries change
-- **Pagination Support**: Handles paginated recipe loading with next-page tokens
-- **Memory Efficient**: In-memory caching with automatic cleanup on user logout
-- **Notification Integration**: Automatically removes deleted recipes from cache
-- **Performance Optimized**: Reduces API calls through intelligent cache hit detection
-
-#### Cache Management Methods
+#### Feature Flags
 ```swift
-// Check if data needs to be loaded
-func shouldLoadData(searchQuery: String, forceRefresh: Bool) -> Bool
-
-// Update cache with new data
-func updateCache(recipes: [Recipe], nextToken: String?, searchQuery: String, isRefresh: Bool)
-
-// Get next page token for pagination
-func getNextPageToken() -> String?
-
-// Validate recipes for meal selection
-func validateRecipesForMealSelection() -> Bool
+struct FeatureFlags {
+    static let aiGenerationEnabled = true
+    static let nutritionAnalysisEnabled = true
+    static let shoppingListEnabled = true
+    static let offlineModeEnabled = true
+}
 ```
 
-#### Integration Status
-- **🚧 Development Phase**: Service implemented but not yet integrated into UI components
-- **Target Use Case**: Optimizing recipe selection in meal plan creation workflows
-- **Future Integration**: Will replace current always-fetch approach for recipe browsing
+## 🧪 Testing
 
-### File-Based Meal Plan Storage
-The `LocalMealPlanStorage` service implements a robust file-based storage system for meal plans:
+Comprehensive testing suite covering all application layers:
 
-#### Key Features
-- **Week-Specific Storage**: Each week's meal plan is stored in a separate JSON file
-- **Atomic Operations**: File writes use atomic operations to prevent data corruption
-- **Retry Logic**: Automatic retry with exponential backoff for failed operations
-- **Enhanced Data Verification**: Comprehensive integrity checks with proper date handling consistency
-- **Automatic Cleanup**: Maintains only the most recent 6 weeks of data
-- **Backward Compatibility**: Seamless migration from legacy UserDefaults storage
+### **Unit Tests** (`MealPrepIOSAppTests/`)
+- **Model Testing**: Data parsing, validation, and transformation
+- **Service Testing**: API integration, business logic, and error handling
+- **Store Testing**: State management, reactive updates, and data flow
+- **Utility Testing**: Helper functions, extensions, and calculations
 
-#### Storage Methods
+### **Integration Tests**
+- **API Contract Tests**: Backend compatibility and response validation
+- **Core Data Tests**: Database operations and data integrity
+- **Authentication Flow**: End-to-end login and token management
+- **Storage Integration**: File system and caching functionality
+
+### **UI Tests** (`MealPrepIOSAppUITests/`)
+- **User Workflows**: Complete user journey testing
+- **Navigation Testing**: Screen transitions and deep linking
+- **Accessibility Testing**: VoiceOver and accessibility compliance
+- **Performance Testing**: Load times and memory usage
+
+### **Running Tests**
+```bash
+# All tests
+xcodebuild test -scheme MealPrepIOSApp -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+
+# Unit tests only
+⌘+U in Xcode (fastest)
+
+# Specific test suite
+xcodebuild test -scheme MealPrepIOSApp -only-testing:MealPrepIOSAppTests/RecipeStoreTests
+
+# UI tests
+xcodebuild test -scheme MealPrepIOSApp -only-testing:MealPrepIOSAppUITests
+```
+
+## 🏃‍♂️ Development Workflow
+
+### **Code Standards**
+- **Swift Style Guide**: Follow Apple's Swift API Design Guidelines
+- **SwiftUI Best Practices**: Declarative UI patterns and performance optimization  
+- **MVVM Architecture**: Clear separation between Views, ViewModels, and Models
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+### **Git Workflow**
+```bash
+# Feature development
+git checkout -b feature/meal-plan-templates
+git add .
+git commit -m "feat: add meal plan template management
+
+- Implement template saving and loading
+- Add duplicate template detection
+- Create template selection UI"
+git push origin feature/meal-plan-templates
+```
+
+### **Build Configurations**
+```bash
+# Development build
+xcodebuild -scheme MealPrepIOSApp -configuration Debug build
+
+# Release build  
+xcodebuild -scheme MealPrepIOSApp -configuration Release build
+
+# Archive for distribution
+xcodebuild archive -scheme MealPrepIOSApp -archivePath build/MealPrepIOSApp.xcarchive
+```
+
+## 🐛 Debugging & Troubleshooting
+
+### **Common Issues & Solutions**
+
+#### Build Issues
+```bash
+# Clean derived data
+rm -rf ~/Library/Developer/Xcode/DerivedData
+
+# Reset package cache
+File → Package → Reset Package Caches (in Xcode)
+
+# Clean build
+xcodebuild clean && xcodebuild build
+```
+
+#### Runtime Issues
+```bash
+# Reset simulator
+xcrun simctl erase all
+
+# Clear app data
+xcrun simctl uninstall booted [bundle-identifier]
+```
+
+### **Debugging Tools**
+- **Console Logging**: Structured logging with different levels
+- **Network Inspector**: Built-in request/response logging
+- **Core Data Debugger**: Database query and relationship debugging
+- **Memory Graph**: Memory leak detection and optimization
+
+### **Performance Monitoring**
 ```swift
-// Save meal plan for specific week
-func saveWeeklyMealPlan(for weekStartDate: Date, _ weeklyGrid: WeeklyMealGrid) -> Result<Void, LocalStorageError>
-
-// Load meal plan for specific week
-func loadWeeklyMealPlan(for weekStartDate: Date) -> WeeklyMealGrid?
-
-// Clear meal plan for specific week
-func clearMealPlan(for weekStartDate: Date)
+// Enable performance monitoring
+#if DEBUG
+import OSLog
+let logger = Logger(subsystem: "com.mealprep.app", category: "performance")
+#endif
 ```
 
-#### Error Handling
-- Custom `LocalStorageError` enum for specific error types
-- Comprehensive logging for debugging and monitoring
-- Graceful fallback to UserDefaults backup when file operations fail
-- Automatic recovery from corrupted data
-- Enhanced verification with consistent date handling between encoding and decoding
+## 📱 Deployment
 
-## Performance Considerations
+### **App Store Distribution**
 
-### Network Optimization
-- Request batching for efficiency
-- **Enhanced Image Loading**: `AsyncImageView` provides sophisticated image loading with:
-  - Automatic retry logic for failed image loads
-  - Graceful fallback to default images
-  - Optimized loading states with shimmer animations
-  - Performance-optimized modes for different use cases
-- Pagination for large datasets
-- Background refresh for updated data
+1. **Prepare Release**
+   ```bash
+   # Update version and build numbers
+   # Configure release signing certificates
+   # Run full test suite
+   xcodebuild test -scheme MealPrepIOSApp
+   ```
 
-### Memory Management
-- Lazy loading for large lists
-- **Advanced Image Memory Management**: 
-  - `AsyncImageView` with automatic loading state cleanup
-  - Efficient animation lifecycle management
-  - Performance-optimized compact mode for list views
-  - Proper disposal of loading animations on view disappear
-- Proper view lifecycle handling
-- Store cleanup on logout
+2. **Archive and Upload**
+   ```bash
+   # Archive release build
+   Product → Archive (in Xcode)
+   
+   # Upload to App Store Connect
+   # Configure app metadata and screenshots
+   ```
 
-### Storage Optimization
-- JSON file compression for reduced disk usage
-- Intelligent caching with automatic cleanup
-- File protection for enhanced security
-- Optimized read/write operations with retry logic
+3. **TestFlight Distribution**
+   - Internal testing with development team
+   - External testing with beta user groups
+   - Gradual rollout and feedback collection
 
-## Security
+### **Enterprise Distribution**
+```bash
+# Configure enterprise certificates
+# Build with enterprise provisioning profile  
+# Distribute via internal app catalog
+```
 
-### Data Protection
-- JWT token secure storage
-- API request encryption (HTTPS)
-- User data privacy compliance
-- Secure authentication flows
+## 🔧 Configuration
 
-### Error Handling
-- Network error recovery
-- Authentication error handling
-- Data validation errors
-- User-friendly error messages
+### **Environment Variables**
+```swift
+// Configure for different environments
+enum Environment {
+    case development
+    case staging  
+    case production
+    
+    var apiBaseURL: String {
+        switch self {
+        case .development: return "http://127.0.0.1:8000"
+        case .staging: return "https://staging.meal-prep-app.com"
+        case .production: return "https://meal-prep-app-backend.vercel.app"
+        }
+    }
+}
+```
 
-## Deployment
+### **Build Settings**
+- **Deployment Target**: iOS 15.0
+- **Supported Architectures**: arm64, x86_64 (simulator)
+- **Bitcode**: Disabled (iOS 15+ default)
+- **App Transport Security**: Configured for HTTPS
 
-### App Store Preparation
-1. Update version numbers
-2. Configure release signing
-3. Generate app icons and screenshots
-4. Submit for App Store review
+## 📖 API Integration
 
-### TestFlight Distribution
-1. Archive release build
-2. Upload to App Store Connect
-3. Configure TestFlight testing
-4. Distribute to beta testers
+### **Authentication Endpoints**
+```
+POST /api/auth/login/          # User authentication
+POST /api/auth/register/       # User registration  
+POST /api/auth/logout/         # Session termination
+POST /api/auth/refresh/        # Token refresh
+```
 
-## Contributing
+### **Recipe Management**
+```
+GET    /api/recipes/           # Browse recipes
+POST   /api/recipes/           # Create recipe
+GET    /api/recipes/{id}/      # Recipe details
+PUT    /api/recipes/{id}/      # Update recipe
+DELETE /api/recipes/{id}/      # Delete recipe
+```
 
-### Code Standards
+### **Meal Planning**
+```
+GET    /api/meal-plans/        # User meal plans
+POST   /api/meal-plans/        # Create meal plan
+PUT    /api/meal-plans/{id}/   # Update meal plan
+POST   /api/meal-plans/{id}/analyze/  # Nutrition analysis
+```
+
+### **AI Features**
+```
+POST   /api/ai/generate-recipe/      # AI recipe generation
+POST   /api/ai/generate-meal-plan/   # AI meal planning
+POST   /api/ai/recipe-suggestions/   # Smart recommendations
+```
+
+## 🤝 Contributing
+
+### **Getting Started**
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add comprehensive tests
+5. Ensure all tests pass (`⌘+U`)
+6. Submit a pull request
+
+### **Code Review Process**
+- **Architecture Review**: Ensure changes follow MVVM patterns
+- **Performance Review**: Memory usage and CPU optimization
+- **Accessibility Review**: VoiceOver and accessibility compliance
+- **Security Review**: Data handling and API security
+
+### **Contribution Guidelines**
 - Follow Swift API Design Guidelines
-- Use SwiftUI best practices
-- Implement proper error handling
-- Write comprehensive tests
+- Include unit tests for new functionality
+- Update documentation for API changes
+- Maintain backward compatibility when possible
 
-### Pull Request Process
-1. Create feature branch
-2. Implement changes with tests
-3. Update documentation
-4. Submit pull request with description
+## 📄 License
 
-## Troubleshooting
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Common Issues
-- **Network connectivity**: Check backend URL configuration
-- **Authentication failures**: Verify JWT token handling
-- **Data parsing errors**: Check API contract compatibility
-- **Build errors**: Ensure Xcode version compatibility
-- **Recipe loading issues**: ⚠️ Limited recipe caching - `UnifiedRecipeCache` in development to improve performance
-- **Image loading problems**: 
-  - Images not displaying: Check network connectivity and Unsplash API availability
-  - Slow image loading: Normal behavior with shimmer animation, fallback images shown on failure
-  - Default images showing: Indicates backend image URLs are unavailable or invalid
+## 🙋‍♂️ Support
 
-### Debug Tools
-- Network request logging in NetworkManager
-- Core Data debugging
-- Console logging for API responses
-- Xcode debugging tools
-- **StorageDebugHelper**: Enhanced debugging utilities including:
-  - Week storage analysis and validation (`debugStoredWeeksAndDates()`)
-  - Invalid week cleanup functionality (`cleanupInvalidWeeks()`)
-  - Date calculation debugging
-  - Storage integrity verification
+### **Getting Help**
+- **Issues**: Create an issue on GitHub for bugs and feature requests
+- **Documentation**: Check `/Resources/Documentation/` for detailed guides
+- **Discussions**: Join community discussions for general questions
 
-## License
+### **Reporting Bugs**
+Please include:
+- iOS version and device model
+- App version and build number
+- Steps to reproduce the issue
+- Expected vs actual behavior
+- Screenshots or screen recordings
 
-This project is part of the MealPrepAI application suite.
+## 🗺️ Roadmap
+
+### **Version 2.0** 🚧
+- [ ] **Apple Watch App**: Companion app with meal reminders and quick shopping lists
+- [ ] **iOS Widgets**: Home screen widgets for meal plans and shopping lists  
+- [ ] **Siri Shortcuts**: Voice integration for adding meals and checking plans
+- [ ] **SharePlay**: Collaborative meal planning with family and friends
+
+### **Version 2.5** 🔮
+- [ ] **ARKit Integration**: Augmented reality for portion size visualization
+- [ ] **Machine Learning**: On-device personalization and recommendations
+- [ ] **HealthKit Integration**: Sync with Apple Health for comprehensive wellness
+- [ ] **CarPlay Support**: Voice-controlled shopping lists while driving
+
+### **Future Vision** 🌟
+- [ ] **Smart Home Integration**: Connect with IoT appliances and smart kitchens
+- [ ] **Grocery Delivery**: Direct integration with delivery services
+- [ ] **Social Features**: Recipe sharing and community meal planning
+- [ ] **Advanced AI**: Computer vision for food recognition and logging
+
+---
+
+**Built with ❤️ using SwiftUI and modern iOS development practices**
+
+*MealPrep iOS App - Making meal planning effortless and enjoyable*
