@@ -4,11 +4,15 @@
 //
 //  Created by AI Assistant on 8/3/25.
 //  Refactored from 1821-line monolithic file into modular architecture.
+//  Enhanced with structured logging and comprehensive documentation.
 //
 
 import SwiftUI
 import Combine
 
+/// Central state management for meal planning functionality
+/// Coordinates meal plan data, AI generation, shopping lists, and nutrition analysis
+/// Uses modular extensions for feature separation and maintainability
 @MainActor
 class MealPlanStore: ObservableObject {
     // MARK: - Published Properties - Core State
@@ -49,7 +53,10 @@ class MealPlanStore: ObservableObject {
 
     // MARK: - Initialization
 
+    /// Initialize MealPlanStore with default configuration
+    /// Sets up observers and services but waits for authentication before loading data
     init() {
+        AppLogger.info("Initializing MealPlanStore", category: .mealPlanning)
         setupSelectedWeek()
         setupNotificationObservers()
         setupServiceObservers()
@@ -79,7 +86,7 @@ class MealPlanStore: ObservableObject {
             queue: .main
         ) { [weak self] notification in
             if notification.userInfo?["userID"] as? String != nil {
-                print("📥 [MealPlanStore] User logged in, loading cached data")
+                AppLogger.info("User logged in, loading cached data", category: .mealPlanning)
                 Task { @MainActor in
                     self?.loadInitialData()
                 }
@@ -191,7 +198,7 @@ class MealPlanStore: ObservableObject {
         nutritionAnalysisService.clearNutritionAnalysis()
         localStorageService.clearAllData()
 
-        print("🧹 [MealPlanStore] All data cleared")
+        AppLogger.info("All data cleared", category: .mealPlanning)
     }
 
     private func removeDeletedRecipe(recipeId: String) {
@@ -207,7 +214,7 @@ class MealPlanStore: ObservableObject {
         // Save changes
         _ = saveLocalMealPlan()
 
-        print("🗑️ [MealPlanStore] Removed deleted recipe: \\(recipeId)")
+        AppLogger.info("Removed deleted recipe: \(recipeId)", category: .mealPlanning)
     }
 
     // MARK: - Computed Properties

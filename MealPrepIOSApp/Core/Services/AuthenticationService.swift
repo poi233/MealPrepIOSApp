@@ -3,50 +3,78 @@
 //  MealPrepIOSApp
 //
 //  Created by AI Assistant on 7/20/25.
+//  Enhanced with structured logging and comprehensive error handling.
 //
 
 import Foundation
 
 // MARK: - Authentication Service
+
+/// Handles user authentication operations including login, registration, and logout
+/// Integrates with NetworkManager for secure token management and API communication
 class AuthenticationService {
     private let networkManager = NetworkManager.shared
 
     // MARK: - Authentication Methods
 
-    /// Login with email and password
+    /// Authenticate user with email and password
+    /// - Parameters:
+    ///   - email: User's email address
+    ///   - password: User's password
+    /// - Returns: AuthResponse containing access and refresh tokens
+    /// - Throws: NetworkError for authentication failures
     func login(email: String, password: String) async throws -> AuthResponse {
+        AppLogger.info("Attempting user login for: \(email)", category: .authentication)
+        
         let loginRequest = LoginRequest(email: email, password: password)
 
-        let response: AuthResponse = try await networkManager.post(
-            "/auth/login/",
-            body: loginRequest,
-            responseType: AuthResponse.self,
-            requiresAuth: false
-        )
+        do {
+            let response: AuthResponse = try await networkManager.post(
+                "/auth/login/",
+                body: loginRequest,
+                responseType: AuthResponse.self,
+                requiresAuth: false
+            )
 
-        // Store tokens in NetworkManager
-        await MainActor.run {
-            networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
+            // Store tokens in NetworkManager
+            await MainActor.run {
+                networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
+            }
+            
+            AppLogger.info("User login successful for: \(email)", category: .authentication)
+            return response
+        } catch {
+            AppLogger.error("Login failed for \(email): \(error.localizedDescription)", category: .authentication)
+            throw error
         }
-
-        return response
     }
 
     /// Register new user account
+    /// - Parameter userData: User registration information
+    /// - Returns: AuthResponse containing access and refresh tokens
+    /// - Throws: NetworkError for registration failures
     func register(userData: RegisterRequest) async throws -> AuthResponse {
-        let response: AuthResponse = try await networkManager.post(
-            "/auth/register/",
-            body: userData,
-            responseType: AuthResponse.self,
-            requiresAuth: false
-        )
+        AppLogger.info("Attempting user registration for: \(userData.email)", category: .authentication)
+        
+        do {
+            let response: AuthResponse = try await networkManager.post(
+                "/auth/register/",
+                body: userData,
+                responseType: AuthResponse.self,
+                requiresAuth: false
+            )
 
-        // Store tokens in NetworkManager
-        await MainActor.run {
-            networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
+            // Store tokens in NetworkManager
+            await MainActor.run {
+                networkManager.setTokens(accessToken: response.access, refreshToken: response.refresh)
+            }
+            
+            AppLogger.info("User registration successful for: \(userData.email)", category: .authentication)
+            return response
+        } catch {
+            AppLogger.error("Registration failed for \(userData.email): \(error.localizedDescription)", category: .authentication)
+            throw error
         }
-
-        return response
     }
 
     /// Logout user
@@ -61,7 +89,7 @@ class AuthenticationService {
             )
         } catch {
             // Continue with local logout even if server call fails
-            print("Server logout failed: \(error.localizedDescription)")
+            AppLogger.warning("Server logout failed: \(error.localizedDescription)", category: .authentication)
         }
 
         // Clear local tokens

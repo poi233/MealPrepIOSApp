@@ -30,7 +30,7 @@ class CoreDataManager: ObservableObject {
         group.enter()
         container.loadPersistentStores { _, error in
             if let error = error {
-                print("Core Data failed to load: \(error.localizedDescription)")
+                AppLogger.critical("Core Data failed to load: \(error.localizedDescription)", category: .coreData)
                 loadError = error
             }
             group.leave()
@@ -40,6 +40,7 @@ class CoreDataManager: ObservableObject {
         _ = group.wait(timeout: .now() + 10)
 
         if let error = loadError {
+            AppLogger.critical("Core Data initialization failed - app cannot continue", category: .coreData)
             fatalError("Core Data failed to load: \(error.localizedDescription)")
         }
 
@@ -70,7 +71,7 @@ class CoreDataManager: ObservableObject {
             do {
                 try context.save()
             } catch {
-                print("Failed to save context: \(error)")
+                AppLogger.error("Failed to save context: \(error)", category: .coreData)
                 throw CoreDataError.saveError(error)
             }
         }
@@ -83,7 +84,7 @@ class CoreDataManager: ObservableObject {
             do {
                 try backgroundContext.save()
             } catch {
-                print("Failed to save background context: \(error)")
+                AppLogger.error("Failed to save background context: \(error)", category: .coreData)
                 throw CoreDataError.saveError(error)
             }
         }

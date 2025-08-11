@@ -159,7 +159,7 @@ struct DefaultRecipeImageView_Warm: View {
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.3), radius: 2)
 
-                Image(systemName: "chef.hat.and.whisk")
+                Image(systemName: "fork.knife.circle")
                     .font(.system(size: min(width, height) * 0.2, weight: .light))
                     .foregroundColor(.white)
                     .shadow(color: .black.opacity(0.3), radius: 2)

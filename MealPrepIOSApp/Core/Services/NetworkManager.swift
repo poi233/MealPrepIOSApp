@@ -172,31 +172,31 @@ class NetworkManager: ObservableObject {
     func request<T: Codable>(_ endpoint: APIEndpoint, responseType: T.Type) async throws -> T {
         // Check if token is expired before making authenticated requests
         if endpoint.requiresAuth && isTokenExpired() {
-            print("🔄 [NetworkManager] Token expired, attempting refresh before request")
+            AppLogger.info("Token expired, attempting refresh before request", category: .authentication)
             try await refreshTokenIfNeeded()
         }
 
         let request = try buildURLRequest(for: endpoint)
 
         // Log detailed request information
-        print("🌐 [NetworkManager] \(request.httpMethod ?? "Unknown") \(request.url?.absoluteString ?? "Unknown")")
+        AppLogger.network("\(request.httpMethod ?? "Unknown") request", url: request.url?.absoluteString)
 
         do {
             let (data, response) = try await session.data(for: request)
 
             // Handle HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("❌ [NetworkManager] Invalid response type")
+                AppLogger.error("Invalid response type", category: .networking)
                 throw NetworkError.unknownError(NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response type"]))
             }
 
             // Log response summary
-            print("📥 [NetworkManager] Response: \(httpResponse.statusCode) (\(data.count) bytes)")
+            AppLogger.network("Response received", statusCode: httpResponse.statusCode)
 
             // For AI generation errors, log the response body to see validation details
             if endpoint.path.contains("/ai/generate-meal-plan/") && httpResponse.statusCode >= 400 {
                 if let responseString = String(data: data, encoding: .utf8) {
-                    print("❌ [NetworkManager] AI Generation Error Response: \(responseString)")
+                    AppLogger.error("AI Generation Error Response: \(responseString)", category: .aiGeneration)
                 }
             }
 
@@ -232,12 +232,12 @@ class NetworkManager: ObservableObject {
                 let decodedResponse = try decoder.decode(T.self, from: data)
                 return decodedResponse
             } catch {
-                print("❌ [NetworkManager] Decoding failed for \(T.self): \(error)")
+                AppLogger.error("Decoding failed for \(T.self): \(error)", category: .networking)
 
                 // For AI endpoints, log the raw response to help debug
                 if endpoint.path.contains("/ai/") {
                     if let responseString = String(data: data, encoding: .utf8) {
-                        print("❌ [NetworkManager] Raw response for \(endpoint.path): \(responseString)")
+                        AppLogger.debug("Raw response for \(endpoint.path): \(responseString)", category: .networking)
                     }
                 }
 
@@ -285,7 +285,7 @@ class NetworkManager: ObservableObject {
         }
         storeTokens()
 
-        print("🔐 [NetworkManager] Session set for 30 days, expires: \(sessionExpiry?.description ?? "unknown")")
+        AppLogger.info("Session set for 30 days, expires: \(sessionExpiry?.description ?? "unknown")", category: .authentication)
     }
 
     func clearTokens() {
@@ -297,7 +297,7 @@ class NetworkManager: ObservableObject {
         }
         clearStoredTokens()
 
-        print("🔐 [NetworkManager] Session cleared")
+        AppLogger.info("Session cleared", category: .authentication)
     }
 
     func isTokenExpired() -> Bool {
@@ -306,7 +306,7 @@ class NetworkManager: ObservableObject {
         // Simple JWT token expiration check
         let tokenParts = accessToken.split(separator: ".")
         guard tokenParts.count == 3 else {
-            print("⚠️ [NetworkManager] Invalid JWT token format, assuming expired")
+            AppLogger.warning("Invalid JWT token format, assuming expired", category: .authentication)
             return true
         }
 
@@ -319,7 +319,7 @@ class NetworkManager: ObservableObject {
         guard let payloadData = Data(base64Encoded: payload),
               let payloadDict = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
               let exp = payloadDict["exp"] as? TimeInterval else {
-            print("⚠️ [NetworkManager] Unable to parse token expiration, assuming expired")
+            AppLogger.warning("Unable to parse token expiration, assuming expired", category: .authentication)
             return true
         }
 
@@ -336,13 +336,13 @@ class NetworkManager: ObservableObject {
 
         let isExpired = isTokenExpired || isSessionExpired
 
-        print("🔍 [NetworkManager] Token expired: \(isTokenExpired), Session expired: \(isSessionExpired), Overall expired: \(isExpired)")
+        AppLogger.debug("Token expired: \(isTokenExpired), Session expired: \(isSessionExpired), Overall expired: \(isExpired)", category: .authentication)
 
         if isTokenExpired {
-            print("⚠️ [NetworkManager] Access token has expired")
+            AppLogger.warning("Access token has expired", category: .authentication)
         }
         if isSessionExpired {
-            print("⚠️ [NetworkManager] 30-day session has expired")
+            AppLogger.warning("30-day session has expired", category: .authentication)
         }
 
         return isExpired
@@ -369,7 +369,7 @@ class NetworkManager: ObservableObject {
 
             storeTokens()
 
-            print("🔄 [NetworkManager] Token refreshed and session renewed for 30 days")
+            AppLogger.info("Token refreshed and session renewed for 30 days", category: .authentication)
         } catch {
             // If refresh fails, clear tokens and require re-authentication
             clearTokens()
@@ -382,7 +382,7 @@ class NetworkManager: ObservableObject {
         guard let accessToken = accessToken else { return nil }
 
         guard let payload = decodeJWTPayload(token: accessToken) else {
-            print("❌ [NetworkManager] Failed to decode JWT payload for userId")
+            AppLogger.error("Failed to decode JWT payload for userId", category: .authentication)
             return nil
         }
 
@@ -395,7 +395,7 @@ class NetworkManager: ObservableObject {
             return String(userId)
         }
 
-        print("⚠️ [NetworkManager] No user_id found in JWT token payload")
+        AppLogger.warning("No user_id found in JWT token payload", category: .authentication)
         return nil
     }
 
@@ -427,9 +427,9 @@ class NetworkManager: ObservableObject {
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
             // Debug JWT token information
-            print("🔐 [NetworkManager] Using auth token")
+            AppLogger.debug("Using auth token", category: .authentication)
         } else if endpoint.requiresAuth {
-            print("❌ [NetworkManager] Auth required but no access token available")
+            AppLogger.warning("Auth required but no access token available", category: .authentication)
         }
 
         // Add request body
@@ -460,9 +460,9 @@ class NetworkManager: ObservableObject {
         }
 
         // Debug logging
-        print("🔐 [NetworkManager] Tokens loaded, authenticated: \(tokensValid)")
+        AppLogger.info("Tokens loaded, authenticated: \(tokensValid)", category: .authentication)
         if let expiry = sessionExpiry {
-            print("🔐 [NetworkManager] Session expires at: \(expiry)")
+            AppLogger.debug("Session expires at: \(expiry)", category: .authentication)
         }
     }
 
@@ -541,54 +541,53 @@ extension NetworkManager {
 
         // DEBUG: Special logging for recipe creation and AI endpoints
         if path.contains("/recipes") || path.contains("/ai/") {
-            print("[DEBUG] NetworkManager.post - Endpoint: \(path)")
+            AppLogger.debug("POST endpoint: \(path)", category: .networking)
 
             if let bodyString = String(data: bodyData, encoding: .utf8) {
                 // For AI meal plan generation, log FULL REQUEST PAYLOAD to debug validation error
                 if path.contains("/ai/generate-meal-plan/") {
-                    print("🔍 [NetworkManager] FULL AI Generation Request JSON:")
-                    print("🔍 [NetworkManager] \(bodyString)")
+                    AppLogger.debug("AI Generation Request JSON: \(bodyString)", category: .aiGeneration)
 
                     // Parse and validate each required field
                     do {
                         if let jsonData = bodyString.data(using: .utf8),
                            let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                            print("🔍 [NetworkManager] Parsed JSON fields:")
+                            AppLogger.debug("Parsed JSON fields:", category: .aiGeneration)
                             for (key, value) in jsonObject {
-                                print("🔍 [NetworkManager]   \(key): \(value)")
+                                AppLogger.debug("  \(key): \(value)", category: .aiGeneration)
 
                                 // Check if plan_description is valid
                                 if key == "plan_description" {
                                     let desc = value as? String ?? ""
                                     if desc.isEmpty {
-                                        print("❌ [NetworkManager] plan_description is EMPTY!")
+                                        AppLogger.warning("plan_description is EMPTY!", category: .aiGeneration)
                                     } else if desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        print("❌ [NetworkManager] plan_description is only whitespace!")
+                                        AppLogger.warning("plan_description is only whitespace!", category: .aiGeneration)
                                     } else {
-                                        print("✅ [NetworkManager] plan_description is valid: '\(desc)'")
+                                        AppLogger.debug("plan_description is valid: '\(desc)'", category: .aiGeneration)
                                     }
                                 }
                             }
                         }
                     } catch {
-                        print("❌ [NetworkManager] Failed to parse JSON: \(error)")
+                        AppLogger.error("Failed to parse JSON: \(error)", category: .aiGeneration)
                     }
                 }
 
                 // Try to extract image_url from the request body if it's a recipe
                 if let range = bodyString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
                     let imageUrlPart = String(bodyString[range])
-                    print("[DEBUG] NetworkManager.post - Request body contains: \(imageUrlPart)")
+                    AppLogger.debug("Request body contains: \(imageUrlPart)", category: .networking)
                 } else if bodyString.contains("image_url") {
-                    print("[DEBUG] NetworkManager.post - Request body contains image_url field but could not extract value")
+                    AppLogger.debug("Request body contains image_url field but could not extract value", category: .networking)
                 } else {
-                    print("[DEBUG] NetworkManager.post - Request body does NOT contain image_url field")
+                    AppLogger.debug("Request body does NOT contain image_url field", category: .networking)
                 }
 
                 // Show first 500 chars of body for debugging (unless it's AI generation - we logged full above)
                 if !path.contains("/ai/generate-meal-plan/") {
                     let bodyPreview = String(bodyString.prefix(500))
-                    print("[DEBUG] NetworkManager.post - Request body preview: \(bodyPreview)")
+                    AppLogger.debug("Request body preview: \(bodyPreview)", category: .networking)
                 }
             }
         }
@@ -603,15 +602,15 @@ extension NetworkManager {
                 if let responseString = String(data: responseData, encoding: .utf8) {
                     if let range = responseString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
                         let imageUrlPart = String(responseString[range])
-                        print("[DEBUG] NetworkManager.post - Response contains: \(imageUrlPart)")
+                        AppLogger.debug("Response contains: \(imageUrlPart)", category: .networking)
                     } else if responseString.contains("image_url") {
-                        print("[DEBUG] NetworkManager.post - Response contains image_url field but could not extract value")
+                        AppLogger.debug("Response contains image_url field but could not extract value", category: .networking)
                     } else {
-                        print("[DEBUG] NetworkManager.post - Response does NOT contain image_url field")
+                        AppLogger.debug("Response does NOT contain image_url field", category: .networking)
                     }
                 }
             } catch {
-                print("[DEBUG] NetworkManager.post - Could not encode response for debugging")
+                AppLogger.debug("Could not encode response for debugging", category: .networking)
             }
         }
 
@@ -643,7 +642,7 @@ extension NetworkManager {
     func decodeJWTPayload(token: String) -> [String: Any]? {
         let segments = token.components(separatedBy: ".")
         guard segments.count == 3 else {
-            print("🚨 [JWT] Invalid JWT format - expected 3 segments, got \(segments.count)")
+            AppLogger.error("Invalid JWT format - expected 3 segments, got \(segments.count)", category: .authentication)
             return nil
         }
 
@@ -657,7 +656,7 @@ extension NetworkManager {
 
         // Decode base64
         guard let data = Data(base64Encoded: base64) else {
-            print("🚨 [JWT] Failed to decode base64 payload")
+            AppLogger.error("Failed to decode base64 payload", category: .authentication)
             return nil
         }
 
@@ -666,7 +665,7 @@ extension NetworkManager {
             let payload = try JSONSerialization.jsonObject(with: data, options: [])
             return payload as? [String: Any]
         } catch {
-            print("🚨 [JWT] Failed to parse JSON payload: \(error)")
+            AppLogger.error("Failed to parse JSON payload: \(error)", category: .authentication)
             return nil
         }
     }

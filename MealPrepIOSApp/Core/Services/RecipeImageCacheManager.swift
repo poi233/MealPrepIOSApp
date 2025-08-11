@@ -111,6 +111,14 @@ class RecipeImageCacheManager: ObservableObject {
     private let cacheMetadataKey = "image_cache_metadata"
     private let cacheDirName = "RecipeImageCache"
 
+    // MARK: - Performance Optimizations
+    private var cacheKeyCache: [String: String] = [:] // Cache for generated cache keys
+    private let cacheKeyCacheLock = NSLock()
+    private lazy var cacheDirectoryURL: URL = {
+        let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return documentsDir.appendingPathComponent("UserScopedStorage").appendingPathComponent(cacheDirName)
+    }()
+
     // MARK: - Active Downloads
     private var activeDownloads: [String: Task<UIImage?, Error>] = [:]
     private let activeDownloadsLock = NSLock()
@@ -144,12 +152,9 @@ class RecipeImageCacheManager: ObservableObject {
 
     private func setupCacheDirectory() {
         ioQueue.async {
-            let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let cacheDir = documentsDir.appendingPathComponent("UserScopedStorage").appendingPathComponent(self.cacheDirName)
-
-            if !self.fileManager.fileExists(atPath: cacheDir.path) {
-                try? self.fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true, attributes: nil)
-                print("📁 [ImageCache] Created cache directory: \(cacheDir.path)")
+            if !self.fileManager.fileExists(atPath: self.cacheDirectoryURL.path) {
+                try? self.fileManager.createDirectory(at: self.cacheDirectoryURL, withIntermediateDirectories: true, attributes: nil)
+                AppLogger.info("Created cache directory: \(self.cacheDirectoryURL.path)", category: .caching)
             }
         }
     }
@@ -159,7 +164,7 @@ class RecipeImageCacheManager: ObservableObject {
     /// Get cached image or download if not cached
     func getCachedImage(from urlString: String) async -> UIImage? {
         guard let url = URL(string: urlString), !urlString.isEmpty else {
-            print("❌ [ImageCache] Invalid URL: \(urlString)")
+            AppLogger.error("Invalid URL: \(urlString)", category: .caching)
             return nil
         }
 
@@ -167,14 +172,14 @@ class RecipeImageCacheManager: ObservableObject {
 
         // Check memory cache first
         if let cachedImage = memoryCache.object(forKey: cacheKey as NSString) {
-            print("🎯 [ImageCache] Memory cache hit for: \(urlString)")
+            AppLogger.debug("Memory cache hit for: \(urlString)", category: .caching)
             await updateImageAccessTime(for: urlString)
             return cachedImage
         }
 
         // Check disk cache
         if let diskImage = await loadImageFromDisk(cacheKey: cacheKey, url: urlString) {
-            print("💾 [ImageCache] Disk cache hit for: \(urlString)")
+            AppLogger.debug("Disk cache hit for: \(urlString)", category: .caching)
 
             // Add to memory cache
             let imageSize = estimateImageSize(diskImage)
@@ -195,7 +200,7 @@ class RecipeImageCacheManager: ObservableObject {
 
     /// Clear all cached images for current user
     func clearCache() async {
-        print("🧹 [ImageCache] Clearing all cached images")
+        AppLogger.info("Clearing all cached images", category: .caching)
 
         // Clear memory cache
         memoryCache.removeAllObjects()
@@ -206,7 +211,7 @@ class RecipeImageCacheManager: ObservableObject {
         // Clear metadata
         userScopedStorage.removeFileSystemValue(forKey: cacheMetadataKey)
 
-        print("✅ [ImageCache] Cache cleared successfully")
+        AppLogger.info("Cache cleared successfully", category: .caching)
     }
 
     /// Get cache statistics
@@ -241,7 +246,7 @@ class RecipeImageCacheManager: ObservableObject {
         // Remove from disk cache
         await removeImageFromDisk(cacheKey: cacheKey, url: urlString)
 
-        print("🗑️ [ImageCache] Removed image from cache: \(urlString)")
+        AppLogger.debug("Removed image from cache: \(urlString)", category: .caching)
     }
 
     // MARK: - Private Implementation
@@ -253,7 +258,7 @@ class RecipeImageCacheManager: ObservableObject {
         activeDownloadsLock.lock()
         if let existingTask = activeDownloads[urlString] {
             activeDownloadsLock.unlock()
-            print("⏳ [ImageCache] Download already in progress for: \(urlString)")
+            AppLogger.debug("Download already in progress for: \(urlString)", category: .caching)
             return try? await existingTask.value
         }
 
@@ -275,7 +280,7 @@ class RecipeImageCacheManager: ObservableObject {
 
             return image
         } catch {
-            print("❌ [ImageCache] Download failed for \(urlString): \(error)")
+            AppLogger.error("Download failed for \(urlString): \(error)", category: .caching)
 
             // Clean up active downloads
             activeDownloadsLock.lock()
@@ -292,7 +297,7 @@ class RecipeImageCacheManager: ObservableObject {
             throw ImageCacheError.networkUnavailable
         }
 
-        print("📥 [ImageCache] Starting download for: \(url.absoluteString)")
+        AppLogger.debug("Starting download for: \(url.absoluteString)", category: .caching)
 
         // Perform download
         let (data, response) = try await URLSession.shared.data(from: url)
@@ -308,7 +313,7 @@ class RecipeImageCacheManager: ObservableObject {
             throw ImageCacheError.invalidImageData
         }
 
-        print("✅ [ImageCache] Downloaded image successfully: \(url.absoluteString)")
+        AppLogger.info("Downloaded image successfully: \(url.absoluteString)", category: .caching)
 
         // Cache the image
         await cacheImage(image, data: data, for: url.absoluteString, contentType: httpResponse.mimeType)
@@ -340,7 +345,7 @@ class RecipeImageCacheManager: ObservableObject {
                     let newTotalSize = currentCacheSize + Int64(data.count)
 
                     if newTotalSize > Int64(Double(self.maxDiskCacheSize) * self.cacheCleanupThreshold) {
-                        print("🧹 [ImageCache] Cache size threshold reached, cleaning up...")
+                        AppLogger.info("Cache size threshold reached, cleaning up...", category: .caching)
                         self.performCacheCleanup()
                     }
 
@@ -357,11 +362,11 @@ class RecipeImageCacheManager: ObservableObject {
 
                     self.updateCacheMetadata(for: url, metadata: metadata)
 
-                    print("💾 [ImageCache] Saved image to disk: \(fileName)")
+                    AppLogger.debug("Saved image to disk: \(fileName)", category: .caching)
                     continuation.resume()
 
                 } catch {
-                    print("❌ [ImageCache] Failed to save image to disk: \(error)")
+                    AppLogger.error("Failed to save image to disk: \(error)", category: .caching)
                     continuation.resume()
                 }
             }
@@ -375,7 +380,7 @@ class RecipeImageCacheManager: ObservableObject {
 
                 guard let imageMetadata = metadata[url],
                       !imageMetadata.isExpired else {
-                    print("💔 [ImageCache] Image expired or not found in metadata: \(url)")
+                    AppLogger.debug("Image expired or not found in metadata: \(url)", category: .caching)
                     continuation.resume(returning: nil)
                     return
                 }
@@ -386,7 +391,7 @@ class RecipeImageCacheManager: ObservableObject {
                 guard self.fileManager.fileExists(atPath: fileURL.path),
                       let data = try? Data(contentsOf: fileURL),
                       let image = UIImage(data: data) else {
-                    print("💔 [ImageCache] Failed to load image from disk: \(fileURL.path)")
+                    AppLogger.warning("Failed to load image from disk: \(fileURL.path)", category: .caching)
                     continuation.resume(returning: nil)
                     return
                 }
@@ -428,9 +433,9 @@ class RecipeImageCacheManager: ObservableObject {
                     for file in files {
                         try self.fileManager.removeItem(at: file)
                     }
-                    print("🗑️ [ImageCache] Cleared disk cache directory")
+                    AppLogger.info("Cleared disk cache directory", category: .caching)
                 } catch {
-                    print("❌ [ImageCache] Failed to clear disk cache: \(error)")
+                    AppLogger.error("Failed to clear disk cache: \(error)", category: .caching)
                 }
 
                 continuation.resume()
@@ -467,12 +472,12 @@ class RecipeImageCacheManager: ObservableObject {
                 let cacheKey = generateCacheKey(for: imageMetadata.url)
                 memoryCache.removeObject(forKey: cacheKey as NSString)
 
-                print("🗑️ [ImageCache] Cleaned up: \(imageMetadata.fileName)")
+                AppLogger.debug("Cleaned up: \(imageMetadata.fileName)", category: .caching)
             }
         }
 
         saveCacheMetadata(updatedMetadata)
-        print("✅ [ImageCache] Cache cleanup completed. Size reduced from \(formatBytes(getCurrentCacheSize())) to \(formatBytes(currentSize))")
+        AppLogger.info("Cache cleanup completed. Size reduced from \(formatBytes(getCurrentCacheSize())) to \(formatBytes(currentSize))", category: .caching)
     }
 
     private func updateImageAccessTime(for url: String) async {
@@ -511,15 +516,36 @@ class RecipeImageCacheManager: ObservableObject {
     // MARK: - Utility Methods
 
     private func generateCacheKey(for url: String) -> String {
-        return url.data(using: .utf8)?.base64EncodedString()
+        // Check cache first for performance
+        cacheKeyCacheLock.lock()
+        if let cachedKey = cacheKeyCache[url] {
+            cacheKeyCacheLock.unlock()
+            return cachedKey
+        }
+        cacheKeyCacheLock.unlock()
+        
+        // Generate new key
+        let key = url.data(using: .utf8)?.base64EncodedString()
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "=", with: "") ?? UUID().uuidString
+        
+        // Cache the generated key
+        cacheKeyCacheLock.lock()
+        cacheKeyCache[url] = key
+        // Limit cache size to prevent memory growth
+        if cacheKeyCache.count > 1000 {
+            // Remove oldest entries (simple FIFO)
+            let keysToRemove = Array(cacheKeyCache.keys).prefix(100)
+            keysToRemove.forEach { cacheKeyCache.removeValue(forKey: $0) }
+        }
+        cacheKeyCacheLock.unlock()
+        
+        return key
     }
 
     private func getCacheDirectory() -> URL {
-        let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return documentsDir.appendingPathComponent("UserScopedStorage").appendingPathComponent(cacheDirName)
+        return cacheDirectoryURL // Use cached lazy property for performance
     }
 
     private func getCurrentCacheSize() -> Int64 {
@@ -555,7 +581,7 @@ class RecipeImageCacheManager: ObservableObject {
     // MARK: - Memory Management
 
     @objc private func handleMemoryWarning() {
-        print("⚠️ [ImageCache] Memory warning received, clearing memory cache")
+        AppLogger.warning("Memory warning received, clearing memory cache", category: .caching)
         memoryCache.removeAllObjects()
     }
 
@@ -587,13 +613,13 @@ class RecipeImageCacheManager: ObservableObject {
                         let cacheKey = self.generateCacheKey(for: url)
                         self.memoryCache.removeObject(forKey: cacheKey as NSString)
 
-                        print("🗑️ [ImageCache] Cleaned up expired image: \(imageMetadata.fileName)")
+                        AppLogger.debug("Cleaned up expired image: \(imageMetadata.fileName)", category: .caching)
                     }
                 }
 
                 if updatedMetadata.count != metadata.count {
                     self.saveCacheMetadata(updatedMetadata)
-                    print("✅ [ImageCache] Expired image cleanup completed")
+                    AppLogger.info("Expired image cleanup completed", category: .caching)
                 }
 
                 continuation.resume()

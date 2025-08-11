@@ -62,7 +62,7 @@ class AIGenerationService: ObservableObject {
 
     func generateAIMealPlan(request: AIGenerationRequest) async {
         guard aiGenerationState == .idle else {
-            print("⚠️ [AIGenerationService] Cannot start AI generation: already in progress")
+            AppLogger.warning("Cannot start AI generation: already in progress", category: .aiGeneration)
             return
         }
 
@@ -71,11 +71,11 @@ class AIGenerationService: ObservableObject {
         aiGenerationError = nil
 
         do {
-            print("🤖 [AIGenerationService] Starting AI meal plan generation...")
-            print("🔍 [AIGenerationService] Request description: '\(request.description)'")
-            print("🔍 [AIGenerationService] Diet type: \(request.dietType?.rawValue ?? "none")")
-            print("🔍 [AIGenerationService] Allergies: \(request.allergies)")
-            print("🔍 [AIGenerationService] Calorie target: \(request.calorieTarget ?? 0)")
+            AppLogger.info("Starting AI meal plan generation...", category: .aiGeneration)
+            AppLogger.debug("Request description: '\(request.description)'", category: .aiGeneration)
+            AppLogger.debug("Diet type: \(request.dietType?.rawValue ?? "none")", category: .aiGeneration)
+            AppLogger.debug("Allergies: \(request.allergies)", category: .aiGeneration)
+            AppLogger.debug("Calorie target: \(request.calorieTarget ?? 0)", category: .aiGeneration)
 
             // Convert AIGenerationRequest to GenerateMealPlanRequest
             var dietaryPreferences: [String: String] = [:]
