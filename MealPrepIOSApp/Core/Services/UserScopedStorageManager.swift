@@ -66,9 +66,21 @@ class FileSystemStorageBackend: StorageBackend {
     private let baseDirectory: URL
     private let fileManager: FileManager
 
-    init(baseDirectory: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!) {
-        self.baseDirectory = baseDirectory
+    init(baseDirectory: URL? = nil) {
         self.fileManager = FileManager.default
+        
+        // Use provided directory or fallback to default documents directory
+        if let providedDirectory = baseDirectory {
+            self.baseDirectory = providedDirectory
+        } else {
+            if let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                self.baseDirectory = documentsDir
+            } else {
+                AppLogger.error("Failed to get documents directory, using temporary directory", category: .storage)
+                self.baseDirectory = fileManager.temporaryDirectory.appendingPathComponent("UserScopedStorage")
+            }
+        }
+        
         createBaseDirectoryIfNeeded()
     }
 
@@ -136,10 +148,16 @@ class UserScopedStorageManager {
     private init() {
         self.userDefaultsBackend = UserDefaultsStorageBackend()
 
-        // Create user-scoped file system backend
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let userScopedDirectory = documentsDirectory.appendingPathComponent("UserScopedStorage")
-        self.fileSystemBackend = FileSystemStorageBackend(baseDirectory: userScopedDirectory)
+        // Create user-scoped file system backend with safe directory access
+        if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let userScopedDirectory = documentsDirectory.appendingPathComponent("UserScopedStorage")
+            self.fileSystemBackend = FileSystemStorageBackend(baseDirectory: userScopedDirectory)
+        } else {
+            AppLogger.error("Failed to get documents directory in UserScopedStorageManager init", category: .storage)
+            // Use temporary directory as fallback
+            let userScopedDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("UserScopedStorage")
+            self.fileSystemBackend = FileSystemStorageBackend(baseDirectory: userScopedDirectory)
+        }
 
         self.migrationManager = StorageMigrationManager(
             userDefaultsBackend: userDefaultsBackend,
@@ -439,11 +457,9 @@ class StorageMigrationManager {
     }
 
     private func migrateLegacyMealPlanData(for userID: String) {
-        // Legacy keys that need migration
-        let legacyKeys = [
-            "weeklyMealPlan", // Legacy single week key
-            "multiWeekKeyPrefix" // This was a prefix, need to handle dynamically
-        ]
+        // Legacy keys that need migration (documented for reference)
+        // - "weeklyMealPlan": Legacy single week key
+        // - "weeklyMealPlan_*": Multi-week keys with prefix pattern
 
         // Migrate UserDefaults data
         let allUserDefaultsKeys = userDefaultsBackend.getAllKeys()
@@ -473,7 +489,10 @@ class StorageMigrationManager {
 
     private func migrateLegacyFileSystemData(for userID: String) {
         let fileManager = FileManager.default
-        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            AppLogger.error("Failed to get documents directory for legacy data migration", category: .storage)
+            return
+        }
         let legacyMealPlansDirectory = documentsDirectory.appendingPathComponent("MealPlans")
 
         guard fileManager.fileExists(atPath: legacyMealPlansDirectory.path) else {

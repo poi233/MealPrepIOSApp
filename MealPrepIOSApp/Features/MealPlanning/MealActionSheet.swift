@@ -272,8 +272,18 @@ extension MealActionSheet {
         let today = Date()
         let weekday = calendar.component(.weekday, from: today)
         let daysFromMonday = (weekday == 1) ? 6 : weekday - 2 // Convert to Monday = 0
-        let mondayThisWeek = calendar.date(byAdding: .day, value: -daysFromMonday, to: today)!
-        return calendar.date(byAdding: .day, value: dayOfWeek, to: mondayThisWeek)!
+        
+        guard let mondayThisWeek = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else {
+            AppLogger.error("Failed to calculate Monday date from today", category: .dateCalculation)
+            return today // Return current date as fallback
+        }
+        
+        guard let targetDate = calendar.date(byAdding: .day, value: dayOfWeek, to: mondayThisWeek) else {
+            AppLogger.error("Failed to calculate target date for day \(dayOfWeek)", category: .dateCalculation)
+            return today // Return current date as fallback
+        }
+        
+        return targetDate
     }
 }
 

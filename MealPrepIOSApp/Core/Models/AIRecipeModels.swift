@@ -209,7 +209,7 @@ struct AINutritionInfo: Codable {
             return nil
         }
         
-        // Extract numbers from unit strings
+        // Extract numbers from unit strings using safe optional mapping
         if let proteinValue = extractNumber(from: protein) {
             cleaned["protein"] = proteinValue
         }
@@ -275,12 +275,12 @@ struct CreateRecipeFromAIRequest: Codable {
         // Create a temporary AIGeneratedRecipe with cleaned nutrition info
         let cleanedNutrition = AINutritionInfo(
             calories: aiRecipeData.nutritionInfo.calories,
-            protein: extractNumber(from: aiRecipeData.nutritionInfo.protein)?.description,
-            carbohydrates: extractNumber(from: aiRecipeData.nutritionInfo.carbohydrates)?.description,
-            fat: extractNumber(from: aiRecipeData.nutritionInfo.fat)?.description,
-            fiber: extractNumber(from: aiRecipeData.nutritionInfo.fiber)?.description,
-            sodium: extractNumber(from: aiRecipeData.nutritionInfo.sodium)?.description,
-            sugar: extractNumber(from: aiRecipeData.nutritionInfo.sugar)?.description,
+            protein: extractNumber(from: aiRecipeData.nutritionInfo.protein).map { String($0) },
+            carbohydrates: extractNumber(from: aiRecipeData.nutritionInfo.carbohydrates).map { String($0) },
+            fat: extractNumber(from: aiRecipeData.nutritionInfo.fat).map { String($0) },
+            fiber: extractNumber(from: aiRecipeData.nutritionInfo.fiber).map { String($0) },
+            sodium: extractNumber(from: aiRecipeData.nutritionInfo.sodium).map { String($0) },
+            sugar: extractNumber(from: aiRecipeData.nutritionInfo.sugar).map { String($0) },
             servings: aiRecipeData.nutritionInfo.servings
         )
         
@@ -312,7 +312,7 @@ extension AIGeneratedRecipe {
     /// Convert to Recipe model for display
     func toRecipe(id: String = UUID().uuidString, createdByUser: String = "AI Generated") -> Recipe {
         let nutrition = NutritionInfo(
-            calories: nutritionInfo.calories != nil ? String(nutritionInfo.calories!) : nil,
+            calories: nutritionInfo.calories.map { String($0) },
             protein: nutritionInfo.protein,      // Already a String from backend
             carbohydrates: nutritionInfo.carbohydrates, // Already a String from backend
             fat: nutritionInfo.fat,              // Already a String from backend

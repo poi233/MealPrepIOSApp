@@ -19,6 +19,7 @@ struct AppLogger {
         case caching = "💿 Cache"
         case storage = "📦 Storage"
         case performance = "⚡ Performance"
+        case dateCalculation = "📅 DateCalc"
         case error = "❌ Error"
         case general = "ℹ️ General"
         

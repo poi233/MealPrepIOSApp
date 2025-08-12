@@ -163,8 +163,8 @@ struct RecipeDetailView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            if recipe.cuisine != nil {
-                                Text("Cuisine: \(recipe.cuisine!)")
+                            if let cuisine = recipe.cuisine {
+                                Text("Cuisine: \(cuisine)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

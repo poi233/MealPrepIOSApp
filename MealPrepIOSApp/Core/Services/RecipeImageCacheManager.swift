@@ -115,7 +115,11 @@ class RecipeImageCacheManager: ObservableObject {
     private var cacheKeyCache: [String: String] = [:] // Cache for generated cache keys
     private let cacheKeyCacheLock = NSLock()
     private lazy var cacheDirectoryURL: URL = {
-        let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            AppLogger.error("Failed to get documents directory for image cache", category: .caching)
+            // Return a temporary directory as fallback
+            return fileManager.temporaryDirectory.appendingPathComponent("RecipeImageCache").appendingPathComponent(cacheDirName)
+        }
         return documentsDir.appendingPathComponent("UserScopedStorage").appendingPathComponent(cacheDirName)
     }()
 

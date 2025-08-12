@@ -180,14 +180,17 @@ struct FavoriteFiltersView: View {
             startDate = nil
             endDate = nil
         case .lastWeek:
-            endDate = Date()
-            startDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: endDate!)
+            let currentDate = Date()
+            endDate = currentDate
+            startDate = Calendar.current.date(byAdding: .weekOfYear, value: -1, to: currentDate)
         case .lastMonth:
-            endDate = Date()
-            startDate = Calendar.current.date(byAdding: .month, value: -1, to: endDate!)
+            let currentDate = Date()
+            endDate = currentDate
+            startDate = Calendar.current.date(byAdding: .month, value: -1, to: currentDate)
         case .lastYear:
-            endDate = Date()
-            startDate = Calendar.current.date(byAdding: .year, value: -1, to: endDate!)
+            let currentDate = Date()
+            endDate = currentDate
+            startDate = Calendar.current.date(byAdding: .year, value: -1, to: currentDate)
         case .custom:
             startDate = customStartDate
             endDate = customEndDate

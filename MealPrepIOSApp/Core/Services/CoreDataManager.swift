@@ -40,8 +40,34 @@ class CoreDataManager: ObservableObject {
         _ = group.wait(timeout: .now() + 10)
 
         if let error = loadError {
-            AppLogger.critical("Core Data initialization failed - app cannot continue", category: .coreData)
-            fatalError("Core Data failed to load: \(error.localizedDescription)")
+            AppLogger.critical("Core Data initialization failed - implementing fallback strategy", category: .coreData)
+            
+            // Implement graceful degradation strategy
+            // Try to create an in-memory store as fallback
+            let fallbackDescription = NSPersistentStoreDescription()
+            fallbackDescription.type = NSInMemoryStoreType
+            container.persistentStoreDescriptions = [fallbackDescription]
+            
+            // Try loading with fallback store
+            group.enter()
+            var fallbackError: Error?
+            container.loadPersistentStores { _, fallbackLoadError in
+                if let fallbackLoadError = fallbackLoadError {
+                    AppLogger.critical("Even fallback Core Data store failed: \(fallbackLoadError.localizedDescription)", category: .coreData)
+                    fallbackError = fallbackLoadError
+                }
+                group.leave()
+            }
+            
+            _ = group.wait(timeout: .now() + 5)
+            
+            if fallbackError != nil {
+                // As a last resort, disable Core Data features
+                AppLogger.critical("Core Data completely unavailable - app will run with limited functionality", category: .coreData)
+                // Return container anyway - the app will need to handle Core Data unavailability gracefully
+            } else {
+                AppLogger.warning("Core Data running in memory-only mode - data will not persist", category: .coreData)
+            }
         }
 
         // Enable automatic merging
