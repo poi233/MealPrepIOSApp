@@ -411,12 +411,12 @@ class MealPlanTemplateService {
 
                         let aiNutritionInfo = AINutritionInfo(
                             calories: extractNumericValue(from: localRecipe.nutritionInfo?.calories),
-                            protein: extractNumericValue(from: localRecipe.nutritionInfo?.protein),
-                            carbohydrates: extractNumericValue(from: localRecipe.nutritionInfo?.carbohydrates),
-                            fat: extractNumericValue(from: localRecipe.nutritionInfo?.fat),
-                            fiber: extractNumericValue(from: localRecipe.nutritionInfo?.fiber),
-                            sodium: extractNumericValue(from: localRecipe.nutritionInfo?.sodium),
-                            sugar: extractNumericValue(from: localRecipe.nutritionInfo?.sugar),
+                            protein: localRecipe.nutritionInfo?.protein,       // Keep as string
+                            carbohydrates: localRecipe.nutritionInfo?.carbohydrates, // Keep as string
+                            fat: localRecipe.nutritionInfo?.fat,               // Keep as string
+                            fiber: localRecipe.nutritionInfo?.fiber,           // Keep as string
+                            sodium: localRecipe.nutritionInfo?.sodium,         // Keep as string
+                            sugar: localRecipe.nutritionInfo?.sugar,           // Keep as string
                             servings: localRecipe.nutritionInfo?.servings
                         )
 

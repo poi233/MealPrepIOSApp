@@ -86,4 +86,39 @@ class AIService {
 // MARK: - Generate Recipe Details Request
 struct GenerateRecipeDetailsRequest: Codable {
     let name: String
+    let description: String?
+    let cuisine: String?
+    let difficulty: String?
+    let prepTime: Int?
+    let cookTime: Int?
+    let mealType: String?
+    let dietaryRestrictions: [String]?
+    let ingredients: [String]?
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case cuisine
+        case difficulty
+        case prepTime = "prep_time"
+        case cookTime = "cook_time"
+        case mealType = "meal_type"
+        case dietaryRestrictions = "dietary_restrictions"
+        case ingredients
+    }
+    
+    init(name: String, description: String? = nil, cuisine: String? = nil, 
+         difficulty: String? = nil, prepTime: Int? = nil, cookTime: Int? = nil,
+         mealType: String? = nil, dietaryRestrictions: [String]? = nil, 
+         ingredients: [String]? = nil) {
+        self.name = name
+        self.description = description
+        self.cuisine = cuisine
+        self.difficulty = difficulty
+        self.prepTime = prepTime
+        self.cookTime = cookTime
+        self.mealType = mealType
+        self.dietaryRestrictions = dietaryRestrictions
+        self.ingredients = ingredients
+    }
 }

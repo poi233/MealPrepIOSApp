@@ -11,6 +11,41 @@ import Foundation
 
 struct AIRecipeGenerationRequest: Codable {
     let name: String
+    let description: String?
+    let cuisine: String?
+    let difficulty: String?
+    let prepTime: Int?
+    let cookTime: Int?
+    let mealType: String?
+    let dietaryRestrictions: [String]?
+    let ingredients: [String]?
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case cuisine
+        case difficulty
+        case prepTime = "prep_time"
+        case cookTime = "cook_time"
+        case mealType = "meal_type"
+        case dietaryRestrictions = "dietary_restrictions"
+        case ingredients
+    }
+    
+    init(name: String, description: String? = nil, cuisine: String? = nil, 
+         difficulty: String? = nil, prepTime: Int? = nil, cookTime: Int? = nil,
+         mealType: String? = nil, dietaryRestrictions: [String]? = nil, 
+         ingredients: [String]? = nil) {
+        self.name = name
+        self.description = description
+        self.cuisine = cuisine
+        self.difficulty = difficulty
+        self.prepTime = prepTime
+        self.cookTime = cookTime
+        self.mealType = mealType
+        self.dietaryRestrictions = dietaryRestrictions
+        self.ingredients = ingredients
+    }
 }
 
 // MARK: - AI Generated Recipe Response
@@ -143,13 +178,64 @@ struct AIIngredient: Codable {
 
 struct AINutritionInfo: Codable {
     let calories: Int?
-    let protein: Int?       // Changed from String to Int for backend validation
-    let carbohydrates: Int? // Changed from String to Int for backend validation
-    let fat: Int?           // Changed from String to Int for backend validation
-    let fiber: Int?         // Changed from String to Int for backend validation
-    let sodium: Int?        // Changed from String to Int for backend validation
-    let sugar: Int?         // Changed from String to Int for backend validation
+    let protein: String?    // Backend returns strings with units like "12g"
+    let carbohydrates: String? // Backend returns strings with units like "15g"
+    let fat: String?        // Backend returns strings with units like "20g"
+    let fiber: String?      // Backend returns strings with units like "3g"
+    let sodium: String?     // Backend returns strings with units like "250mg"
+    let sugar: String?      // Backend returns strings with units like "8g"
     let servings: Int?
+    
+    /// Clean nutrition values by removing units and extracting numeric values
+    /// for API submission (create-recipe-from-ai requires pure numbers)
+    func toCleanedNutritionInfo() -> [String: Any] {
+        var cleaned: [String: Any] = [:]
+        
+        // Calories is already an Int
+        if let calories = calories {
+            cleaned["calories"] = calories
+        }
+        
+        // Helper function to extract numbers from strings like "12g", "250mg"
+        func extractNumber(from text: String?) -> Double? {
+            guard let text = text else { return nil }
+            
+            // Use regex to extract the first number (including decimals)
+            let pattern = #"(\d+\.?\d*)"#
+            if let range = text.range(of: pattern, options: .regularExpression) {
+                let numberString = String(text[range])
+                return Double(numberString)
+            }
+            return nil
+        }
+        
+        // Extract numbers from unit strings
+        if let proteinValue = extractNumber(from: protein) {
+            cleaned["protein"] = proteinValue
+        }
+        if let carbsValue = extractNumber(from: carbohydrates) {
+            cleaned["carbohydrates"] = carbsValue
+        }
+        if let fatValue = extractNumber(from: fat) {
+            cleaned["fat"] = fatValue
+        }
+        if let fiberValue = extractNumber(from: fiber) {
+            cleaned["fiber"] = fiberValue
+        }
+        if let sodiumValue = extractNumber(from: sodium) {
+            cleaned["sodium"] = sodiumValue
+        }
+        if let sugarValue = extractNumber(from: sugar) {
+            cleaned["sugar"] = sugarValue
+        }
+        
+        // Servings is already an Int
+        if let servings = servings {
+            cleaned["servings"] = servings
+        }
+        
+        return cleaned
+    }
 }
 
 // MARK: - Create Recipe From AI Request
@@ -168,6 +254,56 @@ struct CreateRecipeFromAIRequest: Codable {
         case mealPlanDay = "meal_plan_day"
         case mealPlanType = "meal_plan_type"
     }
+    
+    /// Custom encoding to clean nutrition data before sending to backend
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        // Helper function to extract numbers from strings like "12g", "250mg"
+        func extractNumber(from text: String?) -> Double? {
+            guard let text = text else { return nil }
+            
+            // Use regex to extract the first number (including decimals)
+            let pattern = #"(\d+\.?\d*)"#
+            if let range = text.range(of: pattern, options: .regularExpression) {
+                let numberString = String(text[range])
+                return Double(numberString)
+            }
+            return nil
+        }
+        
+        // Create a temporary AIGeneratedRecipe with cleaned nutrition info
+        let cleanedNutrition = AINutritionInfo(
+            calories: aiRecipeData.nutritionInfo.calories,
+            protein: extractNumber(from: aiRecipeData.nutritionInfo.protein)?.description,
+            carbohydrates: extractNumber(from: aiRecipeData.nutritionInfo.carbohydrates)?.description,
+            fat: extractNumber(from: aiRecipeData.nutritionInfo.fat)?.description,
+            fiber: extractNumber(from: aiRecipeData.nutritionInfo.fiber)?.description,
+            sodium: extractNumber(from: aiRecipeData.nutritionInfo.sodium)?.description,
+            sugar: extractNumber(from: aiRecipeData.nutritionInfo.sugar)?.description,
+            servings: aiRecipeData.nutritionInfo.servings
+        )
+        
+        let cleanedAIRecipe = AIGeneratedRecipe(
+            name: aiRecipeData.name,
+            description: aiRecipeData.description,
+            cuisine: aiRecipeData.cuisine,
+            difficulty: aiRecipeData.difficulty,
+            prepTime: aiRecipeData.prepTime,
+            cookTime: aiRecipeData.cookTime,
+            imageUrl: aiRecipeData.imageUrl,
+            ingredients: aiRecipeData.ingredients,
+            instructions: aiRecipeData.instructions,
+            nutritionInfo: cleanedNutrition,
+            tags: aiRecipeData.tags
+        )
+        
+        try container.encode(cleanedAIRecipe, forKey: .aiRecipeData)
+        try container.encode(saveToAccount, forKey: .saveToAccount)
+        try container.encodeIfPresent(addToMealPlan, forKey: .addToMealPlan)
+        try container.encodeIfPresent(mealPlanDay, forKey: .mealPlanDay)
+        try container.encodeIfPresent(mealPlanType, forKey: .mealPlanType)
+    }
 }
 
 // MARK: - Helper Extensions
@@ -177,12 +313,12 @@ extension AIGeneratedRecipe {
     func toRecipe(id: String = UUID().uuidString, createdByUser: String = "AI Generated") -> Recipe {
         let nutrition = NutritionInfo(
             calories: nutritionInfo.calories != nil ? String(nutritionInfo.calories!) : nil,
-            protein: nutritionInfo.protein != nil ? String(nutritionInfo.protein!) : nil,
-            carbohydrates: nutritionInfo.carbohydrates != nil ? String(nutritionInfo.carbohydrates!) : nil,
-            fat: nutritionInfo.fat != nil ? String(nutritionInfo.fat!) : nil,
-            fiber: nutritionInfo.fiber != nil ? String(nutritionInfo.fiber!) : nil,
-            sodium: nutritionInfo.sodium != nil ? String(nutritionInfo.sodium!) : nil,
-            sugar: nutritionInfo.sugar != nil ? String(nutritionInfo.sugar!) : nil,
+            protein: nutritionInfo.protein,      // Already a String from backend
+            carbohydrates: nutritionInfo.carbohydrates, // Already a String from backend
+            fat: nutritionInfo.fat,              // Already a String from backend
+            fiber: nutritionInfo.fiber,          // Already a String from backend
+            sodium: nutritionInfo.sodium,        // Already a String from backend
+            sugar: nutritionInfo.sugar,          // Already a String from backend
             servings: nutritionInfo.servings
         )
 
