@@ -611,6 +611,14 @@ extension MealSelectionBottomSheet {
             } else {
                 print("📖 [MealSelectionBottomSheet] Using cached favorites data, skipping API call")
             }
+
+            if mealPlanStore.recentMeals.isEmpty {
+                await mealPlanStore.loadRecentMeals()
+            }
+
+            if mealPlanStore.aiRecommendedRecipes.isEmpty {
+                await mealPlanStore.loadAIRecommendations()
+            }
         }
     }
 

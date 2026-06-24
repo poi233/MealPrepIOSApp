@@ -225,9 +225,8 @@ extension MealPlanStore {
     // MARK: - Legacy API Compatibility (for MealActionSheet and other views)
 
     func updateMealServingSize(mealPlanItem: MealPlanItem, newServingSize: Double) async {
-        // For now, this is a placeholder as serving size handling needs more complex implementation
-        print("🔄 [MealPlanStore] Update serving size for meal: \(mealPlanItem.recipe?.name ?? "Unknown") to \(newServingSize)")
-        // TODO: Implement serving size adjustments when proper nutrition scaling is available
+        errorMessage = "Serving size changes are not supported by the current meal plan model."
+        AppLogger.warning("Serving size update requested but unsupported by local meal plan model", category: .mealPlanning)
     }
 
     func duplicateMeal(mealPlanItem: MealPlanItem, toDayOfWeek: Int, toMealType: MealType) async {

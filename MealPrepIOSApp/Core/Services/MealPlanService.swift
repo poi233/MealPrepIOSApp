@@ -11,6 +11,7 @@ import Foundation
 class MealPlanService {
     private let networkManager = NetworkManager.shared
     private let aiService = AIService()
+    private let recipeService = RecipeService()
 
     // MARK: - Meal Plan CRUD Operations
 
@@ -309,18 +310,16 @@ class MealPlanService {
 
     // MARK: - Recent Meals and AI Recommendations
 
-    /// Get recent meals used in meal plans
+    /// Get recent recipe candidates for meal selection.
     func getRecentMeals(limit: Int = 10) async throws -> [Recipe] {
-        // This could be implemented to fetch recently used recipes from backend
-        // For now, return empty array as placeholder
-        return []
+        let response = try await recipeService.getRecipes(page: 1, pageSize: limit)
+        return response.results
     }
 
-    /// Get AI-recommended recipes
+    /// Get recommendation candidates using existing recipe filters until a dedicated endpoint exists.
     func getAIRecommendations(limit: Int = 5) async throws -> [Recipe] {
-        // This could be implemented to fetch AI recommendations from backend
-        // For now, return empty array as placeholder
-        return []
+        let response = try await recipeService.getHighlyRatedRecipes(page: 1)
+        return Array(response.results.prefix(limit))
     }
 
     // MARK: - Private Helper Methods
