@@ -81,7 +81,7 @@ class AuthenticationService {
     func logout() async throws {
         // Call logout endpoint to invalidate refresh token on server
         do {
-            try await networkManager.post(
+            let _: EmptyResponse = try await networkManager.post(
                 "/auth/logout/",
                 body: EmptyRequest(),
                 responseType: EmptyResponse.self,
@@ -159,14 +159,6 @@ class AuthenticationService {
             responseType: EmptyResponse.self,
             requiresAuth: false
         )
-    }
-
-    /// Refresh authentication token
-    func refreshToken() async throws -> TokenRefreshResponse {
-        // This is handled automatically by NetworkManager
-        // This method is for manual refresh if needed
-        try await networkManager.refreshTokenIfNeeded()
-        return TokenRefreshResponse(access: "refreshed") // Placeholder
     }
 
     /// Check if user is authenticated
