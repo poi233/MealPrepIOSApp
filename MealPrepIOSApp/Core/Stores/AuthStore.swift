@@ -148,6 +148,7 @@ class AuthStore: ObservableObject {
 
     func login(email: String, password: String) async {
         isLoading = true
+        errorMessage = nil
 
         do {
             let response = try await authService.login(email: email, password: password)
@@ -203,6 +204,7 @@ class AuthStore: ObservableObject {
 
     func register(userData: RegisterData) async {
         isLoading = true
+        errorMessage = nil
 
         do {
             let registerRequest = RegisterRequest(
@@ -224,6 +226,7 @@ class AuthStore: ObservableObject {
             // Send user login notification for cache loading
             NotificationCenter.default.post(name: .userLoggedIn, object: nil, userInfo: ["userID": response.user.id])
         } catch {
+            self.errorMessage = error.localizedDescription
             self.isAuthenticated = false
             self.currentUser = nil
         }
@@ -300,6 +303,7 @@ class AuthStore: ObservableObject {
 
     func requestPasswordReset(email: String) async -> Bool {
         isLoading = true
+        errorMessage = nil
 
         do {
             try await authService.requestPasswordReset(email: email)
@@ -307,6 +311,7 @@ class AuthStore: ObservableObject {
             isLoading = false
             return true
         } catch {
+            errorMessage = error.localizedDescription
             isLoading = false
             return false
         }

@@ -5,6 +5,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showingRegister = false
+    @State private var showingPasswordReset = false
     @State private var loginTask: Task<Void, Never>?
 
     var body: some View {
@@ -86,7 +87,7 @@ struct LoginView: View {
                             }
 
                             Button("Forgot password?") {
-                                // TODO: Implement forgot password
+                                showingPasswordReset = true
                             }
                             .font(.caption)
                             .foregroundColor(.primaryGreen)
@@ -148,11 +149,85 @@ struct LoginView: View {
             .sheet(isPresented: $showingRegister) {
                 RegisterView()
             }
+            .sheet(isPresented: $showingPasswordReset) {
+                PasswordResetRequestView(initialEmail: email)
+                    .environmentObject(authStore)
+            }
             .onDisappear {
                 // Cancel any ongoing login task when view disappears
                 loginTask?.cancel()
                 loginTask = nil
             }
+        }
+    }
+}
+
+struct PasswordResetRequestView: View {
+    @EnvironmentObject var authStore: AuthStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var email: String
+    @State private var isSubmitted = false
+    @State private var errorMessage: String?
+
+    init(initialEmail: String = "") {
+        _email = State(initialValue: initialEmail)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                }
+
+                if isSubmitted {
+                    Section {
+                        Label("If an account exists for this email, reset instructions have been sent.", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
+                }
+
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .navigationTitle("Reset Password")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(authStore.isLoading ? "Sending" : "Send") {
+                        Task {
+                            await submit()
+                        }
+                    }
+                    .disabled(authStore.isLoading || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func submit() async {
+        errorMessage = nil
+        isSubmitted = false
+
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let success = await authStore.requestPasswordReset(email: trimmedEmail)
+
+        if success {
+            isSubmitted = true
+        } else {
+            errorMessage = "Unable to request a password reset. Please try again."
         }
     }
 }
