@@ -199,11 +199,8 @@ class NetworkManager: ObservableObject {
             // Log response summary
             AppLogger.network("Response received", statusCode: httpResponse.statusCode)
 
-            // For AI generation errors, log the response body to see validation details
             if endpoint.path.contains("/ai/generate-meal-plan/") && httpResponse.statusCode >= 400 {
-                if let responseString = String(data: data, encoding: .utf8) {
-                    AppLogger.error("AI Generation Error Response: \(responseString)", category: .aiGeneration)
-                }
+                AppLogger.error("AI generation request failed with status \(httpResponse.statusCode)", category: .aiGeneration)
             }
 
             // Check for authentication errors
@@ -244,13 +241,6 @@ class NetworkManager: ObservableObject {
                 return decodedResponse
             } catch {
                 AppLogger.error("Decoding failed for \(T.self): \(error)", category: .networking)
-
-                // For AI endpoints, log the raw response to help debug
-                if endpoint.path.contains("/ai/") {
-                    if let responseString = String(data: data, encoding: .utf8) {
-                        AppLogger.debug("Raw response for \(endpoint.path): \(responseString)", category: .networking)
-                    }
-                }
 
                 throw NetworkError.decodingError(error)
             }
@@ -585,82 +575,12 @@ extension NetworkManager {
     func post<T: Codable, U: Codable>(_ path: String, body: T, responseType: U.Type, requiresAuth: Bool = true) async throws -> U {
         let bodyData = try encoder.encode(body)
 
-        // DEBUG: Special logging for recipe creation and AI endpoints
         if path.contains("/recipes") || path.contains("/ai/") {
             AppLogger.debug("POST endpoint: \(path)", category: .networking)
-
-            if let bodyString = String(data: bodyData, encoding: .utf8) {
-                // For AI meal plan generation, log FULL REQUEST PAYLOAD to debug validation error
-                if path.contains("/ai/generate-meal-plan/") {
-                    AppLogger.debug("AI Generation Request JSON: \(bodyString)", category: .aiGeneration)
-
-                    // Parse and validate each required field
-                    do {
-                        if let jsonData = bodyString.data(using: .utf8),
-                           let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                            AppLogger.debug("Parsed JSON fields:", category: .aiGeneration)
-                            for (key, value) in jsonObject {
-                                AppLogger.debug("  \(key): \(value)", category: .aiGeneration)
-
-                                // Check if plan_description is valid
-                                if key == "plan_description" {
-                                    let desc = value as? String ?? ""
-                                    if desc.isEmpty {
-                                        AppLogger.warning("plan_description is EMPTY!", category: .aiGeneration)
-                                    } else if desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        AppLogger.warning("plan_description is only whitespace!", category: .aiGeneration)
-                                    } else {
-                                        AppLogger.debug("plan_description is valid: '\(desc)'", category: .aiGeneration)
-                                    }
-                                }
-                            }
-                        }
-                    } catch {
-                        AppLogger.error("Failed to parse JSON: \(error)", category: .aiGeneration)
-                    }
-                }
-
-                // Try to extract image_url from the request body if it's a recipe
-                if let range = bodyString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
-                    let imageUrlPart = String(bodyString[range])
-                    AppLogger.debug("Request body contains: \(imageUrlPart)", category: .networking)
-                } else if bodyString.contains("image_url") {
-                    AppLogger.debug("Request body contains image_url field but could not extract value", category: .networking)
-                } else {
-                    AppLogger.debug("Request body does NOT contain image_url field", category: .networking)
-                }
-
-                // Show first 500 chars of body for debugging (unless it's AI generation - we logged full above)
-                if !path.contains("/ai/generate-meal-plan/") {
-                    let bodyPreview = String(bodyString.prefix(500))
-                    AppLogger.debug("Request body preview: \(bodyPreview)", category: .networking)
-                }
-            }
         }
 
         let endpoint = APIEndpoint(path: path, method: .POST, body: bodyData, requiresAuth: requiresAuth)
-        let result = try await request(endpoint, responseType: responseType)
-
-        // DEBUG: Special logging for recipe creation responses
-        if path.contains("/recipes") || path.contains("/ai/") {
-            do {
-                let responseData = try encoder.encode(result)
-                if let responseString = String(data: responseData, encoding: .utf8) {
-                    if let range = responseString.range(of: "\"image_url\":\"[^\"]*\"", options: .regularExpression) {
-                        let imageUrlPart = String(responseString[range])
-                        AppLogger.debug("Response contains: \(imageUrlPart)", category: .networking)
-                    } else if responseString.contains("image_url") {
-                        AppLogger.debug("Response contains image_url field but could not extract value", category: .networking)
-                    } else {
-                        AppLogger.debug("Response does NOT contain image_url field", category: .networking)
-                    }
-                }
-            } catch {
-                AppLogger.debug("Could not encode response for debugging", category: .networking)
-            }
-        }
-
-        return result
+        return try await request(endpoint, responseType: responseType)
     }
 
     // PUT request

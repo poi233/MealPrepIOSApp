@@ -94,25 +94,11 @@ class AIGenerationService: ObservableObject {
                 additionalRequirements: request.additionalRequirements
             )
 
-            // DETAILED DEBUG LOGGING
-            print("🔍 [AIGenerationService] API Request Detailed Debug:")
-            print("🔍 [AIGenerationService] planDescription: '\(apiRequest.planDescription)'")
-            print("🔍 [AIGenerationService] dietaryPreferences: \(apiRequest.dietaryPreferences?.description ?? "nil")")
-            print("🔍 [AIGenerationService] allergies: \(apiRequest.allergies?.description ?? "nil")")
-            print("🔍 [AIGenerationService] dislikes: \(apiRequest.dislikes?.description ?? "nil")")
-            print("🔍 [AIGenerationService] calorieTarget: \(apiRequest.calorieTarget?.description ?? "nil")")
-            print("🔍 [AIGenerationService] additionalRequirements: '\(apiRequest.additionalRequirements ?? "nil")'")
-            print("🔍 [AIGenerationService] weekStartDate: NOT SENT (Phase 1 cleanup)")
-
-            // Check for empty or invalid values that might cause validation errors
-            if apiRequest.planDescription.isEmpty {
-                print("❌ [AIGenerationService] planDescription is empty!")
-            }
             if apiRequest.planDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                print("❌ [AIGenerationService] planDescription is only whitespace!")
+                AppLogger.warning("AI meal plan request has an empty description", category: .aiGeneration)
             }
 
-            print("🌐 [AIGenerationService] Making API call to generate meal plan...")
+            AppLogger.info("Requesting AI meal plan generation", category: .aiGeneration)
 
             // Call the real AI service
             let generatedMealPlan = try await aiService.generateMealPlan(apiRequest)

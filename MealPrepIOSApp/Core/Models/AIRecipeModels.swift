@@ -97,9 +97,6 @@ struct AIGeneratedRecipe: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // DEBUG: Print all available keys in the container
-        print("[DEBUG] AIGeneratedRecipe - Available keys in decoder: \(container.allKeys.map { $0.stringValue })")
-
         name = try container.decode(String.self, forKey: .name)
         description = try container.decode(String.self, forKey: .description)
         cuisine = try container.decode(String.self, forKey: .cuisine)
@@ -107,13 +104,9 @@ struct AIGeneratedRecipe: Codable {
         prepTime = try container.decode(Int.self, forKey: .prepTime)
         cookTime = try container.decode(Int.self, forKey: .cookTime)
 
-        // DEBUG: Check if image_url key exists and what its value is
         if container.contains(.imageUrl) {
-            let imageUrlValue = try container.decodeIfPresent(String.self, forKey: .imageUrl)
-            print("[DEBUG] AIGeneratedRecipe - image_url key exists, value: '\(imageUrlValue ?? "nil string"))'")
-            imageUrl = imageUrlValue
+            imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         } else {
-            print("[DEBUG] AIGeneratedRecipe - image_url key does NOT exist in response")
             imageUrl = nil
         }
 
@@ -121,9 +114,6 @@ struct AIGeneratedRecipe: Codable {
         instructions = try container.decode([String].self, forKey: .instructions)
         nutritionInfo = try container.decode(AINutritionInfo.self, forKey: .nutritionInfo)
         tags = try container.decode([String].self, forKey: .tags)
-
-        print("[DEBUG] AIGeneratedRecipe decoded - final imageUrl: '\(imageUrl ?? "nil")'")
-        print("[DEBUG] AIGeneratedRecipe decoded - name: '\(name)'")
     }
 
     /// Custom encoding to ensure image_url field is always included for backend validation
@@ -144,8 +134,6 @@ struct AIGeneratedRecipe: Codable {
         try container.encode(instructions, forKey: .instructions)
         try container.encode(nutritionInfo, forKey: .nutritionInfo)
         try container.encode(tags, forKey: .tags)
-
-        print("[DEBUG] AIGeneratedRecipe encoded - imageUrl field: '\(imageUrl ?? "")'")
     }
 }
 

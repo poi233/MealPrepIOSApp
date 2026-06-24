@@ -75,21 +75,12 @@ class RecipeService {
 
     /// Create a new recipe
     func createRecipe(_ recipe: CreateRecipeRequest) async throws -> Recipe {
-        print("[DEBUG] RecipeService.createRecipe - About to send request with imageUrl: '\(recipe.imageUrl ?? "nil")'")
-
-        let result = try await networkManager.post(
+        return try await networkManager.post(
             "/recipes/",
             body: recipe,
             responseType: Recipe.self,
             requiresAuth: true
         )
-
-        print("[DEBUG] RecipeService.createRecipe - Received response:")
-        print("[DEBUG] RecipeService.createRecipe - Response recipe ID: \(result.id)")
-        print("[DEBUG] RecipeService.createRecipe - Response recipe name: \(result.name)")
-        print("[DEBUG] RecipeService.createRecipe - Response recipe imageUrl: '\(result.imageUrl ?? "nil")'")
-
-        return result
     }
 
     /// Update an existing recipe (full update)
@@ -187,29 +178,16 @@ class RecipeService {
 
     /// Generate recipe details using AI
     func generateRecipeWithAI(_ request: AIRecipeGenerationRequest) async throws -> AIGeneratedRecipe {
-        print("[DEBUG] RecipeService.generateRecipeWithAI - About to request recipe generation for: '\(request.name)'")
-
-        let result = try await networkManager.post(
+        return try await networkManager.post(
             "/ai/generate-recipe-details/",
             body: request,
             responseType: AIGeneratedRecipe.self,
             requiresAuth: true
         )
-
-        print("[DEBUG] RecipeService.generateRecipeWithAI - Received AIGeneratedRecipe:")
-        print("[DEBUG] RecipeService.generateRecipeWithAI - Recipe name: '\(result.name)'")
-        print("[DEBUG] RecipeService.generateRecipeWithAI - Recipe imageUrl: '\(result.imageUrl ?? "nil")'")
-
-        return result
     }
 
     /// Create recipe from AI-generated data
     func createRecipeFromAI(_ request: CreateRecipeFromAIRequest) async throws -> Recipe {
-        print("[DEBUG] RecipeService.createRecipeFromAI - About to send AI request")
-        print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data name: '\(request.aiRecipeData.name)'")
-        print("[DEBUG] RecipeService.createRecipeFromAI - AI recipe data imageUrl: '\(request.aiRecipeData.imageUrl ?? "nil")'")
-
-        // The backend returns a nested response format: {"success": true, "recipe": {...}, "status": "created"}
         let response = try await networkManager.post(
             "/ai/create-recipe-from-ai/",
             body: request,
@@ -217,38 +195,16 @@ class RecipeService {
             requiresAuth: true
         )
 
-        print("[DEBUG] RecipeService.createRecipeFromAI - Received nested AI response:")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Success: \(response.success)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Status: \(response.status)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe ID: \(response.recipe.id)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe name: \(response.recipe.name)")
-        print("[DEBUG] RecipeService.createRecipeFromAI - Recipe imageUrl: '\(response.recipe.imageUrl ?? "nil")'")
-
-        // Return the extracted recipe from the nested response
         return response.recipe
     }
 
     /// Apply a RecipeStub to user's meal plan by converting it to a complete Recipe
     func applyMealToPlan(_ request: ApplyMealRequest) async throws -> ApplyMealResponse {
-        print("[DEBUG] RecipeService.applyMealToPlan - About to send apply meal request")
-        print("[DEBUG] RecipeService.applyMealToPlan - Recipe stub name: '\(request.recipeStub.name)'")
-        print("[DEBUG] RecipeService.applyMealToPlan - Day of week: \(request.dayOfWeek)")
-        print("[DEBUG] RecipeService.applyMealToPlan - Meal type: \(request.mealType)")
-
-        let response = try await networkManager.post(
+        return try await networkManager.post(
             "/ai/apply-meal-to-plan/",
             body: request,
             responseType: ApplyMealResponse.self,
             requiresAuth: true
         )
-
-        print("[DEBUG] RecipeService.applyMealToPlan - Received apply meal response:")
-        print("[DEBUG] RecipeService.applyMealToPlan - Success: \(response.success)")
-        print("[DEBUG] RecipeService.applyMealToPlan - Message: \(response.message ?? "nil")")
-        if let recipe = response.recipe {
-            print("[DEBUG] RecipeService.applyMealToPlan - Created recipe: \(recipe.name)")
-        }
-
-        return response
     }
 }

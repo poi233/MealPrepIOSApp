@@ -97,6 +97,7 @@ class FavoritesStore: ObservableObject {
 
         isLoading = !refresh && favorites.isEmpty
         isLoadingMore = !favorites.isEmpty
+        errorMessage = nil
 
         do {
             let response = try await favoritesService.getFavorites(
@@ -121,6 +122,7 @@ class FavoritesStore: ObservableObject {
             }
 
         } catch {
+            handleError(error)
         }
 
         isLoading = false
@@ -331,6 +333,7 @@ class FavoritesStore: ObservableObject {
                 favoriteStatusCache[favorite.recipe.id] = true
             }
         } catch {
+            handleError(error)
         }
     }
 
