@@ -561,8 +561,8 @@ extension MealPlanTemplateSheet {
             if let storedGrid = LocalMealPlanStorage.shared.loadWeeklyMealPlan(for: selectedWeekForSave) {
                 return storedGrid.dailyMeals
             } else {
-                // Return empty week if no stored data
-                return WeeklyMealGrid().dailyMeals
+                // Return empty week for the selected date if no stored data
+                return WeeklyMealGrid(weekStartDate: selectedWeekForSave).dailyMeals
             }
         }
     }
@@ -861,9 +861,9 @@ extension MealPlanTemplateSheet {
             print("   📖 Description: \(templateDetail.description ?? "No description")")
             print("   🍽️ Total meals: \(templateDetail.meals.count)")
 
-            // Create new weekly grid with the correct week start date
-            var newGrid = WeeklyMealGrid()
-            print("📅 [ApplyTemplate] Creating new meal plan for current week starting: \(Date().startOfWeek())")
+            // Create new weekly grid with the selected week start date
+            var newGrid = WeeklyMealGrid(weekStartDate: mealPlanStore.selectedWeekStartDate)
+            print("📅 [ApplyTemplate] Creating new meal plan for selected week starting: \(mealPlanStore.selectedWeekStartDate)")
 
             var appliedMealsCount = 0
             // Apply template meals to new grid
@@ -904,7 +904,7 @@ extension MealPlanTemplateSheet {
 
             switch saveResult {
             case .success():
-                print("✅ [ApplyTemplate] Updated meal plan store for current week: \(Date().startOfWeek())")
+                print("✅ [ApplyTemplate] Updated meal plan store for selected week: \(mealPlanStore.selectedWeekStartDate)")
                 print("💾 [ApplyTemplate] Meal plan successfully persisted to local storage")
                 print("🎉 [ApplyTemplate] Template applied successfully!")
 

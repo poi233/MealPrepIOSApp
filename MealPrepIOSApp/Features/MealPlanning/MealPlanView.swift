@@ -23,21 +23,20 @@ struct MealPlanView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
-                        if mealPlanStore.currentMealPlan != nil {
-                            Button("Analyze Plan") {
-                                showingAnalysisView = true
-                            }
+                        Button("Analyze Plan") {
+                            showingAnalysisView = true
+                        }
+                        .disabled(!mealPlanStore.hasAnyMealsThisWeek)
 
-                            Button("Shopping List") {
-                                showingShoppingList = true
-                            }
+                        Button("Shopping List") {
+                            showingShoppingList = true
+                        }
+                        .disabled(!mealPlanStore.hasAnyMealsThisWeek)
 
-                            Divider()
+                        Divider()
 
-                            Button("Batch Operations") {
-                                showingBatchOperations = true
-                            }
-
+                        Button("Batch Operations") {
+                            showingBatchOperations = true
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle.fill")

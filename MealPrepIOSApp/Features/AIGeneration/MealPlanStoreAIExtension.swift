@@ -66,8 +66,8 @@ extension MealPlanStore {
                 zip(allRecipeStubs.map { $0.id }, generatedRecipes)
             )
 
-            // Build new WeeklyMealGrid with generated full Recipes
-            var enhancedGrid = WeeklyMealGrid()
+            // Build new WeeklyMealGrid with generated full Recipes for the selected week
+            var enhancedGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
 
             for (dayIndex, lightweightDailyMeal) in lightweightDailyMeals.enumerated() {
                 if dayIndex < enhancedGrid.dailyMeals.count {
@@ -117,7 +117,14 @@ extension MealPlanStore {
                 return
             }
 
-            weeklyGrid = confirmedGrid
+            var selectedWeekGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
+            for dayIndex in 0..<min(confirmedGrid.dailyMeals.count, selectedWeekGrid.dailyMeals.count) {
+                selectedWeekGrid.dailyMeals[dayIndex].breakfast = confirmedGrid.dailyMeals[dayIndex].breakfast
+                selectedWeekGrid.dailyMeals[dayIndex].lunch = confirmedGrid.dailyMeals[dayIndex].lunch
+                selectedWeekGrid.dailyMeals[dayIndex].dinner = confirmedGrid.dailyMeals[dayIndex].dinner
+            }
+
+            weeklyGrid = selectedWeekGrid
             showingGenerationView = false
         }
     }

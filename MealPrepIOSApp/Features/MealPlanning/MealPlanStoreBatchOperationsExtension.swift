@@ -32,8 +32,8 @@ extension MealPlanStore {
                 )
             }
             
-            // Copy meals to current week
-            weeklyGrid = lastWeekGrid
+            // Copy meals to the selected week while preserving the selected week's dates.
+            weeklyGrid = copyMeals(from: lastWeekGrid, toWeekStartingAt: selectedWeekStartDate)
             
             // Save to cache
             _ = localStorageService.saveMealPlan(weeklyGrid)
@@ -71,8 +71,8 @@ extension MealPlanStore {
     func clearAllMealsForWeek() async -> BatchOperationResult {
         let previousMealsCount = countTotalMeals(in: weeklyGrid)
         
-        // Clear the weekly grid
-        weeklyGrid = WeeklyMealGrid()
+        // Clear the weekly grid for the selected week
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         
         do {
             // Save empty grid to cache
@@ -121,39 +121,13 @@ extension MealPlanStore {
         let nextWeekStartDate = calendar.date(byAdding: .weekOfYear, value: 1, to: selectedWeekStartDate) ?? selectedWeekStartDate
         
         do {
-            // Create a copy of current weekly grid for next week
-            var nextWeekGrid = WeeklyMealGrid()
-            
-            // Update dates for next week while copying meals
-            for (index, currentDayMeal) in weeklyGrid.dailyMeals.enumerated() {
-                if index < nextWeekGrid.dailyMeals.count {
-                    // Copy meals but update the date
-                    let nextWeekDate = calendar.date(byAdding: .day, value: 7, to: currentDayMeal.date) ?? currentDayMeal.date
-                    nextWeekGrid.dailyMeals[index] = DailyMealSlots(day: currentDayMeal.day, date: nextWeekDate)
-                    nextWeekGrid.dailyMeals[index].breakfast = currentDayMeal.breakfast
-                    nextWeekGrid.dailyMeals[index].lunch = currentDayMeal.lunch
-                    nextWeekGrid.dailyMeals[index].dinner = currentDayMeal.dinner
-                }
-            }
-            
-            // Save the next week grid to local storage
-            // Since the storage service uses normalized dates, this should work correctly
+            // Create a copy of current weekly grid for next week.
             let normalizedNextWeekStart = localStorageService.normalizeWeekStartDate(nextWeekStartDate)
-            
-            // Temporarily switch context to save next week's data
-            let originalGrid = weeklyGrid
-            let originalSelectedDate = selectedWeekStartDate
-            
-            weeklyGrid = nextWeekGrid
-            selectedWeekStartDate = normalizedNextWeekStart
-            
-            // Save to local storage for next week
+            let nextWeekGrid = copyMeals(from: weeklyGrid, toWeekStartingAt: normalizedNextWeekStart)
+
+            // Save to local storage for next week without switching the visible week.
             let saveResult = localStorageService.saveMealPlan(nextWeekGrid)
-            
-            // Restore original context
-            weeklyGrid = originalGrid
-            selectedWeekStartDate = originalSelectedDate
-            
+
             switch saveResult {
             case .success():
                 // Try to sync to backend if possible (optional)
@@ -220,8 +194,8 @@ extension MealPlanStore {
             return cachedGrid
         }
         
-        // Return empty grid if nothing found
-        return WeeklyMealGrid()
+        // Return empty grid for the requested week if nothing found
+        return WeeklyMealGrid(weekStartDate: weekStartDate)
     }
     
     private func countTotalMeals(in grid: WeeklyMealGrid) -> Int {
@@ -233,9 +207,21 @@ extension MealPlanStore {
         }
         return count
     }
+
+    private func copyMeals(from sourceGrid: WeeklyMealGrid, toWeekStartingAt weekStartDate: Date) -> WeeklyMealGrid {
+        var targetGrid = WeeklyMealGrid(weekStartDate: weekStartDate)
+
+        for dayIndex in 0..<min(sourceGrid.dailyMeals.count, targetGrid.dailyMeals.count) {
+            targetGrid.dailyMeals[dayIndex].breakfast = sourceGrid.dailyMeals[dayIndex].breakfast
+            targetGrid.dailyMeals[dayIndex].lunch = sourceGrid.dailyMeals[dayIndex].lunch
+            targetGrid.dailyMeals[dayIndex].dinner = sourceGrid.dailyMeals[dayIndex].dinner
+        }
+
+        return targetGrid
+    }
     
     private func convertMealPlanItemsToGrid(_ items: [MealPlanItem]) -> WeeklyMealGrid {
-        var grid = WeeklyMealGrid()
+        var grid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         
         for item in items {
             guard let recipe = item.recipe else { continue }

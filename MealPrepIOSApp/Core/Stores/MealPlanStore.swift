@@ -110,8 +110,8 @@ class MealPlanStore: ObservableObject {
         // Get the start of the current week (Monday) using our Monday-first calendar
         selectedWeekStartDate = localStorageService.normalizeWeekStartDate(now.startOfWeek())
 
-        // Always initialize with an empty weekly grid for the current week
-        weeklyGrid = WeeklyMealGrid()
+        // Always initialize with an empty weekly grid for the selected week
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
     }
     
     private func setupServiceObservers() {
@@ -150,8 +150,8 @@ class MealPlanStore: ObservableObject {
         if let storedGrid = localStorageService.loadMealPlan(for: selectedWeekStartDate) {
             weeklyGrid = storedGrid
         } else {
-            // No stored plan for this week, create empty grid
-            weeklyGrid = WeeklyMealGrid()
+            // No stored plan for this week, create an empty grid for the selected week
+            weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         }
     }
 
@@ -186,7 +186,7 @@ class MealPlanStore: ObservableObject {
         mealPlans = []
         currentMealPlan = nil
         activeMealPlan = nil
-        weeklyGrid = WeeklyMealGrid()
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
         recentMeals = []
         aiRecommendedRecipes = []
         hasLightweightMeals = false

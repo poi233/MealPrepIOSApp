@@ -220,12 +220,12 @@ struct MealPlanAnalysis: Codable {
 struct WeeklyMealGrid: Codable {
     var dailyMeals: [DailyMealSlots]
 
-    init() {
+    init(weekStartDate: Date = Date().startOfWeek()) {
         self.dailyMeals = []
 
-        // Initialize 7 days starting from Monday based on current date
+        // Initialize 7 days starting from the selected Monday-based week.
         let calendar = Calendar.mondayFirst
-        let actualWeekStart = Date().startOfWeek() // Use current date to calculate week start
+        let actualWeekStart = weekStartDate.startOfWeek(using: calendar)
 
         for i in 0..<7 {
             if let date = calendar.date(byAdding: .day, value: i, to: actualWeekStart) {

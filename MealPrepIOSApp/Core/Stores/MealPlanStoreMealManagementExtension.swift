@@ -159,7 +159,7 @@ extension MealPlanStore {
     // MARK: - Batch Operations
 
     func clearWeek() {
-        weeklyGrid = WeeklyMealGrid()
+        weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
 
         // Save changes
         _ = saveLocalMealPlan()
@@ -177,7 +177,7 @@ extension MealPlanStore {
 
         if let previousWeekGrid = localStorageService.loadMealPlan(for: previousWeekStart) {
             // Create a new grid with current week's date but previous week's meals
-            weeklyGrid = WeeklyMealGrid()
+            weeklyGrid = WeeklyMealGrid(weekStartDate: selectedWeekStartDate)
 
             // Copy meals
             for dayIndex in 0..<min(7, previousWeekGrid.dailyMeals.count, weeklyGrid.dailyMeals.count) {
@@ -204,7 +204,7 @@ extension MealPlanStore {
         }
 
         // Create new grid for next week with current week's meals
-        var nextWeekGrid = WeeklyMealGrid()
+        var nextWeekGrid = WeeklyMealGrid(weekStartDate: nextWeekStart)
 
         // Copy meals
         for dayIndex in 0..<min(7, weeklyGrid.dailyMeals.count, nextWeekGrid.dailyMeals.count) {
