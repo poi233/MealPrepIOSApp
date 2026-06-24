@@ -89,6 +89,7 @@ class NetworkManager: ObservableObject {
     private var sessionExpiry: Date?
     private var pathMonitor: NWPathMonitor?
     private let monitorQueue = DispatchQueue(label: "NetworkMonitorQueue")
+    private var tokenRefreshTask: Task<Void, Error>?
 
     private init() {
         // Configure URLSession with custom configuration
@@ -169,9 +170,14 @@ class NetworkManager: ObservableObject {
     // MARK: - Public API Methods
 
     /// Make a generic request
-    func request<T: Codable>(_ endpoint: APIEndpoint, responseType: T.Type) async throws -> T {
-        // Check if token is expired before making authenticated requests
-        if endpoint.requiresAuth && isTokenExpired() {
+    func request<T: Codable>(
+        _ endpoint: APIEndpoint,
+        responseType: T.Type,
+        retryCount: Int = 0,
+        allowsTokenRefresh: Bool = true
+    ) async throws -> T {
+        // Check if token is expired before making authenticated requests.
+        if endpoint.requiresAuth && allowsTokenRefresh && isTokenExpired() {
             AppLogger.info("Token expired, attempting refresh before request", category: .authentication)
             try await refreshTokenIfNeeded()
         }
@@ -202,14 +208,22 @@ class NetworkManager: ObservableObject {
 
             // Check for authentication errors
             if httpResponse.statusCode == 401 {
-                if endpoint.requiresAuth {
-                    // Try to refresh token
-                    try await refreshTokenIfNeeded()
-                    // Retry the original request
-                    return try await self.request(endpoint, responseType: responseType)
-                } else {
+                guard endpoint.requiresAuth else {
                     throw NetworkError.authenticationRequired
                 }
+
+                guard allowsTokenRefresh, retryCount == 0 else {
+                    clearTokens()
+                    throw NetworkError.tokenExpired
+                }
+
+                try await refreshTokenIfNeeded()
+                return try await self.request(
+                    endpoint,
+                    responseType: responseType,
+                    retryCount: retryCount + 1,
+                    allowsTokenRefresh: allowsTokenRefresh
+                )
             }
 
             // Check for other HTTP errors
@@ -219,12 +233,9 @@ class NetworkManager: ObservableObject {
                 throw NetworkError.serverError(httpResponse.statusCode, message)
             }
 
-            // Handle empty responses (like DELETE operations)
-            if data.isEmpty && httpResponse.statusCode == 204 {
-                // Return empty object for 204 No Content
-                if T.self == EmptyResponse.self {
-                    return EmptyResponse() as! T
-                }
+            // Handle empty responses (like DELETE and logout operations)
+            if data.isEmpty, T.self == EmptyResponse.self {
+                return EmptyResponse() as! T
             }
 
             // Decode response
@@ -310,13 +321,7 @@ class NetworkManager: ObservableObject {
             return true
         }
 
-        // Decode the payload (add padding if needed for base64 decoding)
-        var payload = String(tokenParts[1])
-        while payload.count % 4 != 0 {
-            payload += "="
-        }
-
-        guard let payloadData = Data(base64Encoded: payload),
+        guard let payloadData = Self.decodeBase64URLSegment(String(tokenParts[1])),
               let payloadDict = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
               let exp = payloadDict["exp"] as? TimeInterval else {
             AppLogger.warning("Unable to parse token expiration, assuming expired", category: .authentication)
@@ -349,32 +354,47 @@ class NetworkManager: ObservableObject {
     }
 
     func refreshTokenIfNeeded() async throws {
+        if let tokenRefreshTask {
+            try await tokenRefreshTask.value
+            return
+        }
+
         guard let refreshToken = refreshToken else {
             throw NetworkError.authenticationRequired
         }
 
-        let refreshEndpoint = APIEndpoint(
-            path: "/auth/token/refresh/",
-            method: .POST,
-            body: try encoder.encode(["refresh": refreshToken]),
-            requiresAuth: false
-        )
+        let refreshTask = Task<Void, Error> {
+            let refreshEndpoint = APIEndpoint(
+                path: "/auth/token/refresh/",
+                method: .POST,
+                body: try encoder.encode(["refresh": refreshToken]),
+                requiresAuth: false
+            )
 
-        do {
-            let response: TokenRefreshResponse = try await self.request(refreshEndpoint, responseType: TokenRefreshResponse.self)
-            self.accessToken = response.access
+            do {
+                let response: TokenRefreshResponse = try await self.request(
+                    refreshEndpoint,
+                    responseType: TokenRefreshResponse.self,
+                    allowsTokenRefresh: false
+                )
+                self.accessToken = response.access
 
-            // Renew session for another 30 days on token refresh
-            self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())
+                // Renew session for another 30 days on token refresh
+                self.sessionExpiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())
 
-            storeTokens()
+                storeTokens()
 
-            AppLogger.info("Token refreshed and session renewed for 30 days", category: .authentication)
-        } catch {
-            // If refresh fails, clear tokens and require re-authentication
-            clearTokens()
-            throw NetworkError.tokenExpired
+                AppLogger.info("Token refreshed and session renewed for 30 days", category: .authentication)
+            } catch {
+                // If refresh fails, clear tokens and require re-authentication
+                clearTokens()
+                throw NetworkError.tokenExpired
+            }
         }
+
+        tokenRefreshTask = refreshTask
+        defer { tokenRefreshTask = nil }
+        try await refreshTask.value
     }
 
     /// Extract user ID from the current access token
@@ -506,12 +526,38 @@ class NetworkManager: ObservableObject {
     // MARK: - URL Configuration
 
     private static func getBaseURL() -> String {
+        if let environmentURL = ProcessInfo.processInfo.environment["MEALPREP_API_BASE_URL"],
+           !environmentURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return environmentURL
+        }
+
+        if let infoPlistURL = Bundle.main.object(forInfoDictionaryKey: "MealPrepAPIBaseURL") as? String,
+           !infoPlistURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return infoPlistURL
+        }
+
+        if let userDefaultsURL = UserDefaults.standard.string(forKey: "MealPrepAPIBaseURL"),
+           !userDefaultsURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return userDefaultsURL
+        }
+
+        #if DEBUG && targetEnvironment(simulator)
+        return "http://127.0.0.1:8000/api"
+        #else
         return "https://meal-prep-app-backend.vercel.app/api"
-//        #if DEBUG
-//        return "http://127.0.0.1:8000/api"
-//        #else
-//        return "https://meal-prep-app-backend.vercel.app/api"
-//        #endif
+        #endif
+    }
+
+    private static func decodeBase64URLSegment(_ segment: String) -> Data? {
+        var base64 = segment
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+
+        while base64.count % 4 != 0 {
+            base64 += "="
+        }
+
+        return Data(base64Encoded: base64)
     }
 }
 
@@ -648,15 +694,8 @@ extension NetworkManager {
 
         let payloadSegment = segments[1]
 
-        // Add padding if needed (JWT base64 might not have padding)
-        var base64 = payloadSegment
-        while base64.count % 4 != 0 {
-            base64 += "="
-        }
-
-        // Decode base64
-        guard let data = Data(base64Encoded: base64) else {
-            AppLogger.error("Failed to decode base64 payload", category: .authentication)
+        guard let data = NetworkManager.decodeBase64URLSegment(payloadSegment) else {
+            AppLogger.error("Failed to decode base64url payload", category: .authentication)
             return nil
         }
 
