@@ -76,20 +76,28 @@ struct MealPlan: Codable, Identifiable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // Handle id as either String or Int
-        if let idString = try? container.decode(String.self, forKey: .id) {
+        // AI preview responses are sometimes generated before a persisted database row exists.
+        if let idString = try? container.decode(String.self, forKey: .id), !idString.isEmpty {
             id = idString
         } else if let idInt = try? container.decode(Int.self, forKey: .id) {
             id = String(idInt)
         } else {
-            throw DecodingError.dataCorruptedError(forKey: .id, in: container, debugDescription: "ID must be either String or Int")
+            id = "ai-generated-\(UUID().uuidString)"
         }
 
         userId = try container.decodeIfPresent(String.self, forKey: .userId)
-        name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description)
-        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
         planDescription = try container.decodeIfPresent(String.self, forKey: .planDescription)
+
+        if let decodedName = try container.decodeIfPresent(String.self, forKey: .name), !decodedName.isEmpty {
+            name = decodedName
+        } else if let decodedPlanDescription = planDescription, !decodedPlanDescription.isEmpty {
+            name = "AI Generated Meal Plan"
+        } else {
+            name = "Meal Plan"
+        }
+
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
         analysisText = try container.decodeIfPresent(String.self, forKey: .analysisText)
         items = try container.decodeIfPresent([MealPlanItem].self, forKey: .items)
         itemsCount = try container.decodeIfPresent(Int.self, forKey: .itemsCount)
@@ -97,10 +105,8 @@ struct MealPlan: Codable, Identifiable, Equatable {
         lightweightDailyMeals = try container.decodeIfPresent([LightweightDailyMeal].self, forKey: .lightweightDailyMeals)
 
         // weekStartDate parsing completely removed - backend may still send it but iOS ignores it
-
-        // Handle flexible date parsing for timestamps
-        createdAt = try container.decode(Date.self, forKey: .createdAt)
-        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        createdAt = (try? container.decode(Date.self, forKey: .createdAt)) ?? Date()
+        updatedAt = (try? container.decode(Date.self, forKey: .updatedAt)) ?? Date()
     }
 
     // MARK: - Equatable Implementation

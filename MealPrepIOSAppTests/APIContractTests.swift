@@ -180,6 +180,66 @@ final class APIContractTests: XCTestCase {
         }
     }
 
+    // MARK: - AI Meal Plan Contract Tests
+
+    func testAIMealPlanResponseDecodesWrappedPreviewPlan() throws {
+        let json = """
+        {
+            "success": true,
+            "meal_plan": {
+                "plan_description": "High protein weekly meal plan",
+                "lightweight_daily_meals": [
+                    {
+                        "day": "Monday",
+                        "breakfast": [
+                            {
+                                "id": null,
+                                "name": "Greek Yogurt Bowl",
+                                "cuisine": "Mediterranean",
+                                "description": "Protein-rich breakfast",
+                                "estimated_calories": 320,
+                                "estimated_prep_time": 10,
+                                "image_url": null,
+                                "tags": ["high protein"]
+                            }
+                        ],
+                        "lunch": [],
+                        "dinner": []
+                    }
+                ]
+            }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(AIMealPlanResponse.self, from: json)
+
+        XCTAssertTrue(response.mealPlan.id.hasPrefix("ai-generated-"))
+        XCTAssertEqual(response.mealPlan.name, "AI Generated Meal Plan")
+        XCTAssertEqual(response.mealPlan.planDescription, "High protein weekly meal plan")
+        XCTAssertEqual(response.mealPlan.lightweightDailyMeals?.first?.breakfast.first?.name, "Greek Yogurt Bowl")
+    }
+
+    func testAIMealPlanResponseDecodesDataWrappedPlan() throws {
+        let json = """
+        {
+            "data": {
+                "mealPlan": {
+                    "id": 42,
+                    "name": "Generated Plan",
+                    "lightweight_daily_meals": []
+                }
+            }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(AIMealPlanResponse.self, from: json)
+
+        XCTAssertEqual(response.mealPlan.id, "42")
+        XCTAssertEqual(response.mealPlan.name, "Generated Plan")
+        XCTAssertNotNil(response.mealPlan.createdAt)
+        XCTAssertNotNil(response.mealPlan.updatedAt)
+    }
+
     // MARK: - Date Parsing Contract Tests
 
     func testDateParsingContract() {

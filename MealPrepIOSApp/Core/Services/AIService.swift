@@ -15,12 +15,14 @@ class AIService {
 
     /// Generate a personalized meal plan using AI
     func generateMealPlan(_ request: GenerateMealPlanRequest) async throws -> MealPlan {
-        return try await networkManager.post(
+        let response = try await networkManager.post(
             "/ai/generate-meal-plan/",
             body: request,
-            responseType: MealPlan.self,
+            responseType: AIMealPlanResponse.self,
             requiresAuth: true
         )
+
+        return response.mealPlan
     }
 
     /// Generate recipe details using AI
@@ -80,6 +82,78 @@ class AIService {
         )
 
         return try await analyzeMealPlan(request)
+    }
+}
+
+// MARK: - AI Meal Plan Response
+struct AIMealPlanResponse: Codable {
+    let mealPlan: MealPlan
+
+    private enum CodingKeys: String, CodingKey {
+        case mealPlan = "meal_plan"
+        case mealPlanCamel = "mealPlan"
+        case plan
+        case data
+        case result
+        case id
+        case name
+        case description
+        case planDescription = "plan_description"
+        case items
+        case dailyMeals = "daily_meals"
+        case lightweightDailyMeals = "lightweight_daily_meals"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let mealPlan = try container.decodeIfPresent(MealPlan.self, forKey: .mealPlan) {
+            self.mealPlan = mealPlan
+            return
+        }
+
+        if let mealPlan = try container.decodeIfPresent(MealPlan.self, forKey: .mealPlanCamel) {
+            self.mealPlan = mealPlan
+            return
+        }
+
+        if let mealPlan = try container.decodeIfPresent(MealPlan.self, forKey: .plan) {
+            self.mealPlan = mealPlan
+            return
+        }
+
+        if let nestedResponse = try container.decodeIfPresent(AIMealPlanResponse.self, forKey: .data) {
+            self.mealPlan = nestedResponse.mealPlan
+            return
+        }
+
+        if let nestedResponse = try container.decodeIfPresent(AIMealPlanResponse.self, forKey: .result) {
+            self.mealPlan = nestedResponse.mealPlan
+            return
+        }
+
+        let hasRawMealPlanFields = container.contains(.id)
+            || container.contains(.name)
+            || container.contains(.description)
+            || container.contains(.planDescription)
+            || container.contains(.items)
+            || container.contains(.dailyMeals)
+            || container.contains(.lightweightDailyMeals)
+
+        guard hasRawMealPlanFields else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .mealPlan,
+                in: container,
+                debugDescription: "AI meal plan response did not include meal_plan, mealPlan, plan, data, result, or raw meal plan fields"
+            )
+        }
+
+        mealPlan = try MealPlan(from: decoder)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(mealPlan, forKey: .mealPlan)
     }
 }
 
